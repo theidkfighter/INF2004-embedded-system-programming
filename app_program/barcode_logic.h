@@ -53,7 +53,9 @@ typedef struct
     uint32_t start_um;
     uint32_t edge_um;         /* position of the last edge */
     uint32_t min_um;          /* narrowest element so far */
+    uint32_t max_um;          /* widest element so far */
     uint32_t fails;
+    uint32_t last_n;          /* elements in the window that was just closed (diagnostics) */
 } bc_ctx_t;
 
 void        bc_reset(bc_ctx_t *p_bc);

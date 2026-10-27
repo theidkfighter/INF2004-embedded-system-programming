@@ -12,6 +12,11 @@
  *   right black  -> the line moved right -> turn right
  *   both black   -> junction / crossing  -> straight on, reported once
  * Steering grows the longer a sensor stays black (tighter curve).
+ * Curve memory (LINE_BIAS_KI): an integral of the error that is NOT reset
+ * when the line slips out past a sensor or touches the other sensor, so in
+ * a tight curve the car keeps turning at the rate the curve needs instead of
+ * restarting from LINE_STEER each time (the 21 Oct loop failure). It fades
+ * over LINE_BIAS_DECAY_MM of white and is cleared at a junction.
  * The line counts as lost when, after a curve, no sensor has seen black for
  * LINE_LOST_MM. (On a straight, both-white is normal, so it is not lost.)
  *
@@ -42,6 +47,8 @@ typedef struct
     float hold_mm;          /* LINE_HOLD_MM    */
     float curve_mm;         /* LINE_CURVE_MM   */
     float lost_mm;          /* LINE_LOST_MM    */
+    float bias_ki;          /* LINE_BIAS_KI: curve memory growth per second black (0 = off) */
+    float bias_decay_mm;    /* LINE_BIAS_DECAY_MM: curve memory fades over this distance of white */
 } line_params_t;
 
 typedef struct
@@ -54,6 +61,8 @@ typedef struct
     float        since_black_mm; /* distance since any sensor last saw black */
     bool         b_last_curve;   /* the last black episode was a curve */
     bool         b_both_prev;
+    float        bias;           /* curve memory: integral of the error, kept across
+                                    episodes and while both sensors are white */
 } line_ctx_t;
 
 typedef struct

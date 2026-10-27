@@ -19,6 +19,7 @@ void line_reset(line_ctx_t *p_ctx)
     p_ctx->since_black_mm = 0.0f;
     p_ctx->b_last_curve   = false;
     p_ctx->b_both_prev    = false;
+    p_ctx->bias           = 0.0f;
 }
 
 line_out_t line_step(line_ctx_t *p_ctx, const line_params_t *p_par,
@@ -41,6 +42,7 @@ line_out_t line_step(line_ctx_t *p_ctx, const line_params_t *p_par,
         p_ctx->black_s        = 0.0f;
         p_ctx->episode_mm     = 0.0f;
         p_ctx->b_last_curve   = false;
+        p_ctx->bias           = 0.0f;
         out.steer             = 0.0f;
     }
     else if (b_left_black || b_right_black)
@@ -59,7 +61,8 @@ line_out_t line_step(line_ctx_t *p_ctx, const line_params_t *p_par,
         p_ctx->black_s        += dt_s;
         p_ctx->episode_mm     += ds_mm;
         p_ctx->since_black_mm  = 0.0f;
-        out.steer = clamp1((float)side * (p_par->steer_base + (p_par->steer_ramp * p_ctx->black_s)));
+        p_ctx->bias = clamp1(p_ctx->bias + ((float)side * p_par->bias_ki * dt_s));
+        out.steer = clamp1(((float)side * (p_par->steer_base + (p_par->steer_ramp * p_ctx->black_s))) + p_ctx->bias);
     }
     else
     {
@@ -79,6 +82,12 @@ line_out_t line_step(line_ctx_t *p_ctx, const line_params_t *p_par,
             /* stays as it is */
         }
         p_ctx->since_black_mm += ds_mm;
+        if (p_par->bias_decay_mm > 0.0f)
+        {
+            float k = 1.0f - (ds_mm / p_par->bias_decay_mm);
+
+            p_ctx->bias *= (k > 0.0f) ? k : 0.0f;
+        }
 
         if (p_ctx->state == LINE_LOST)
         {
@@ -95,17 +104,18 @@ line_out_t line_step(line_ctx_t *p_ctx, const line_params_t *p_par,
             p_ctx->hold_left_mm -= ds_mm;
             if (p_ctx->hold_left_mm > 0.0f)
             {
-                out.steer = (float)p_ctx->side * p_par->hold_steer;
+                out.steer = clamp1(((float)p_ctx->side * p_par->hold_steer) + p_ctx->bias);
             }
             else
             {
-                /* keep the HOLD state (it remembers the side) but stop steering */
-                out.steer = 0.0f;
+                /* keep the HOLD state (it remembers the side); only the
+                   curve memory still steers */
+                out.steer = clamp1(p_ctx->bias);
             }
         }
         else
         {
-            out.steer = 0.0f;
+            out.steer = clamp1(p_ctx->bias);
         }
     }
     p_ctx->b_both_prev = b_left_black && b_right_black;

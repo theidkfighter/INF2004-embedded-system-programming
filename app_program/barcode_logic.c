@@ -13,14 +13,21 @@ void bc_reset(bc_ctx_t *p_bc)
     p_bc->start_um = 0u;
     p_bc->edge_um  = 0u;
     p_bc->min_um   = 0xFFFFFFFFu;
+    p_bc->max_um   = 0u;
     p_bc->fails    = 0u;
+    p_bc->last_n   = 0u;
 }
 
 void bc_cancel(bc_ctx_t *p_bc)
 {
+    if (p_bc->b_open)
+    {
+        p_bc->last_n = p_bc->n;   /* w[] / bar[] keep the widths for a diagnostic dump */
+    }
     p_bc->n      = 0u;
     p_bc->b_open = false;
     p_bc->min_um = 0xFFFFFFFFu;
+    p_bc->max_um = 0u;
 }
 
 bool bc_window_open(const bc_ctx_t *p_bc)
@@ -82,6 +89,7 @@ bc_result_t bc_edge(bc_ctx_t *p_bc, const bc_params_t *p_par, uint32_t pos_um, b
             p_bc->n        = 0u;
             p_bc->start_um = pos_um;
             p_bc->min_um   = 0xFFFFFFFFu;
+            p_bc->max_um   = 0u;
         }
     }
     else
@@ -96,6 +104,10 @@ bc_result_t bc_edge(bc_ctx_t *p_bc, const bc_params_t *p_par, uint32_t pos_um, b
             if ((width > 0u) && (width < p_bc->min_um))
             {
                 p_bc->min_um = width;
+            }
+            if (width > p_bc->max_um)
+            {
+                p_bc->max_um = width;
             }
         }
         else
@@ -134,8 +146,11 @@ bc_result_t bc_poll(bc_ctx_t *p_bc, const bc_params_t *p_par, uint32_t pos_um,
         }
         return BC_NONE;
     }
+    /* Quiet zone: white wider than 2x the widest element seen so far (a wide
+       element is 3 narrow, so a wide space can never end the window, even
+       when sensor bleed shrinks the spaces) and at least 15 mm. */
     if ((gap > p_par->max_gap_um) ||
-        ((p_bc->min_um != 0xFFFFFFFFu) && (gap > (5u * p_bc->min_um)) && (gap > p_par->stray_gap_um / 4u)))
+        ((gap > (2u * p_bc->max_um)) && (gap > 15000u)))
     {
         return finish(p_bc, p_par, p_code, p_reversed);
     }

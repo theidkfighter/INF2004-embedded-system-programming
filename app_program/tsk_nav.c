@@ -24,6 +24,7 @@
 #include "hal.h"
 #include "jfmt.h"
 #include "robot_config.h"
+#include "nav_map.h"
 
 LOCAL char     g_pending;              /* BARCODE_AT_JUNCTION mode */
 LOCAL uint32_t g_t_start;
@@ -47,6 +48,15 @@ LOCAL void start_run(void)
     }
     g_pending             = 0;
     g_t_start             = hal_time_ms();
+    {
+        char m[80];
+
+        if (nav_map_describe(m, sizeof(m)) < 4u)
+        {
+            /* not a refusal: the map may legitimately arrive after START */
+            (void)post_event("MAP_WARNING", (m[0] != '\0') ? m : "no barcode map yet (send MAP:...)");
+        }
+    }
     g_status.hump_max_mm  = 0.0f;
     g_status.humps        = 0u;
     g_status.obstacles    = 0u;
@@ -84,24 +94,89 @@ LOCAL void complete_run(void)
     buzzer_request(BUZZ_COMPLETE);
 }
 
+LOCAL bool ir_black(bool b_level)
+{
+    return b_level == (g_params.line_do_black_high > 0.5f);
+}
+
+/* TURN_SNAP: the encoder turn stops SNAP_EARLY_DEG short, then the car keeps
+   pivoting slowly until the new line is between the two line sensors: the
+   leading sensor (right one for a right turn) goes black and then white
+   again. Encoder/track-width errors and wheel slip on the foam no longer
+   decide the final heading; the line does. Gives up after SNAP_MAX_DEG. */
+#define SNAP_EARLY_DEG   (20.0f)
+#define SNAP_MAX_DEG     (45.0f)
+#define SNAP_MM_S        (50.0f)
+
+LOCAL motion_result_t turn_on_line(float deg)
+{
+    float           dir = (deg < 0.0f) ? -1.0f : 1.0f;
+    float           mag = (deg < 0.0f) ? -deg : deg;
+    motion_result_t res = motion_turn(dir * (mag - SNAP_EARLY_DEG), g_params.turn_mm_s);
+    uint16_t        id;
+    bool            b_seen = false;
+    uint32_t        t0;
+
+    if ((res != MOTION_OK) || (sys_state() != SYS_MANEUVER))
+    {
+        return res;
+    }
+    id = motion_start_turn(dir * SNAP_MAX_DEG, SNAP_MM_S, SRC_NAV);
+    t0 = hal_time_ms();
+    for (;;)
+    {
+        motion_result_t r2;
+        uint32_t        other;
+        bool            b_lead = ir_black((dir > 0.0f) ? hal_ir_right_level() : hal_ir_left_level());
+        bool            b_trail = ir_black((dir > 0.0f) ? hal_ir_left_level() : hal_ir_right_level());
+
+        if (b_lead)
+        {
+            b_seen = true;
+        }
+        if ((b_seen && !b_lead) || (b_seen && b_trail))
+        {
+            motion_stop(SRC_NAV);              /* line is between the sensors */
+            (void)post_event("TURN_SNAP", "stopped on the line");
+            return MOTION_OK;
+        }
+        if (motion_wait(id, 0u, 10u, &r2, &other))
+        {
+            /* swept SNAP_MAX_DEG without finding the line: keep the
+               encoder result and let line following / search sort it out */
+            (void)post_event("TURN_SNAP", "line not seen, encoder angle kept");
+            return (r2 == MOTION_STOPPED) ? MOTION_STOPPED : MOTION_OK;
+        }
+        if ((sys_state() != SYS_MANEUVER) || ((hal_time_ms() - t0) > 5000u))
+        {
+            motion_stop(SRC_NAV);
+            return MOTION_STOPPED;
+        }
+    }
+}
+
 /* FR6 / FR8: barcode -> navigation command. At a junction the car first
    drives the sensor-to-axle distance, so it pivots on the crossing point. */
 LOCAL void execute(char code, bool b_at_junction)
 {
-    float           deg = 0.0f;
+    nav_action_t    act = nav_map_get(code);      /* set over MQTT, never hard-coded */
+    float           deg = nav_action_deg(act);
     motion_result_t res;
+    char            text[TLM_EVENT_DETAIL_LEN];
+    jbuf_t          jb;
 
-    switch (code)
+    jb_init(&jb, text, sizeof(text));
+    jb_char(&jb, code);
+    jb_raw(&jb, " -> ");
+    jb_raw(&jb, nav_action_name(act));
+    if (act == ACT_NONE)
     {
-        case 'A': deg = -(float)BARCODE_TURN_DEG; break;   /* turn left  */
-        case 'B': deg = (float)BARCODE_TURN_DEG;  break;   /* turn right */
-        case 'D': deg = 180.0f;                   break;   /* U-turn     */
-        default:  deg = 0.0f;                     break;   /* C: straight */
+        jb_raw(&jb, " (not in the MQTT map): straight on");
     }
+    (void)post_event("NAV_ACTION", text);
     if (deg == 0.0f)
     {
-        (void)post_event("NAV", "go straight (C)");
-        return;
+        return;                                /* FORWARD or unmapped: keep following */
     }
     (void)sys_set_state(SYS_MANEUVER, false);
     motion_stop(SRC_NAV);
@@ -112,7 +187,8 @@ LOCAL void execute(char code, bool b_at_junction)
     }
     if ((res == MOTION_OK) && (sys_state() == SYS_MANEUVER))
     {
-        res = motion_turn(deg, g_params.turn_mm_s);
+        res = ((g_params.turn_snap > 0.5f) && b_at_junction) ? turn_on_line(deg)
+                                                               : motion_turn(deg, g_params.turn_mm_s);
     }
     if (sys_state() != SYS_MANEUVER)
     {
@@ -120,7 +196,7 @@ LOCAL void execute(char code, bool b_at_junction)
     }
     if (res == MOTION_OK)
     {
-        (void)post_event("NAV", (code == 'A') ? "turned left" : ((code == 'B') ? "turned right" : "U-turn"));
+        (void)post_event("NAV", nav_action_name(act));
         (void)sys_set_state(SYS_LINE_FOLLOWING, false);
     }
     else
@@ -163,8 +239,16 @@ LOCAL void on_nav_event(const nav_event_t *p_ev)
             {
                 if ((g_params.barcode_at_junction > 0.5f) && (p_ev->type == NAV_BARCODE))
                 {
+                    char text[TLM_EVENT_DETAIL_LEN];
+                    jbuf_t jb;
+
                     g_pending = p_ev->code;
-                    (void)post_event("NAV", "command stored for the next junction");
+                    jb_init(&jb, text, sizeof(text));
+                    jb_char(&jb, g_pending);
+                    jb_raw(&jb, " stored for the next junction (");
+                    jb_raw(&jb, nav_action_name(nav_map_get(g_pending)));
+                    jb_char(&jb, ')');
+                    (void)post_event("NAV", text);
                 }
                 else
                 {

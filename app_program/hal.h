@@ -47,6 +47,7 @@ uint32_t hal_enc_errors(void);                   /* impossible A/B transitions s
 bool     hal_ir_left_level(void);                /* raw GPIO level */
 bool     hal_ir_right_level(void);
 uint32_t hal_ir_adc(void);                       /* last 1 kHz sample */
+void     hal_ir_adc_range(uint32_t *p_min, uint32_t *p_max);   /* min/max since the last call (diagnostics) */
 void     hal_barcode_config(uint32_t thr_black, uint32_t thr_white, bool b_black_high,
                             bool b_enable);
 typedef struct
@@ -57,6 +58,11 @@ typedef struct
 } hal_bc_edge_t;
 bool     hal_barcode_pop(hal_bc_edge_t *p_edge); /* oldest edge, false if none */
 uint32_t hal_barcode_overruns(void);
+/* BARCODE_DETECT = 1: the interrupt only records every 1 kHz sample with the
+   odometer, and bc_detect.c (TSK_LINE_BARCODE) finds the bars. Turning raw
+   mode on switches the threshold edges above off, and the reverse. */
+void     hal_barcode_raw(bool b_enable);
+bool     hal_barcode_pop_sample(int32_t *p_enc_r, int32_t *p_enc_l, uint32_t *p_adc);   /* oldest sample: wheel counts (direction flags applied) + ADC; false if none */
 uint32_t hal_vbat_mv(void);                      /* 0 when VBAT sensing is off */
 
 /* ---- HC-SR04 (Echo timed by the GPIO interrupt) ---- */

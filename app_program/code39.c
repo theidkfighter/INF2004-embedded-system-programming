@@ -26,8 +26,67 @@ static const struct
     { '$', "nwnwnwnnn" }, { '/', "nwnwnnnwn" }, { '+', "nwnnnwnwn" }, { '%', "nnnwnwnwn" },
 };
 
+/* Bars and spaces are classified separately: every letter, digit and '*'
+   has exactly 2 wide bars (of 5) and 1 wide space (of 4). Comparing bars
+   only with bars and spaces only with spaces cancels the IR sensor's "ink
+   bleed" (bars read wider and spaces narrower by the spot size), which
+   breaks a plain "3 widest of 9" rule once the bleed reaches ~1.5 mm. */
+static char char_bars_spaces(const uint32_t *p_w9)
+{
+    char     pat[10] = "nnnnnnnnn";
+    uint32_t b1 = 0u, b2 = 2u, s1 = 1u;
+
+    if (p_w9[b2] > p_w9[b1]) { b1 = 2u; b2 = 0u; }
+    for (uint32_t i = 4u; i <= 8u; i += 2u)
+    {
+        if (p_w9[i] > p_w9[b1])      { b2 = b1; b1 = i; }
+        else if (p_w9[i] > p_w9[b2]) { b2 = i; }
+    }
+    for (uint32_t i = 3u; i <= 7u; i += 2u)
+    {
+        if (p_w9[i] > p_w9[s1]) { s1 = i; }
+    }
+    /* contrast checks inside each group: wide >= 1.5 x widest narrow */
+    {
+        uint32_t nb = 0u, ns = 0u;
+
+        for (uint32_t i = 0u; i <= 8u; i += 2u)
+        {
+            if ((i != b1) && (i != b2) && (p_w9[i] > nb)) { nb = p_w9[i]; }
+        }
+        for (uint32_t i = 1u; i <= 7u; i += 2u)
+        {
+            if ((i != s1) && (p_w9[i] > ns)) { ns = p_w9[i]; }
+        }
+        if (((p_w9[b2] * 2u) < (nb * 3u)) || ((p_w9[s1] * 2u) < (ns * 3u)))
+        {
+            return 0;
+        }
+    }
+    pat[b1] = 'w';
+    pat[b2] = 'w';
+    pat[s1] = 'w';
+    for (size_t i = 0u; i < (sizeof(TABLE) / sizeof(TABLE[0])); i++)
+    {
+        if (strcmp(pat, TABLE[i].p_pat) == 0)
+        {
+            return TABLE[i].ch;
+        }
+    }
+    return 0;
+}
+
 char code39_char(const uint32_t *p_w9)
 {
+    {
+        char c = char_bars_spaces(p_w9);
+
+        if (c != 0)
+        {
+            return c;
+        }
+    }
+    /* fall back to "3 widest of 9" ($ / + % have no wide bar) */
     char     pat[10];
     uint32_t idx[9];
 

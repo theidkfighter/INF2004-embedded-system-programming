@@ -52,7 +52,19 @@ typedef struct
     float line_hold_steer;
     float line_hold_mm;
     float line_lost_mm;
+    float line_curve_slow;
+    float line_min_wheel_mm_s;
+    float line_bias_ki;
+    float line_bias_decay_mm;
+    float obst_max_turn_dps;
+    float turn_snap;
     float barcode_at_junction;
+    float barcode_hys;
+    float barcode_detect;
+    float barcode_det_hys;
+    float barcode_sensor_y_mm;
+    float barcode_levels;
+    float barcode_debug;
     /* motion primitives / obstacles */
     float turn_mm_s;
     float bypass_mm_s;

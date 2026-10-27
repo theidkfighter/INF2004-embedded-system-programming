@@ -45,7 +45,19 @@ static const param_def_t PARAMS[] =
     { "LINE_HOLD_STEER",       &g_params.line_hold_steer,     0.0f,   1.0f     },
     { "LINE_HOLD_MM",          &g_params.line_hold_mm,        0.0f,   300.0f   },
     { "LINE_LOST_MM",          &g_params.line_lost_mm,        50.0f,  3000.0f  },
+    { "LINE_CURVE_SLOW",       &g_params.line_curve_slow,     0.0f,   0.8f     },
+    { "LINE_MIN_WHEEL_MM_S",   &g_params.line_min_wheel_mm_s, 0.0f,   80.0f    },
+    { "LINE_BIAS_KI",          &g_params.line_bias_ki,        0.0f,   10.0f    },
+    { "LINE_BIAS_DECAY_MM",    &g_params.line_bias_decay_mm,  0.0f,   3000.0f  },
+    { "OBST_MAX_TURN_DPS",     &g_params.obst_max_turn_dps,   0.0f,   720.0f   },
+    { "TURN_SNAP",             &g_params.turn_snap,           0.0f,   1.0f     },
     { "BARCODE_AT_JUNCTION",   &g_params.barcode_at_junction, 0.0f,   1.0f     },
+    { "BARCODE_HYS",           &g_params.barcode_hys,         0.01f,  0.30f    },
+    { "BARCODE_DETECT",        &g_params.barcode_detect,      0.0f,   1.0f     },
+    { "BARCODE_DET_HYS",       &g_params.barcode_det_hys,     0.005f, 0.30f    },
+    { "BARCODE_SENSOR_Y_MM",   &g_params.barcode_sensor_y_mm, -150.0f, 150.0f  },
+    { "BARCODE_LEVELS",        &g_params.barcode_levels,      1.0f,   5.0f     },
+    { "BARCODE_DEBUG",         &g_params.barcode_debug,       0.0f,   1.0f     },
     { "TURN_MM_S",             &g_params.turn_mm_s,           30.0f,  (float)SPEED_MAX_MM_S },
     { "BYPASS_MM_S",           &g_params.bypass_mm_s,         30.0f,  (float)SPEED_MAX_MM_S },
     { "OBSTACLE_STOP_CM",      &g_params.obstacle_stop_cm,    10.0f,  60.0f    },
@@ -86,7 +98,19 @@ void params_init(void)
     g_params.line_hold_steer     = LINE_HOLD_STEER;
     g_params.line_hold_mm        = (float)LINE_HOLD_MM;
     g_params.line_lost_mm        = (float)LINE_LOST_MM;
+    g_params.line_curve_slow     = LINE_CURVE_SLOW;
+    g_params.line_min_wheel_mm_s = (float)LINE_MIN_WHEEL_MM_S;
+    g_params.line_bias_ki        = LINE_BIAS_KI;
+    g_params.line_bias_decay_mm  = (float)LINE_BIAS_DECAY_MM;
+    g_params.obst_max_turn_dps   = OBST_MAX_TURN_DPS;
+    g_params.turn_snap           = (float)TURN_SNAP;
     g_params.barcode_at_junction = (float)BARCODE_AT_JUNCTION;
+    g_params.barcode_hys         = BARCODE_HYS;
+    g_params.barcode_detect      = (float)BARCODE_DETECT;
+    g_params.barcode_det_hys     = BARCODE_DET_HYS;
+    g_params.barcode_sensor_y_mm = (float)BARCODE_SENSOR_Y_MM;
+    g_params.barcode_levels      = (float)BARCODE_LEVELS;
+    g_params.barcode_debug       = (float)BARCODE_DEBUG;
     g_params.turn_mm_s           = (float)TURN_MM_S;
     g_params.bypass_mm_s         = (float)BYPASS_MM_S;
     g_params.obstacle_stop_cm    = (float)OBSTACLE_STOP_CM;

@@ -70,7 +70,7 @@ typedef enum
 /* ---- MBX_NAV_EVENT: NavEvent_t ---- */
 typedef enum
 {
-    NAV_BARCODE = 1,           /* decoded on the track: code = 'A'..'D' */
+    NAV_BARCODE = 1,           /* decoded on the track: code = 'A'..'Z' */
     NAV_REMOTE_BARCODE,        /* FR19 override from MQTT */
     NAV_BARCODE_FAULT,         /* 3 ambiguous reads in a row */
     NAV_JUNCTION,              /* both line sensors black */
@@ -175,6 +175,9 @@ typedef struct
     volatile uint32_t ir_adc;
     volatile uint32_t line_state;
     volatile char     barcode;         /* last decoded, 0 = none */
+    volatile uint32_t bc_thr_black;    /* barcode ADC thresholds in use (from IR_WHITE/BLACK_ADC) */
+    volatile uint32_t bc_thr_white;
+    volatile uint32_t bc_enabled;      /* 0 = sampling off: IR_WHITE_ADC / IR_BLACK_ADC unusable */
     volatile uint32_t barcodes_read;
     /* [imu] */
     volatile float    pitch_deg;

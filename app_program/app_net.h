@@ -35,6 +35,7 @@
 #define NET_TOPIC_ACK        "is02/ack"
 #define NET_TOPIC_CMD        "is02/cmd"
 #define NET_TOPIC_CONFIG     "is02/config"      /* retained "NAME=VALUE" lines */
+#define NET_TOPIC_MAP        "is02/map"         /* retained barcode map, e.g. "F=FWD,K=LEFT,R=RIGHT,U=UTURN" */
 #define NET_BEACON_PORT      (47002u)           /* UDP broker beacon from the laptop tool */
 
 #define NET_FRAME_MAX        (512u)     /* one telemetry frame (~300-450 bytes) */

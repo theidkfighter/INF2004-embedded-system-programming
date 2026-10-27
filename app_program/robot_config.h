@@ -30,15 +30,19 @@
 #define TRACK_WIDTH_MM            (130)    /* PLACEHOLDER: measure with a ruler */   /* ruler: tyre centre to tyre centre */
 
 /* ---- From full_tests: ft_speed_pid P1 ---- */
-#define SPEED_FF_DEADBAND_PCT     (20)     /* PLACEHOLDER: ft_speed_pid P1 */
-#define SPEED_FF_MM_S_PER_PCT_X10 (40)     /* PLACEHOLDER: ft_speed_pid P1 */
+#define SPEED_FF_DEADBAND_PCT     (6)      /* PLACEHOLDER until ft_speed_pid P1. Was 20; the 26 Oct telemetry shows
+                                              the wheels hold 120 mm/s at only 13-18 % duty and ~35-40 mm/s at
+                                              9-10 %, i.e. start-up ~6 %, ~11 mm/s per % */
+#define SPEED_FF_MM_S_PER_PCT_X10 (110)    /* PLACEHOLDER until ft_speed_pid P1 (was 40 = 4.0 mm/s per %, which
+                                              asked 50 % duty for 120 mm/s and ran slow inner wheels far too fast) */
 #define SPEED_KP                  (0.0020f)     /* [P] duty per mm/s of error */
 #define SPEED_KI                  (0.0100f)     /* [P] duty per mm of error   */
 
 /* ---- From part_tests: test_ir ---- */
 #define LINE_DO_BLACK_HIGH        (0)           /* spec 4: IR DO reads LOW over black */
-#define IR_WHITE_ADC              (200)    /* PLACEHOLDER: test_ir I3 */   /* test_ir I3, barcode sensor over white */
-#define IR_BLACK_ADC              (3000)   /* PLACEHOLDER: test_ir I3 */   /* test_ir I3, barcode sensor over black */
+#define IR_WHITE_ADC              (200)    /* PLACEHOLDER until test_barcode B2 (26 Oct track telemetry: white 160-240) */   /* test_ir I3, barcode sensor over white */
+#define IR_BLACK_ADC              (3900)   /* PLACEHOLDER until test_barcode B2 (was 3000; 26 Oct track telemetry:
+                                               black 3800-4095, so the switch level moves from 1600 to ~2050) */   /* test_ir I3, barcode sensor over black */
 
 /* ---- From part_tests: test_servo ---- */
 #define SERVO_MIN_US              (500)
@@ -55,25 +59,52 @@
 #define ROBOT_HALF_WIDTH_MM       (80)          /* half the widest part of the car */
 
 /* ---- Line following (DR 6.1) ---- */
-#define LINE_BASE_MM_S            (120)         /* [P] forward speed while following */
-#define LINE_STEER                (0.30f)       /* [P] steering when one sensor sees black */
-#define LINE_STEER_RAMP           (1.50f)       /* [P] extra steering per second it stays black */
-#define LINE_HOLD_STEER           (0.12f)       /* [P] steering kept after the sensor clears */
-#define LINE_HOLD_MM              (40)          /* [P] ... for this distance */
+#define LINE_BASE_MM_S            (80)          /* [P] forward speed while following (was 120: too fast for the
+                                                   ~115-145 mm loops with uncalibrated wheel speed control) */
+#define LINE_STEER                (0.40f)       /* [P] steering when one sensor sees black (was 0.30) */
+#define LINE_STEER_RAMP           (3.00f)       /* [P] extra steering per second it stays black (was 1.5) */
+#define LINE_HOLD_STEER           (0.30f)       /* [P] steering kept after the sensor clears (was 0.12) */
+#define LINE_HOLD_MM              (60)          /* [P] ... for this distance (was 40) */
 #define LINE_CURVE_MM             (25)          /* black for longer than this = a curve */
+#define LINE_CURVE_SLOW           (0.60f)       /* [P] base speed x (1 - this x |steer|): slow down in tight curves (0 = off; was 0.4) */
+#define LINE_MIN_WHEEL_MM_S       (20)          /* [P] in a curve the inner wheel is braked (0) instead of being asked
+                                                   for less than this: a slow target still gets the start-up duty and
+                                                   creeps too fast, so the car runs wide (0 = off) */
+#define LINE_BIAS_KI              (0.0f)        /* [P] curve memory, OFF by default: try 1.5-3 only after the speed
+                                                   PI is calibrated (with a sluggish wheel loop it makes the car weave) */
+#define LINE_BIAS_DECAY_MM        (400)         /* [P] curve memory fades over this much white */
 #define LINE_LOST_MM              (250)         /* [P] no black this far after a curve = line lost */
 #define LINE_SEARCH_DEG           (45)          /* first sweep of the search, doubled each pass */
 #define LINE_SEARCH_MAX_DEG       (90)          /* sweeps 45, 90 deg each way, then EVF_LINE_LOST */
 #define LINE_SEARCH_MM_S          (80)          /* wheel speed while searching */
 
 /* ---- Barcodes (DR 6.1, FR5-FR8) ---- */
-#define BARCODE_AT_JUNCTION       (0)           /* [P] 0 = act as soon as decoded (chosen), 1 = at next junction */
+#define BARCODE_AT_JUNCTION       (1)           /* [P] 1 = store, act at the next cross-junction (demo brief), 0 = act at once */
 #define BARCODE_TURN_DEG          (90)
 #define BARCODE_MAX_LEN_MM        (400)         /* abandon a window longer than this */
 #define BARCODE_MIN_ELEMENTS      (9)           /* fewer = a stray mark (e.g. a crossing line) */
+#define BARCODE_HYS               (0.05f)       /* [P] switch levels = mid +/- this x (black - white).
+                                                   Was 0.10: small prints (75 %, 50 %) blur the narrow
+                                                   bars so they no longer reach mid + 10 %. Raise it only
+                                                   if a plain white/black area gives false edges. */
+#define BARCODE_DETECT            (1)           /* [P] 1 = bars found on 0.25 mm distance bins with edges at the
+                                                   mid level (bc_detect.c: copes with a blurred sensor spot),
+                                                   0 = the original 1 kHz two-level interrupt (BARCODE_HYS) */
+#define BARCODE_LEVELS            (5)           /* [P] BARCODE_DETECT = 1 only: read every barcode at this many switch
+                                                   levels at once (1 = mid level only; 3 = 50/35/65 %; 5 = also 25/75 %),
+                                                   so faded / grey prints still decode (bc_multi.c). Applies at START */
+#define BARCODE_SENSOR_Y_MM       (35)          /* [P] barcode sensor's distance to the LEFT of the car's centre line
+                                                   (negative = right; 0 = use the wheels' mean distance as before).
+                                                   BARCODE_DETECT = 1 only: bar widths follow the sensor's own path,
+                                                   so steering over a barcode no longer stretches bars. Measure it */
+#define BARCODE_DET_HYS           (0.02f)       /* [P] BARCODE_DETECT = 1 only: band = mid +/- this x (black - white).
+                                                   The averaging allows a narrow band; raise it (0.03-0.05) only if
+                                                   plain white paper gives BC_DBG "stray mark" windows */
+#define BARCODE_DEBUG             (1)           /* [P] 1 = publish every barcode window's bar/space widths (BC_DBG events) */
 
 /* ---- Motion primitives ---- */
 #define TURN_MM_S                 (90)          /* [P] wheel speed for pivot turns */
+#define TURN_SNAP                 (0)           /* [P] 1 = finish junction turns on the line sensors (test first) */
 #define BYPASS_MM_S               (100)         /* [P] speed for bypass legs */
 #define SPEED_MAX_MM_S            (250)         /* NFR18 speed cap */
 #define HUMP_SPEED_PCT            (60)          /* DR A2: speed limit on a hump */
@@ -82,6 +113,9 @@
 
 /* ---- Obstacles (DR 6.2) ---- */
 #define OBSTACLE_STOP_CM          (20)          /* [P] FR9 */
+#define OBST_MAX_TURN_DPS         (15.0f)       /* [P] turning faster than this: the sensor looks off the track,
+                                                   so readings above PROXIMITY_STOP_CM do not trigger (0 = off).
+                                                   Was 60: at 80 mm/s the loops turn at only 20-30 deg/s */
 #define OBSTACLE_CLEAR_CM         (25)          /* coarse sweep: all above this = clear */
 #define PROXIMITY_STOP_CM         (8)           /* NFR21 */
 #define OBST_MARGIN_MM            (60)          /* [P] extra side clearance in the bypass */

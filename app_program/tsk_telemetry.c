@@ -7,7 +7,7 @@
  * Frames keep the format the laptop monitor (laptop_tools/telemetry_monitor.py)
  * already checks, plus robot-only fields:
  *   {"seq","t","state","spd":[l,r],"duty":[l,r],"enc":[l,r],"dist",
- *    "line":{"l","r","ir"},"bc","hump":{"pitch","h","peak","max"},
+ *    "line":{"l","r","ir","irmn","irmx","thr"},"bc","hump":{"pitch","h","peak","max"},
  *    "obst":{"cm","scan":[5],"side"},"imu":{"ev","tr"},"faults","vbat",
  *    "rssi","buf"}
  *
@@ -31,6 +31,7 @@
 #include "hal.h"
 #include "jfmt.h"
 #include "robot_config.h"
+#include "nav_map.h"
 
 #define FRAME_MS        (500u)
 #define HEARTBEAT_MS    (1000u)
@@ -114,6 +115,48 @@ LOCAL void ack(const char *p_cmd, const char *p_result, const char *p_extra_json
     (void)net_post(NET_T_ACK, g_buf);
 }
 
+/* Acks with the current map: {"map":"F=FWD,K=LEFT,...","n":4} */
+LOCAL void map_ack(const char *p_cmd, const char *p_result)
+{
+    char     m[80];
+    char     extra[112];
+    jbuf_t   jb;
+    uint32_t n = nav_map_describe(m, sizeof(m));
+
+    jb_init(&jb, extra, sizeof(extra));
+    jb_raw(&jb, "\"map\":");
+    jb_str(&jb, m);
+    jb_raw(&jb, ",\"n\":");
+    jb_uint(&jb, n);
+    ack(p_cmd, p_result, extra);
+}
+
+/* MAP:... from is02/cmd, or the retained is02/map payload */
+LOCAL void map_apply(const char *p_cmd_name, const char *p_text)
+{
+    char    err[64];
+    int32_t n = nav_map_parse(p_text, err, sizeof(err));
+
+    if (n < 0)
+    {
+        char reason[80];
+        jbuf_t jb;
+
+        jb_init(&jb, reason, sizeof(reason));
+        jb_raw(&jb, "nack: ");
+        jb_raw(&jb, err);
+        ack(p_cmd_name, reason, NULL);
+        return;
+    }
+    map_ack(p_cmd_name, (n == 4) ? "ok" : ((n == 0) ? "cleared" : "ok (not 4 letters)"));
+    {
+        char m[80];
+
+        (void)nav_map_describe(m, sizeof(m));
+        (void)post_event("MAP", (m[0] != '\0') ? m : "cleared");
+    }
+}
+
 LOCAL void handle_command(const char *p_cmd)
 {
     sys_state_t st = sys_state();
@@ -126,9 +169,9 @@ LOCAL void handle_command(const char *p_cmd)
     {
         char c = p_cmd[8];
 
-        if ((c < 'A') || (c > 'D'))
+        if ((c < 'A') || (c > 'Z'))
         {
-            ack(p_cmd, "nack: use BARCODE:A, B, C or D", NULL);
+            ack(p_cmd, "nack: use BARCODE:<A-Z>", NULL);
         }
         else if (st != SYS_LINE_FOLLOWING)
         {
@@ -149,6 +192,14 @@ LOCAL void handle_command(const char *p_cmd)
     {
         (void)post_nav(NAV_STOP, 0);
         ack(p_cmd, "ending the run", NULL);
+    }
+    else if (jf_starts_with(p_cmd, "MAP:"))
+    {
+        map_apply(p_cmd, p_cmd);
+    }
+    else if (jf_starts_with(p_cmd, "GET:MAP"))
+    {
+        map_ack(p_cmd, "ok");
     }
     else if (jf_starts_with(p_cmd, "PING"))
     {
@@ -226,6 +277,17 @@ LOCAL void frame(void)
     jb_raw(&jb, ",\"line\":{\"l\":"); jb_int(&jb, g_status.line_l);
     jb_raw(&jb, ",\"r\":");        jb_int(&jb, g_status.line_r);
     jb_raw(&jb, ",\"ir\":");       jb_uint(&jb, g_status.ir_adc);
+    {
+        uint32_t mn;
+        uint32_t mx;
+
+        hal_ir_adc_range(&mn, &mx);           /* barcode sensor range over the last 0.5 s */
+        jb_raw(&jb, ",\"irmn\":");  jb_uint(&jb, mn);
+        jb_raw(&jb, ",\"irmx\":");  jb_uint(&jb, mx);
+        jb_raw(&jb, ",\"thr\":[");  jb_uint(&jb, (g_status.bc_enabled != 0u) ? g_status.bc_thr_black : 0u);
+        jb_char(&jb, ',');           jb_uint(&jb, (g_status.bc_enabled != 0u) ? g_status.bc_thr_white : 0u);
+        jb_char(&jb, ']');           /* [black, white] switch levels; [0,0] = sampling off */
+    }
     jb_raw(&jb, "},\"bc\":");      jb_str(&jb, bc);
     jb_raw(&jb, ",\"hump\":{\"pitch\":"); jb_fixed(&jb, g_status.pitch_deg, 1u);
     jb_raw(&jb, ",\"h\":");        jb_fixed(&jb, g_status.hump_mm, 1u);

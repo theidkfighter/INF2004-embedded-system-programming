@@ -52,6 +52,8 @@ static void (*volatile gp_int1_cb)(void) = NULL;
 
 /* ---- barcode sampling ---- */
 static volatile uint32_t g_adc_last;
+static volatile uint32_t g_adc_min = 0xFFFFu;   /* range since hal_ir_adc_range() */
+static volatile uint32_t g_adc_max;
 static volatile bool     g_bc_enabled;
 static volatile bool     g_bc_black_high = true;
 static volatile uint32_t g_bc_thr_black = 3000u;   /* crossing this way -> black */
@@ -61,6 +63,13 @@ static hal_bc_edge_t     g_bc_ring[BC_RING];
 static volatile uint32_t g_bc_head;                /* written by the ISR */
 static volatile uint32_t g_bc_tail;                /* written by the reader */
 static volatile uint32_t g_bc_overruns;
+#define RAW_RING         (256u)         /* power of 2: 256 ms of samples */
+static volatile bool     g_raw_enabled;
+static int32_t           g_raw_er[RAW_RING];
+static int32_t           g_raw_el[RAW_RING];
+static uint16_t          g_raw_adc[RAW_RING];
+static volatile uint32_t g_raw_head;               /* written by the ISR */
+static volatile uint32_t g_raw_tail;               /* written by the reader */
 static volatile uint32_t g_vbat_mv;
 static uint32_t          g_alarm_target;
 static uint32_t          g_sample_n;
@@ -248,8 +257,32 @@ void hal_timer_isr(uint32_t intno)
     adc_select_input(ADC_CH_IR);
     v = adc_read();
     g_adc_last = v;
+    if (v < g_adc_min)
+    {
+        g_adc_min = v;
+    }
+    if (v > g_adc_max)
+    {
+        g_adc_max = v;
+    }
 
-    if (g_bc_enabled)
+    if (g_raw_enabled)
+    {
+        uint32_t head = g_raw_head;
+
+        if ((head - g_raw_tail) < RAW_RING)
+        {
+            g_raw_er[head & (RAW_RING - 1u)]  = g_enc_rev[HAL_WHEEL_RIGHT] ? -g_enc[HAL_WHEEL_RIGHT] : g_enc[HAL_WHEEL_RIGHT];
+            g_raw_el[head & (RAW_RING - 1u)]  = g_enc_rev[HAL_WHEEL_LEFT] ? -g_enc[HAL_WHEEL_LEFT] : g_enc[HAL_WHEEL_LEFT];
+            g_raw_adc[head & (RAW_RING - 1u)] = (uint16_t)v;
+            g_raw_head = head + 1u;
+        }
+        else
+        {
+            g_bc_overruns++;
+        }
+    }
+    else if (g_bc_enabled)
     {
         bool b_black = g_bc_black;
 
@@ -305,6 +338,32 @@ bool hal_barcode_pop(hal_bc_edge_t *p_edge)
     return true;
 }
 
+void hal_barcode_raw(bool b_enable)
+{
+    g_raw_enabled = false;
+    g_raw_tail    = g_raw_head;
+    if (b_enable)
+    {
+        g_bc_enabled = false;                     /* no threshold edges in raw mode */
+    }
+    g_raw_enabled = b_enable;
+}
+
+bool hal_barcode_pop_sample(int32_t *p_enc_r, int32_t *p_enc_l, uint32_t *p_adc)
+{
+    uint32_t tail = g_raw_tail;
+
+    if (tail == g_raw_head)
+    {
+        return false;
+    }
+    *p_enc_r = g_raw_er[tail & (RAW_RING - 1u)];
+    *p_enc_l = g_raw_el[tail & (RAW_RING - 1u)];
+    *p_adc = g_raw_adc[tail & (RAW_RING - 1u)];
+    g_raw_tail = tail + 1u;
+    return true;
+}
+
 uint32_t hal_barcode_overruns(void)
 {
     return g_bc_overruns;
@@ -313,6 +372,17 @@ uint32_t hal_barcode_overruns(void)
 uint32_t hal_ir_adc(void)
 {
     return g_adc_last;
+}
+
+void hal_ir_adc_range(uint32_t *p_min, uint32_t *p_max)
+{
+    uint32_t mn = g_adc_min;
+    uint32_t mx = g_adc_max;
+
+    g_adc_min = 0xFFFFu;                          /* a sample in between is lost at worst */
+    g_adc_max = 0u;
+    *p_min = (mn > 4095u) ? g_adc_last : mn;
+    *p_max = (mx == 0u) ? g_adc_last : mx;
 }
 
 uint32_t hal_vbat_mv(void)

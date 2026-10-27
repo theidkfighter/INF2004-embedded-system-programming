@@ -209,6 +209,19 @@ static void on_in_data(void *p_arg, const u8_t *p_data, u16_t len, u8_t flags)
     {
         app_net_config(g_in);
     }
+    else if (strcmp(g_in_topic, NET_TOPIC_MAP) == 0)
+    {
+        /* retained map: handled exactly like "MAP:<payload>" on is02/cmd */
+        static char s_map_cmd[100];
+
+        if (g_in_len > 0u)
+        {
+            memcpy(s_map_cmd, "MAP:", 4u);
+            strncpy(&s_map_cmd[4], g_in, sizeof(s_map_cmd) - 5u);
+            s_map_cmd[sizeof(s_map_cmd) - 1u] = '\0';
+            app_net_command(s_map_cmd, rx_us);
+        }
+    }
     else
     {
         /* not ours */
@@ -261,6 +274,7 @@ static void on_connect(mqtt_client_t *p_client, void *p_arg, mqtt_connection_sta
         g_connect_fails  = 0u;
         (void)mqtt_subscribe(p_client, NET_TOPIC_CMD, 1u, on_sub_done, NULL);
         (void)mqtt_subscribe(p_client, NET_TOPIC_CONFIG, 1u, on_sub_done, NULL);   /* retained calibration */
+        (void)mqtt_subscribe(p_client, NET_TOPIC_MAP, 1u, on_sub_done, NULL);      /* retained barcode map */
     }
     else
     {

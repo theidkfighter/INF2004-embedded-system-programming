@@ -39,6 +39,10 @@ LOCAL us_filter_t        g_filt;
 LOCAL scan_t             g_fine;
 LOCAL obstacle_profile_t g_prof;
 LOCAL uint32_t           g_prox_n;
+LOCAL float              g_servo_now;         /* last commanded robot angle */
+
+#define SERVO_STEP_DEG    (10.0f)     /* ramp the pan in small steps: a 60-120 deg  */
+#define SERVO_STEP_MS     (25)        /* jump whips the HC-SR04 and its cable loose */
 
 /* robot angle (+ right) -> servo physical angle */
 LOCAL void servo_to(float robot_deg)
@@ -46,6 +50,7 @@ LOCAL void servo_to(float robot_deg)
     float phys = (g_params.servo_low_angle_is_right > 0.5f) ? (90.0f - robot_deg) : (90.0f + robot_deg);
 
     hal_servo_deg(phys);
+    g_servo_now = robot_deg;
 }
 
 LOCAL float ping(void)
@@ -86,11 +91,23 @@ LOCAL float ping_median3(void)
 
 LOCAL void servo_move(float robot_deg, float from_deg)
 {
-    float span = (robot_deg > from_deg) ? (robot_deg - from_deg) : (from_deg - robot_deg);
+    float a = g_servo_now;
 
+    (void)from_deg;                           /* the real start is g_servo_now */
+    while ((robot_deg - a) > SERVO_STEP_DEG)
+    {
+        a += SERVO_STEP_DEG;
+        servo_to(a);
+        (void)tk_dly_tsk(SERVO_STEP_MS);
+    }
+    while ((a - robot_deg) > SERVO_STEP_DEG)
+    {
+        a -= SERVO_STEP_DEG;
+        servo_to(a);
+        (void)tk_dly_tsk(SERVO_STEP_MS);
+    }
     servo_to(robot_deg);
-    /* SG90: ~100 ms per 60 deg, then 50 ms settle (DR A6) */
-    (void)tk_dly_tsk((TMO)((span * 100.0f / 60.0f) + (float)SERVO_SETTLE_MS));
+    (void)tk_dly_tsk((TMO)SERVO_SETTLE_MS + SERVO_STEP_MS);   /* DR A6 settle */
 }
 
 LOCAL bool aborted(void)
@@ -221,7 +238,7 @@ LOCAL void profile_event(const obstacle_profile_t *p)
 LOCAL void abort_avoidance(const char *p_why)
 {
     motion_stop(SRC_OBSTACLE);
-    servo_to(0.0f);
+    servo_move(0.0f, 0.0f);
     fault_set(FAULT_BYPASS_ABORT);
     (void)post_event("AVOIDANCE_ABORT", p_why);
     flag_set(EVF_BYPASS_ABORT);
@@ -327,9 +344,23 @@ void tsk_obstacle(INT stacd, void *exinf)
         if (st == SYS_LINE_FOLLOWING)
         {
             /* STAGE0: idle monitoring */
-            float cm = ping();
-            float f = usf_add(&g_filt, cm);
+            float      cm = ping();
+            float      f;
+            odometry_t o;
+            float      rate;
 
+            /* In a tight curve the sensor points off the track (cones, walls,
+               people at the edge of the board): those echoes must not stop
+               the car. ping() still checks the 8 cm proximity E-stop. */
+            odometry_get(&o);
+            rate = (o.turn_dps < 0.0f) ? -o.turn_dps : o.turn_dps;
+            if ((g_params.obst_max_turn_dps > 0.0f) && (rate > g_params.obst_max_turn_dps))
+            {
+                usf_reset(&g_filt);
+                (void)tk_dly_tsk(PING_GAP_MS - ECHO_WAIT_MS);
+                continue;
+            }
+            f = usf_add(&g_filt, cm);
             if (usf_trigger(&g_filt, f, g_params.obstacle_stop_cm))
             {
                 uint64_t t0 = hal_time_us();
@@ -352,7 +383,7 @@ void tsk_obstacle(INT stacd, void *exinf)
         else if (st == SYS_OBSTACLE_AVOIDANCE)
         {
             avoid();
-            servo_to(0.0f);
+            servo_move(0.0f, 0.0f);
             /* wait for the planner to leave OBSTACLE AVOIDANCE */
             while (sys_state() == SYS_OBSTACLE_AVOIDANCE)
             {
