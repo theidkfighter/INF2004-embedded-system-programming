@@ -1,0 +1,735 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IS-02 Robot Dashboard</title>
+<!--
+  IS-02 robot dashboard (laptop side).
+
+  Open this file in Chrome/Edge (double-click). It connects straight to
+  Mosquitto over WebSockets (port 9001, see is02_mosquitto.conf), so no
+  Python or internet is needed. It shows the robot's is02/telemetry,
+  is02/status, is02/event and is02/ack messages, and sends commands on
+  is02/cmd. Runs side by side with telemetry_monitor.py.
+
+  Another laptop on the hotspot: open dashboard.html?host=<broker laptop IP>
+  (the broker laptop then needs the firewall rule for port 9001).
+-->
+<style>
+:root {
+  --bg: #f4f5f7; --card: #ffffff; --text: #1d2330; --muted: #677085; --line: #dfe2e8;
+  --accent: #2f6fde; --ok: #1f9d55; --warn: #c98a00; --bad: #d23c3c; --idle: #7a8396;
+  --left: #2f6fde; --right: #e07b1f; --grid: #eceef2;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #12151b; --card: #1b2029; --text: #e6e9ef; --muted: #9aa3b5; --line: #2c3340;
+    --accent: #6b9cff; --ok: #3fc07a; --warn: #e5b23a; --bad: #ff6464; --idle: #8f98aa;
+    --left: #6b9cff; --right: #ffa04d; --grid: #262c37;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text);
+       font: 14px/1.4 "Segoe UI", system-ui, -apple-system, sans-serif; }
+header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 12px 16px;
+         background: var(--card); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 2; }
+header h1 { font-size: 17px; margin: 0 8px 0 0; }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px;
+        border: 1px solid var(--line); font-size: 13px; white-space: nowrap; }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--idle); }
+.dot.ok { background: var(--ok); } .dot.bad { background: var(--bad); } .dot.warn { background: var(--warn); }
+.state { font-weight: 700; letter-spacing: .3px; color: #fff; background: var(--idle); border: none; }
+.spacer { flex: 1; }
+.conn { display: flex; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); }
+input, select { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line);
+                border-radius: 6px; padding: 4px 8px; }
+input.host { width: 130px; } input.port { width: 62px; }
+button { font: inherit; cursor: pointer; border-radius: 6px; border: 1px solid var(--line);
+         background: var(--bg); color: var(--text); padding: 6px 12px; }
+button:hover { border-color: var(--accent); }
+button:disabled { opacity: .45; cursor: not-allowed; }
+button.estop { background: var(--bad); color: #fff; border: none; font-weight: 700; padding: 10px 20px; font-size: 15px; }
+button.primary { background: var(--accent); color: #fff; border: none; }
+main { display: grid; gap: 12px; padding: 12px 16px 24px;
+       grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; min-width: 0; }
+.card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); margin: 0 0 8px; }
+.wide { grid-column: 1 / -1; }
+.kv { display: grid; grid-template-columns: repeat(auto-fill, minmax(95px, 1fr)); gap: 8px; }
+.kv div { min-width: 0; }
+.kv .k { font-size: 12px; color: var(--muted); }
+.kv .v { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; }
+.kv .v small { font-size: 12px; font-weight: 400; color: var(--muted); }
+canvas { width: 100%; height: 150px; display: block; }
+.legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); margin-top: 4px; }
+.legend i { display: inline-block; width: 12px; height: 3px; vertical-align: middle; margin-right: 4px; }
+.sensors { display: flex; gap: 10px; align-items: center; margin: 4px 0 10px; }
+.sensor { flex: 1; text-align: center; padding: 10px 4px; border-radius: 8px; border: 1px solid var(--line); font-weight: 600; }
+.sensor.black { background: #111; color: #fff; border-color: #111; }
+.sensor.white { background: #fff; color: #111; }
+.sensor.unknown { color: var(--muted); border-style: dashed; }
+.bar { height: 10px; border-radius: 5px; background: var(--grid); overflow: hidden; }
+.bar > span { display: block; height: 100%; background: var(--accent); width: 0; }
+.bc { font-size: 44px; font-weight: 700; line-height: 1; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.note { font-size: 12px; color: var(--muted); margin-top: 6px; }
+.faults { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-size: 12px; padding: 2px 8px; border-radius: 999px; background: var(--bad); color: #fff; }
+.chip.none { background: var(--ok); }
+#log { height: 260px; overflow-y: auto; font: 12px/1.5 Consolas, "Cascadia Mono", monospace;
+       background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; }
+#log .ev { color: var(--accent); } #log .ack { color: var(--ok); } #log .sent { color: var(--muted); }
+#log .err { color: var(--bad); }
+table { border-collapse: collapse; width: 100%; font-size: 12px; }
+td { padding: 2px 6px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+td:last-child { text-align: right; }
+.params { max-height: 260px; overflow-y: auto; }
+.map { display: grid; grid-template-columns: repeat(4, minmax(70px, 1fr)); gap: 8px; margin-bottom: 8px; }
+.map label { font-size: 12px; color: var(--muted); display: block; }
+.map input { width: 100%; font-size: 22px; font-weight: 700; text-align: center; text-transform: uppercase; padding: 4px; }
+.char { width: 52px; text-align: center; text-transform: uppercase; font-weight: 700; }
+.mapnow { font-weight: 600; }
+@media (max-width: 640px) {
+  header { padding: 10px 16px; }
+  main { padding: 12px 16px; grid-template-columns: 1fr; }
+  input.host { width: 110px; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>IS-02 Robot</h1>
+  <span class="pill"><span class="dot" id="brokerDot"></span><span id="brokerTxt">broker: connecting</span></span>
+  <span class="pill"><span class="dot" id="robotDot"></span><span id="robotTxt">robot: no data yet</span></span>
+  <span class="pill state" id="statePill">-</span>
+  <span class="spacer"></span>
+  <span class="conn">Broker
+    <input class="host" id="host" aria-label="broker host">
+    <input class="port" id="port" aria-label="websocket port">
+    <button id="reconnect">Connect</button>
+  </span>
+</header>
+
+<main>
+  <section class="card wide">
+    <h2>Commands</h2>
+    <div class="controls">
+      <button class="estop" id="bEstop">E-STOP</button>
+      <button class="primary" data-cmd="START">Start</button>
+      <button data-cmd="STOP">Stop run</button>
+      <span style="width:10px"></span>
+      <input class="char" id="ovrChar" maxlength="1" placeholder="?" aria-label="barcode letter to send">
+      <button id="bOverride" title="bench test: the robot acts on it at once">Send barcode</button>
+      <span style="width:10px"></span>
+      <button id="bPing">Ping</button>
+      <span id="pingTxt" class="note" style="margin:0"></span>
+    </div>
+    <div class="note">After an E-stop the robot only recovers with BTN1 on the robot (RESUME over MQTT is refused by design).
+      Send barcode = remote override (FR19) for bench tests: the robot performs the mapped movement <b>at once</b>
+      (a scanned barcode waits for the junction). A-Z only, accepted only while LINE_FOLLOWING. Start works from IDLE.</div>
+  </section>
+
+  <section class="card wide">
+    <h2>Barcode mapping (sent to the robot over MQTT)</h2>
+    <div class="map">
+      <div><label for="mF">Forward</label><input id="mF" maxlength="1"></div>
+      <div><label for="mL">Left</label><input id="mL" maxlength="1"></div>
+      <div><label for="mR">Right</label><input id="mR" maxlength="1"></div>
+      <div><label for="mU">U-turn</label><input id="mU" maxlength="1"></div>
+    </div>
+    <div class="controls">
+      <button class="primary" id="bMap">Send mapping</button>
+      <button id="bGetMap">Ask robot</button>
+      <button id="bClearMap">Clear map</button>
+      <span class="note" style="margin:0">Robot is using: <span class="mapnow" id="mapNow">unknown</span></span>
+    </div>
+    <div class="note">Type the four letters the instructor gives (A-Z). The mapping is kept on the broker
+      (retained on is02/map), so the robot gets it again after a restart or reconnect. A letter that is not in the
+      map is reported and the car carries straight on.</div>
+  </section>
+
+  <section class="card">
+    <h2>Motion</h2>
+    <div class="kv">
+      <div><div class="k">Speed L</div><div class="v" id="spdL">-</div></div>
+      <div><div class="k">Speed R</div><div class="v" id="spdR">-</div></div>
+      <div><div class="k">Distance</div><div class="v" id="dist">-</div></div>
+      <div><div class="k">Duty L / R</div><div class="v" id="duty">-</div></div>
+      <div><div class="k">Encoders L / R</div><div class="v" id="enc">-</div></div>
+      <div><div class="k">Turn rate</div><div class="v" id="tr">-</div></div>
+    </div>
+    <canvas id="cSpeed"></canvas>
+    <div class="legend"><span><i style="background:var(--left)"></i>left mm/s</span><span><i style="background:var(--right)"></i>right mm/s</span><span>last 60 s</span></div>
+  </section>
+
+  <section class="card">
+    <h2>Line and barcode</h2>
+    <div class="sensors">
+      <div class="sensor unknown" id="lineL">L ?</div>
+      <div style="text-align:center; min-width:90px">
+        <div class="k note" style="margin:0">last barcode</div>
+        <div class="bc" id="bc">-</div>
+        <div class="note" style="margin:0" id="bcMeaning"></div>
+      </div>
+      <div class="sensor unknown" id="lineR">R ?</div>
+    </div>
+    <div class="kv" style="margin-bottom:6px">
+      <div><div class="k">Barcode IR ADC</div><div class="v" id="ir">-</div></div>
+      <div style="grid-column: span 2"><div class="k">Stored for next junction</div><div class="v" id="pend">-</div></div>
+      <div style="grid-column: span 3"><div class="k">IR range, last 0.5 s (min - max) / switches black above, white below</div>
+        <div class="v" id="irRange" style="font-size:16px">-</div></div>
+    </div>
+    <div class="bar" style="position:relative"><span id="irBar" style="opacity:.35"></span>
+      <span id="irRangeBar" style="position:absolute;top:2px;bottom:2px;background:var(--warn);border-radius:3px"></span>
+      <i id="thrB" style="position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--bad)"></i>
+      <i id="thrW" style="position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ok)"></i></div>
+    <div class="note">Line sensors: black / white; dashed = polarity not calibrated yet.
+      Barcode bar: orange = range seen in the last 0.5 s, faint blue = latest value, red mark = "black" level, green = "white" level.
+      While driving over a barcode the orange range must reach past both marks, or no bar is counted
+      (fix: measure the sensor over white and black and send IR_WHITE_ADC / IR_BLACK_ADC).</div>
+  </section>
+
+  <section class="card">
+    <h2>Obstacle</h2>
+    <div class="kv">
+      <div><div class="k">Ultrasonic</div><div class="v" id="obst">-</div></div>
+      <div><div class="k">Bypass side</div><div class="v" id="side">-</div></div>
+    </div>
+    <canvas id="cScan" style="height:170px"></canvas>
+    <div class="note">Last coarse sweep, -60 to +60 degrees (up to 100 cm drawn). Dashed ray = no echo.</div>
+  </section>
+
+  <section class="card">
+    <h2>Hump and IMU</h2>
+    <div class="kv">
+      <div><div class="k">Pitch</div><div class="v" id="pitch">-</div></div>
+      <div><div class="k">Height</div><div class="v" id="hh">-</div></div>
+      <div><div class="k">Peak</div><div class="v" id="peak">-</div></div>
+      <div><div class="k">Max seen</div><div class="v" id="hmax">-</div></div>
+      <div style="grid-column: span 2"><div class="k">Motion event</div><div class="v" id="mev" style="font-size:16px">-</div></div>
+    </div>
+    <canvas id="cPitch"></canvas>
+    <div class="legend"><span><i style="background:var(--left)"></i>pitch deg</span><span><i style="background:var(--right)"></i>height mm</span></div>
+  </section>
+
+  <section class="card">
+    <h2>Link and health</h2>
+    <div class="kv">
+      <div><div class="k">Wi-Fi RSSI</div><div class="v" id="rssi">-</div></div>
+      <div><div class="k">Frame rate</div><div class="v" id="rate">-</div></div>
+      <div><div class="k">Missing frames</div><div class="v" id="missing">0</div></div>
+      <div><div class="k">Offline buffer</div><div class="v" id="buf">-</div></div>
+      <div><div class="k">Uptime</div><div class="v" id="up">-</div></div>
+      <div><div class="k">Reconnects</div><div class="v" id="reconn">-</div></div>
+      <div><div class="k">Battery</div><div class="v" id="vbat">-</div></div>
+      <div><div class="k">Robot's broker</div><div class="v" id="rbroker" style="font-size:14px">-</div></div>
+    </div>
+    <div class="k note">Faults</div>
+    <div class="faults" id="faults"><span class="chip none">none</span></div>
+    <div class="note" id="cfgTxt">Retained calibration on the broker: not seen</div>
+  </section>
+
+  <section class="card">
+    <h2>Parameters</h2>
+    <div class="controls">
+      <button id="bGetParams">Read from robot</button>
+      <input id="setTxt" placeholder="NAME=VALUE" style="flex:1; min-width:120px" aria-label="parameter to set">
+      <button id="bSet">Set</button>
+    </div>
+    <div class="note">SET changes the robot until it restarts. For values that should stick, use robot_params.py.</div>
+    <div class="params"><table id="paramTable"></table></div>
+  </section>
+
+  <section class="card wide">
+    <h2>Events, acks and commands</h2>
+    <div class="controls" style="margin-bottom:6px">
+      <label class="note" style="margin:0"><input type="checkbox" id="showState" checked> show STATE events</label>
+      <span class="spacer"></span>
+      <button id="bClear">Clear</button>
+      <button id="bSave">Save log</button>
+    </div>
+    <div id="log"></div>
+  </section>
+</main>
+
+<script>
+"use strict";
+
+/* ------------------------------------------------------------------ */
+/* Minimal MQTT 3.1.1 client over WebSocket (QoS 0, no dependencies). */
+/* ------------------------------------------------------------------ */
+class MiniMqtt {
+  constructor(handlers) { this.h = handlers; this.ws = null; this.buf = new Uint8Array(0);
+                          this.pingTimer = null; this.retryTimer = null; this.pid = 1; this.up = false; }
+  static enc(s) { return new TextEncoder().encode(s); }
+  static str(s) { const b = MiniMqtt.enc(s); const o = new Uint8Array(b.length + 2);
+                  o[0] = b.length >> 8; o[1] = b.length & 255; o.set(b, 2); return o; }
+  static cat(...parts) { let n = 0; parts.forEach(p => n += p.length); const o = new Uint8Array(n);
+                         let i = 0; parts.forEach(p => { o.set(p, i); i += p.length; }); return o; }
+  static packet(first, body) {
+    const len = []; let x = body.length;
+    do { let d = x % 128; x = Math.floor(x / 128); if (x > 0) d |= 128; len.push(d); } while (x > 0);
+    return MiniMqtt.cat(new Uint8Array([first, ...len]), body);
+  }
+  connect(url) {
+    this.close();
+    this.url = url;
+    let ws;
+    try { ws = new WebSocket(url, ["mqtt"]); }
+    catch (e) { this.h.onStatus(false, "bad address"); this.retry(); return; }
+    this.ws = ws; ws.binaryType = "arraybuffer"; this.buf = new Uint8Array(0);
+    this.h.onStatus(false, "connecting to " + url);
+    ws.onopen = () => {
+      const id = "is02-dash-" + Math.random().toString(16).slice(2, 8);
+      const vh = new Uint8Array([0, 4, 77, 81, 84, 84, 4, 2, 0, 30]);   /* "MQTT", v3.1.1, clean, keepalive 30 s */
+      ws.send(MiniMqtt.packet(0x10, MiniMqtt.cat(vh, MiniMqtt.str(id))));
+    };
+    ws.onmessage = (e) => { this.buf = MiniMqtt.cat(this.buf, new Uint8Array(e.data)); this.parse(); };
+    ws.onerror = () => {};
+    ws.onclose = () => {
+      if (this.ws !== ws) return;
+      this.up = false; clearInterval(this.pingTimer);
+      this.h.onStatus(false, "cannot reach " + url + " (retrying)");
+      this.retry();
+    };
+  }
+  retry() { clearTimeout(this.retryTimer); this.retryTimer = setTimeout(() => this.connect(this.url), 2000); }
+  close() {
+    clearTimeout(this.retryTimer); clearInterval(this.pingTimer); this.up = false;
+    if (this.ws) { const w = this.ws; this.ws = null; try { w.close(); } catch (e) {} }
+  }
+  parse() {
+    for (;;) {
+      const b = this.buf; if (b.length < 2) return;
+      let mult = 1, rem = 0, i = 1, d;
+      do { if (i >= b.length) return; d = b[i++]; rem += (d & 127) * mult; mult *= 128; } while (d & 128);
+      if (b.length < i + rem) return;
+      this.handle(b[0], b.subarray(i, i + rem));
+      this.buf = b.slice(i + rem);
+    }
+  }
+  handle(first, body) {
+    const type = first >> 4;
+    if (type === 2) {                                   /* CONNACK */
+      if (body[1] !== 0) { this.h.onStatus(false, "broker refused the connection (code " + body[1] + ")"); return; }
+      this.up = true;
+      const pid = this.pid++;
+      this.ws.send(MiniMqtt.packet(0x82, MiniMqtt.cat(new Uint8Array([pid >> 8, pid & 255]),
+                                                       MiniMqtt.str("is02/#"), new Uint8Array([0]))));
+      this.pingTimer = setInterval(() => { if (this.up) this.ws.send(new Uint8Array([0xC0, 0])); }, 20000);
+      this.h.onStatus(true, "connected");
+    } else if (type === 3) {                            /* PUBLISH */
+      const qos = (first >> 1) & 3, retain = (first & 1) === 1;
+      const tl = (body[0] << 8) | body[1];
+      const topic = new TextDecoder().decode(body.subarray(2, 2 + tl));
+      let off = 2 + tl;
+      if (qos > 0) {
+        const p1 = body[off], p2 = body[off + 1]; off += 2;
+        if (qos === 1) this.ws.send(new Uint8Array([0x40, 2, p1, p2]));
+      }
+      this.h.onMessage(topic, new TextDecoder().decode(body.subarray(off)), retain);
+    } else if (type === 9) {                            /* SUBACK */
+      if (body[2] === 0x80) this.h.onStatus(false, "subscribe refused");
+    }
+  }
+  publish(topic, payload, retain = false) {
+    if (!this.up) return false;
+    this.ws.send(MiniMqtt.packet(retain ? 0x31 : 0x30, MiniMqtt.cat(MiniMqtt.str(topic), MiniMqtt.enc(payload))));
+    return true;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Dashboard                                                          */
+/* ------------------------------------------------------------------ */
+const $ = (id) => document.getElementById(id);
+const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const fmt = (v, d = 1) => (typeof v === "number" && isFinite(v)) ? v.toFixed(d) : "-";
+const now = () => new Date().toLocaleTimeString([], { hour12: false });
+
+const STATE_COLOURS = {
+  INITIALISING: "--idle", IDLE: "--accent", LINE_FOLLOWING: "--ok", MANEUVER: "--ok",
+  OBSTACLE_AVOIDANCE: "--warn", MISSION_COMPLETE: "--accent", EMERGENCY_STOP: "--bad", ERROR: "--bad"
+};
+const MOVE_TEXT = { FWD: "forward", FORWARD: "forward", LEFT: "turn left", RIGHT: "turn right", UTURN: "U-turn" };
+const DRIVING = ["LINE_FOLLOWING", "MANEUVER", "OBSTACLE_AVOIDANCE"];
+let robotMap = {};                         /* letter -> FWD/LEFT/RIGHT/UTURN, as the robot reports it (GET:MAP / MAP acks) */
+let pending = "";                          /* letter stored for the next junction (from the NAV events) */
+let askedMap = false;
+const FAULTS = ["IMU_I2C", "IMU_DEAD", "ENCODER_LOSS", "MOTION_TIMEOUT", "ULTRASONIC", "LINE_LOST",
+                "BYPASS_ABORT", "WATCHDOG", "BATTERY_LOW", "BATTERY_CRIT", "CONFIG", "BARCODE", "TELEMETRY"];
+const WINDOW_MS = 60000;
+
+const hist = { speed: [], pitch: [] };     /* {t (robot ms), a, b} */
+let lastSeq = -1, missing = 0, lastRobotMsg = 0, lastFrame = null, lastScan = null;
+const arrivals = [];
+const logLines = [];
+const pings = {};
+const params = {};
+
+/* --- settings: ?host= / ?port= in the URL, else the last used, else localhost:9001 --- */
+function loadSetting(k, d) { try { return localStorage.getItem("is02." + k) || d; } catch (e) { return d; } }
+function saveSetting(k, v) { try { localStorage.setItem("is02." + k, v); } catch (e) {} }
+const q = new URLSearchParams(location.search);
+$("host").value = q.get("host") || loadSetting("host", location.hostname || "localhost");
+$("port").value = q.get("port") || loadSetting("port", "9001");
+
+const mqtt = new MiniMqtt({ onStatus: brokerStatus, onMessage: onMessage });
+function connectNow() {
+  const host = $("host").value.trim() || "localhost", port = $("port").value.trim() || "9001";
+  saveSetting("host", host); saveSetting("port", port);
+  mqtt.connect("ws://" + host + ":" + port);
+}
+$("reconnect").onclick = connectNow;
+
+function brokerStatus(ok, text) {
+  $("brokerDot").className = "dot " + (ok ? "ok" : "bad");
+  $("brokerTxt").textContent = "broker: " + text;
+  if (!ok && /cannot reach/.test(text) && !brokerStatus.hinted) {
+    brokerStatus.hinted = true;
+    log("err", "Cannot reach Mosquitto on port " + $("port").value +
+        ". Start it with: mosquitto -c is02_mosquitto.conf -v (the config adds the WebSocket listener).");
+  }
+  if (ok) { brokerStatus.hinted = false; log("sent", "connected to the broker, listening on is02/#"); }
+  setButtons();
+}
+function setButtons() {
+  document.querySelectorAll("button[data-cmd], #bEstop, #bPing, #bGetParams, #bSet, #bOverride, #bMap, #bGetMap, #bClearMap")
+          .forEach(b => b.disabled = !mqtt.up);
+}
+
+/* --- log --- */
+function log(cls, text) {
+  const line = now() + "  " + text;
+  logLines.push(line);
+  if (logLines.length > 2000) logLines.shift();
+  const box = $("log"), atEnd = box.scrollTop + box.clientHeight >= box.scrollHeight - 4;
+  const div = document.createElement("div"); div.className = cls; div.textContent = line;
+  box.appendChild(div);
+  while (box.childElementCount > 500) box.removeChild(box.firstChild);
+  if (atEnd) box.scrollTop = box.scrollHeight;
+}
+$("bClear").onclick = () => { $("log").innerHTML = ""; logLines.length = 0; };
+$("bSave").onclick = () => {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([logLines.join("\n") + "\n"], { type: "text/plain" }));
+  a.download = "is02_dashboard_" + new Date().toISOString().slice(0, 19).replace(/[:T]/g, "") + ".log";
+  a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
+
+/* --- commands --- */
+function send(cmd) {
+  if (mqtt.publish("is02/cmd", cmd)) log("sent", "SENT   " + cmd);
+  else log("err", "not connected to the broker: " + cmd + " not sent");
+}
+document.querySelectorAll("button[data-cmd]").forEach(b => b.onclick = () => send(b.dataset.cmd));
+$("bEstop").onclick = () => send("ESTOP");
+$("bPing").onclick = () => {
+  const id = "PING:D" + Date.now().toString(36);
+  pings[id] = performance.now(); send(id);
+};
+$("bGetParams").onclick = () => send("GET:PARAMS");
+$("bOverride").onclick = () => {
+  const c = $("ovrChar").value.trim().toUpperCase();
+  if (!/^[A-Z]$/.test(c)) { log("err", "type one letter A-Z first"); return; }
+  send("BARCODE:" + c);
+};
+$("ovrChar").addEventListener("keydown", e => { if (e.key === "Enter") $("bOverride").click(); });
+["mF", "mL", "mR", "mU"].forEach(id => $(id).addEventListener("input", e => { e.target.value = e.target.value.toUpperCase(); }));
+$("bMap").onclick = () => {
+  const v = { FORWARD: $("mF").value, LEFT: $("mL").value, RIGHT: $("mR").value, UTURN: $("mU").value };
+  const chars = Object.values(v).map(c => c.trim().toUpperCase());
+  if (!chars.every(c => /^[A-Z]$/.test(c))) { log("err", "mapping: fill in all four boxes with a letter A-Z"); return; }
+  if (new Set(chars).size !== 4) { log("err", "mapping: each movement needs a different letter"); return; }
+  const text = chars[0] + "=FWD," + chars[1] + "=LEFT," + chars[2] + "=RIGHT," + chars[3] + "=UTURN";
+  if (mqtt.publish("is02/map", text, true)) log("sent", "SENT   mapping on is02/map (retained): " + text);
+  else log("err", "not connected to the broker: mapping not sent");
+};
+$("bGetMap").onclick = () => send("GET:MAP");
+$("bClearMap").onclick = () => {
+  /* an empty retained message deletes the broker's copy; MAP:CLEAR empties the robot's map */
+  if (!mqtt.publish("is02/map", "", true)) { log("err", "not connected to the broker"); return; }
+  log("sent", "SENT   cleared the retained map on is02/map");
+  ["mF", "mL", "mR", "mU"].forEach(id => $(id).value = "");
+  send("MAP:CLEAR");
+};
+function showRobotMap(text, n) {
+  robotMap = {};
+  (text || "").split(",").forEach(p => { const [c, m] = p.split("="); if (c && m) robotMap[c] = m; });
+  const count = (n !== undefined) ? n : Object.keys(robotMap).length;
+  $("mapNow").textContent = text ? text.replace(/,/g, ", ") + (count !== 4 ? "  (" + count + " of 4 letters)" : "") : "no map yet";
+  $("mapNow").style.color = (text && count === 4) ? "" : css("--bad");
+}
+function fillMapInputs(text) {
+  const m = {};
+  (text || "").split(/[,;\s]+/).forEach(p => { const [c, mv] = p.split(/[=:]/); if (c && mv) m[mv.toUpperCase()] = c.toUpperCase(); });
+  const set = (id, k) => { if (!$(id).value && m[k]) $(id).value = m[k]; };
+  set("mF", m.FWD ? "FWD" : "FORWARD"); set("mL", "LEFT"); set("mR", "RIGHT"); set("mU", "UTURN");
+}
+$("bSet").onclick = () => {
+  const t = $("setTxt").value.trim().replace(/\s+/g, "");
+  if (!/^[A-Za-z0-9_]+=-?[0-9.]+$/.test(t)) { log("err", "use NAME=VALUE, e.g. KP_SPEED=0.8"); return; }
+  send("SET:" + t);
+};
+$("setTxt").addEventListener("keydown", e => { if (e.key === "Enter") $("bSet").click(); });
+document.addEventListener("keydown", e => {        /* Esc anywhere = E-stop */
+  if (e.key === "Escape" && mqtt.up) send("ESTOP");
+});
+
+/* --- incoming --- */
+function onMessage(topic, text, retain) {
+  if (topic === "is02/config") {
+    const n = text.split(/\n/).filter(l => l.includes("=")).length;
+    $("cfgTxt").textContent = "Retained calibration on the broker: " + (n ? n + " values" : "none");
+    return;
+  }
+  if (topic === "is02/map") {                       /* the mapping kept on the broker */
+    if (text) { fillMapInputs(text); log("sent", "mapping on the broker: " + text); }
+    return;
+  }
+  if (topic === "is02/cmd") return;                 /* our own and the monitor's commands */
+  let m;
+  try { m = JSON.parse(text); } catch (e) { log("err", topic + " (not JSON): " + text); return; }
+  lastRobotMsg = Date.now();
+  if (!askedMap && mqtt.up) { askedMap = true; send("GET:MAP"); }   /* robot seen: ask which map it uses */
+  if (topic === "is02/telemetry") frame(m);
+  else if (topic === "is02/status") status(m);
+  else if (topic === "is02/event") event(m);
+  else if (topic === "is02/ack") ack(m);
+}
+
+function setState(s) {
+  if (!s) return;
+  const p = $("statePill"); p.textContent = s;
+  p.style.background = css(STATE_COLOURS[s] || "--idle");
+}
+
+function frame(m) {
+  if (lastSeq >= 0) {
+    if (m.seq < lastSeq) log("ev", "robot restarted (telemetry seq went back to " + m.seq + ")");
+    else if (m.seq > lastSeq + 1) missing += m.seq - lastSeq - 1;
+  }
+  lastSeq = m.seq; lastFrame = m;
+  arrivals.push(Date.now());
+  setState(m.state);
+
+  const spd = m.spd || [], duty = m.duty || [], enc = m.enc || [];
+  $("spdL").innerHTML = fmt(spd[0]) + " <small>mm/s</small>";
+  $("spdR").innerHTML = fmt(spd[1]) + " <small>mm/s</small>";
+  $("dist").innerHTML = fmt(m.dist, 0) + " <small>mm</small>";
+  $("duty").textContent = fmt(duty[0], 0) + " / " + fmt(duty[1], 0) + " %";
+  $("enc").textContent = (enc[0] ?? "-") + " / " + (enc[1] ?? "-");
+  $("tr").innerHTML = fmt(m.imu && m.imu.tr) + " <small>deg/s</small>";
+
+  const line = m.line || {};
+  sensor($("lineL"), "L", line.l); sensor($("lineR"), "R", line.r);
+  $("ir").textContent = line.ir ?? "-";
+  $("irBar").style.width = Math.max(0, Math.min(100, (line.ir || 0) / 40.95)) + "%";
+  if (line.irmn !== undefined) {
+    const pct = v => Math.max(0, Math.min(100, v / 40.95));
+    const thr = line.thr || [0, 0];
+    $("irRange").textContent = line.irmn + " - " + line.irmx + "  /  " +
+      ((thr[0] || thr[1]) ? thr[0] + " / " + thr[1] : "sampling OFF (IR_WHITE/BLACK_ADC)");
+    const lo = Math.min(line.irmn, line.irmx), hi = Math.max(line.irmn, line.irmx);
+    $("irRangeBar").style.left = pct(lo) + "%"; $("irRangeBar").style.width = Math.max(0.5, pct(hi) - pct(lo)) + "%";
+    $("thrB").style.left = pct(thr[0]) + "%"; $("thrW").style.left = pct(thr[1]) + "%";
+    $("thrB").style.display = $("thrW").style.display = (thr[0] || thr[1]) ? "" : "none";
+  }
+  const bc = m.bc || "";
+  $("bc").textContent = bc || "-";
+  $("bcMeaning").textContent = bc ? (MOVE_TEXT[robotMap[bc]] || "not in the mapping") : "";
+  if (!DRIVING.includes(m.state)) pending = "";      /* the robot forgets it outside a run */
+  showPending();
+
+  const o = m.obst || {};
+  $("obst").innerHTML = (o.cm >= 0 ? fmt(o.cm) : "no echo") + (o.cm >= 0 ? " <small>cm</small>" : "");
+  $("side").textContent = o.side === "L" ? "left" : o.side === "R" ? "right" : "-";
+  if (Array.isArray(o.scan)) lastScan = o.scan;
+
+  const h = m.hump || {};
+  $("pitch").innerHTML = fmt(h.pitch) + " <small>deg</small>";
+  $("hh").innerHTML = fmt(h.h) + " <small>mm</small>";
+  $("peak").innerHTML = fmt(h.peak) + " <small>mm</small>";
+  $("hmax").innerHTML = fmt(h.max) + " <small>mm</small>";
+  $("mev").textContent = (m.imu && m.imu.ev) || "-";
+
+  $("rssi").innerHTML = (m.rssi ?? "-") + " <small>dBm</small>";
+  $("buf").textContent = m.buf ?? "-";
+  $("missing").textContent = missing;
+  $("vbat").textContent = m.vbat ? (m.vbat / 1000).toFixed(2) + " V" : "n/a";
+  faults(m.faults);
+
+  push(hist.speed, m.t, spd[0], spd[1]);
+  push(hist.pitch, m.t, h.pitch, h.h);
+  drawAll();
+}
+
+function status(m) {
+  setState(m.state);
+  $("up").textContent = uptime(m.up);
+  $("reconn").textContent = m.reconnects ?? "-";
+  $("rbroker").textContent = m.broker || "-";
+  $("rssi").innerHTML = (m.rssi ?? "-") + " <small>dBm</small>";
+  $("buf").textContent = m.buf ?? "-";
+  if (m.faults !== undefined) faults(m.faults);
+}
+
+function showPending() {
+  $("pend").textContent = pending ? pending + " (" + (MOVE_TEXT[robotMap[pending]] || "not in the map") + ")" : "none";
+}
+function event(m) {
+  const d = m.detail || "";
+  if (m.event === "NAV") {
+    const st = /^([A-Z]) stored for the next junction/.exec(d);
+    if (st) { pending = st[1]; showPending(); }
+  } else if (m.event === "NAV_ACTION") {
+    pending = ""; showPending();
+  } else if (m.event === "MAP") {
+    showRobotMap(d === "cleared" ? "" : d);
+  }
+  if (m.event === "STATE" && !$("showState").checked) return;
+  const bad = ["MAP_WARNING", "BARCODE_UNKNOWN", "BARCODE_FAULT", "BARCODE_FAILED", "ERROR", "EMERGENCY_STOP"].includes(m.event) ||
+              (m.event === "BC_DBG" && /NOT decoded|OFF/.test(d)) ||
+              (m.event === "NAV_ACTION" && /not in the MQTT map/.test(d));
+  log(bad ? "err" : "ev", "EVENT  " + m.event + (d ? ": " + d : ""));
+}
+
+function ack(m) {
+  const cmd = m.cmd || "";
+  if (cmd.startsWith("PING:D") && pings[cmd] !== undefined) {
+    const rtt = Math.round(performance.now() - pings[cmd]); delete pings[cmd];
+    $("pingTxt").textContent = "round trip " + rtt + " ms";
+    log("ack", "ACK    PING: round trip " + rtt + " ms");
+    return;
+  }
+  if (cmd.startsWith("PING")) return;                /* the monitor's automatic pings */
+  if ((cmd.startsWith("MAP:") || cmd === "GET:MAP") && m.map !== undefined) {
+    showRobotMap(m.map, m.n);                          /* the robot's map after the command */
+  }
+  if (cmd === "GET:PARAMS" && m.params) {
+    Object.assign(params, m.params); paramTable();
+    log("ack", "ACK    GET:PARAMS part " + m.part + " (" + Object.keys(m.params).length + " values)");
+    return;
+  }
+  let extra = (m.map !== undefined) ? "  map " + (m.map || "(empty)") + "  n=" + m.n : "";
+  if (m.pwm_off_us !== undefined) extra += "  (PWM off " + m.pwm_off_us + " us after the command arrived)";
+  log(/nack|refused/.test(m.result || "") ? "err" : "ack", "ACK    " + cmd + ": " + (m.result || "") + extra);
+}
+
+function sensor(el, name, v) {
+  el.className = "sensor " + (v === 1 ? "black" : v === 0 ? "white" : "unknown");
+  el.textContent = name + " " + (v === 1 ? "black" : v === 0 ? "white" : "?");
+}
+function faults(f) {
+  const box = $("faults"); box.innerHTML = "";
+  const names = FAULTS.filter((_, i) => (f >>> i) & 1);
+  if (!names.length) { box.innerHTML = '<span class="chip none">none</span>'; return; }
+  names.forEach(n => { const s = document.createElement("span"); s.className = "chip"; s.textContent = n; box.appendChild(s); });
+}
+function uptime(s) {
+  if (typeof s !== "number") return "-";
+  const h = Math.floor(s / 3600), mi = Math.floor(s / 60) % 60, se = s % 60;
+  return (h ? h + "h " : "") + mi + "m " + se + "s";
+}
+function paramTable() {
+  const t = $("paramTable"); t.innerHTML = "";
+  Object.keys(params).forEach(k => {
+    const r = t.insertRow(); r.insertCell().textContent = k;
+    const v = params[k]; r.insertCell().textContent = (typeof v === "number") ? +v.toFixed(4) : v;
+    r.onclick = () => { $("setTxt").value = k + "=" + r.cells[1].textContent; $("setTxt").focus(); };
+    r.style.cursor = "pointer";
+  });
+}
+
+/* --- charts --- */
+function push(arr, t, a, b) {
+  if (arr.length && t < arr[arr.length - 1].t) arr.length = 0;      /* robot restarted */
+  arr.push({ t, a, b });
+  while (arr.length && arr[0].t < t - WINDOW_MS) arr.shift();
+}
+function setupCanvas(c) {
+  const r = c.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  if (c.width !== Math.round(r.width * dpr) || c.height !== Math.round(r.height * dpr)) {
+    c.width = Math.round(r.width * dpr); c.height = Math.round(r.height * dpr);
+  }
+  const g = c.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, r.width, r.height);
+  return { g, w: r.width, h: r.height };
+}
+function lineChart(c, data) {
+  const { g, w, h } = setupCanvas(c);
+  const padL = 36, padB = 4, padT = 6;
+  let lo = Infinity, hi = -Infinity;
+  data.forEach(p => [p.a, p.b].forEach(v => { if (isFinite(v)) { lo = Math.min(lo, v); hi = Math.max(hi, v); } }));
+  if (!isFinite(lo)) { lo = 0; hi = 1; }
+  lo = Math.min(lo, 0); hi = Math.max(hi, 0);
+  if (hi - lo < 1) hi = lo + 1;
+  const span = hi - lo; lo -= span * 0.08; hi += span * 0.08;
+  const tEnd = data.length ? data[data.length - 1].t : WINDOW_MS, tStart = tEnd - WINDOW_MS;
+  const X = t => padL + (t - tStart) / WINDOW_MS * (w - padL - 4);
+  const Y = v => padT + (hi - v) / (hi - lo) * (h - padT - padB);
+  g.font = "11px system-ui, sans-serif"; g.fillStyle = css("--muted"); g.strokeStyle = css("--grid"); g.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const v = lo + (hi - lo) * i / 4, y = Y(v);
+    g.beginPath(); g.moveTo(padL, y); g.lineTo(w, y); g.stroke();
+    g.fillText(Math.abs(v) >= 100 ? v.toFixed(0) : v.toFixed(1), 2, y + 4);
+  }
+  [["a", "--left"], ["b", "--right"]].forEach(([k, col]) => {
+    g.strokeStyle = css(col); g.lineWidth = 2; g.beginPath(); let started = false;
+    data.forEach(p => { if (!isFinite(p[k])) return;
+      const x = X(p.t), y = Y(p[k]); if (!started) { g.moveTo(x, y); started = true; } else g.lineTo(x, y); });
+    g.stroke();
+  });
+  if (!data.length) { g.fillStyle = css("--muted"); g.fillText("waiting for telemetry", padL + 8, h / 2); }
+}
+function scanChart(c, scan, cm) {
+  const { g, w, h } = setupCanvas(c);
+  const cx = w / 2, cy = h - 10, R = Math.min(w / 2 - 50, h - 34), MAX = 100;
+  g.strokeStyle = css("--grid"); g.fillStyle = css("--muted"); g.font = "11px system-ui, sans-serif"; g.lineWidth = 1;
+  [25, 50, 75, 100].forEach(d => {
+    g.beginPath(); g.arc(cx, cy, R * d / MAX, Math.PI * 7 / 6, Math.PI * 11 / 6); g.stroke();
+    g.fillText(d + "", cx + 3, cy - R * d / MAX + 11);
+  });
+  const angles = [-60, -30, 0, 30, 60];
+  angles.forEach((a, i) => {
+    const rad = (a - 90) * Math.PI / 180;
+    const v = scan ? scan[i] : null;
+    const hasEcho = typeof v === "number" && v >= 0;
+    const len = hasEcho ? R * Math.min(v, MAX) / MAX : R;
+    g.setLineDash(hasEcho ? [] : [4, 4]);
+    g.strokeStyle = hasEcho ? (v < 20 ? css("--bad") : v < 40 ? css("--warn") : css("--ok")) : css("--muted");
+    g.lineWidth = hasEcho ? 4 : 1.5;
+    g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + len * Math.cos(rad), cy + len * Math.sin(rad)); g.stroke();
+    g.setLineDash([]);
+    g.fillStyle = css("--text");
+    const label = a + "°" + (hasEcho ? " " + v.toFixed(0) + " cm" : " -");
+    const lx = cx + (R + 14) * Math.cos(rad), ly = cy + (R + 14) * Math.sin(rad);
+    g.textAlign = "center"; g.fillText(label, lx, ly + 4); g.textAlign = "start";
+  });
+  g.fillStyle = css("--accent"); g.beginPath(); g.arc(cx, cy, 6, 0, Math.PI * 2); g.fill();
+}
+function drawAll() {
+  lineChart($("cSpeed"), hist.speed);
+  lineChart($("cPitch"), hist.pitch);
+  scanChart($("cScan"), lastScan, lastFrame && lastFrame.obst ? lastFrame.obst.cm : -1);
+}
+window.addEventListener("resize", drawAll);
+if (window.matchMedia) window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", drawAll);
+
+/* --- once a second: robot online/offline and frame rate --- */
+setInterval(() => {
+  const age = (Date.now() - lastRobotMsg) / 1000;
+  if (!lastRobotMsg) { $("robotDot").className = "dot"; $("robotTxt").textContent = "robot: no data yet"; }
+  else if (age < 3) { $("robotDot").className = "dot ok"; $("robotTxt").textContent = "robot: online"; }
+  else { $("robotDot").className = "dot bad"; $("robotTxt").textContent = "robot: silent for " + age.toFixed(0) + " s"; }
+  while (arrivals.length && arrivals[0] < Date.now() - 10000) arrivals.shift();
+  $("rate").innerHTML = (arrivals.length / 10).toFixed(1) + " <small>Hz</small>";
+}, 1000);
+
+setButtons();
+drawAll();
+connectNow();
+</script>
+</body>
+</html>

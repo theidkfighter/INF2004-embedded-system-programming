@@ -1,0 +1,44 @@
+# IS-02 robot calibration and parameters, sent to the robot with
+#     python robot_params.py --broker <laptop IP>
+# The broker keeps this as a RETAINED message on is02/config and the robot
+# applies it every time it connects, so a prebuilt .uf2 works without
+# recompiling (NFR14). One NAME=VALUE per line, # starts a comment.
+# Remove the # in front of a line once you have its value.
+
+# ---- part_tests: test_motors / test_encoders ----
+# MOTOR_MAPPING_CONFIRMED=1        # M1-M4 all PASS
+ENC_R_REVERSED=0
+ENC_L_REVERSED=1                   # 21 Oct: left counted down rolling forward
+# ENC_DIRECTION_CONFIRMED=1        # E1 and E4 PASS on both wheels
+# ENC_A_EDGES_PER_REV=             # E2 (A edges per wheel turn)
+# WHEEL_DIAMETER_MM=               # E5 (ruler)
+# TRACK_WIDTH_MM=                  # ruler, tyre centre to tyre centre
+
+# ---- full_tests: ft_speed_pid P1 ----
+# SPEED_FF_DEADBAND_PCT=
+# SPEED_FF_MM_S_PER_PCT=           # P1 prints x10: 45 -> 4.5
+
+# ---- part_tests: test_ir ----
+LINE_DO_BLACK_HIGH=0               # spec: DO reads LOW over black
+# IR_WHITE_ADC=                    # I3
+# IR_BLACK_ADC=                    # I3
+
+# ---- part_tests: test_servo ----
+# SERVO_MIN_US=500
+# SERVO_MAX_US=2500
+# SERVO_CALIBRATED=1               # V2 within 2 deg
+# SERVO_LOW_ANGLE_IS_RIGHT=1
+
+# ---- part_tests: test_imu U5 ----
+# IMU_FORWARD_AXIS=1               # 1 = X forward (spec), 2 = Y
+# IMU_FORWARD_SIGN=1               # +1 or -1
+
+# ---- geometry (ruler) ----
+# ROBOT_HALF_WIDTH_MM=80
+# IR_TO_AXLE_MM=60
+
+# ---- tuning (start-up values shown; change while testing) ----
+# LINE_BASE_MM_S=80
+# LINE_STEER=0.40
+# LINE_STEER_RAMP=3.0
+# BARCODE_AT_JUNCTION=1   (1 = act at the next junction, the demo rule)
