@@ -46,9 +46,14 @@ EXPORT INT usermain(void)
     {
         /* degraded mode: the robot still drives; humps and collisions are
            not detected until the IMU answers (TSK_TERRAIN_IMU retries) */
-        tm_printf((UB *)"[init] IMU (GY-511 on I2C1 GP2/GP3, addr 0x19) not answering:"
-                        " running WITHOUT hump/collision detection, retrying every 2 s\n");
+        tm_printf((UB *)"[init] IMU (GY-511 on I2C1 GP2/GP3: LSM303DLHC at 0x19 or LSM303D at 0x1E/0x1D)"
+                        " not answering: running WITHOUT hump/collision detection, retrying every 2 s\n");
         fault_set(FAULT_IMU_DEAD);
+    }
+    else
+    {
+        tm_printf((UB *)"[init] IMU: %s%s\n", hal_imu_chip_name(),
+                  hal_imu_int1_used() ? "" : " (INT1 not used: software collision detection only)");
     }
 
     if (!os_start_interrupts() || !os_start_tasks())

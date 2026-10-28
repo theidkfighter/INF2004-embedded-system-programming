@@ -4,11 +4,17 @@
  */
 #include "bc_multi.h"
 
-static const float LEVEL[BCM_MAX_LEVELS] = { 0.50f, 0.35f, 0.65f, 0.25f, 0.75f };
+static const float LEVEL[BCM_FIXED_LEVELS] = { 0.50f, 0.35f, 0.65f, 0.25f, 0.75f };
+static const char *const NAME[BCM_MAX_LEVELS] = { "50%", "35%", "65%", "25%", "75%", "adapt" };
 
 uint32_t bcm_level_pct(uint32_t i)
 {
-    return (i < BCM_MAX_LEVELS) ? (uint32_t)((LEVEL[i] * 100.0f) + 0.5f) : 0u;
+    return (i < BCM_FIXED_LEVELS) ? (uint32_t)((LEVEL[i] * 100.0f) + 0.5f) : 0u;
+}
+
+const char *bcm_level_name(uint32_t i)
+{
+    return (i < BCM_MAX_LEVELS) ? NAME[i] : "?";
 }
 
 void bcm_init(bcm_t *p_m, uint32_t white, uint32_t black, float hys_frac, uint32_t n_levels)
@@ -28,9 +34,16 @@ void bcm_init(bcm_t *p_m, uint32_t white, uint32_t black, float hys_frac, uint32
     p_m->fails      = 0u;
     p_m->used       = -1;
     p_m->b_conflict = false;
+    p_m->white   = white;
+    p_m->black   = black;
+    p_m->det_hys = hys_frac;
+    adt_init(&p_m->adt, white, black, hys_frac, ADT_SWING_DEF);
     for (uint32_t i = 0u; i < BCM_MAX_LEVELS; i++)
     {
-        det_init_level(&p_m->det[i], white, black, hys_frac, LEVEL[i]);
+        if (i < BCM_FIXED_LEVELS)
+        {
+            det_init_level(&p_m->det[i], white, black, hys_frac, LEVEL[i]);
+        }
         bc_reset(&p_m->bc[i]);
         p_m->res[i]       = BC_NONE;
         p_m->code[i]      = 0;
@@ -39,6 +52,11 @@ void bcm_init(bcm_t *p_m, uint32_t white, uint32_t black, float hys_frac, uint32
         p_m->last_code[i] = 0;
         p_m->last_n[i]    = 0u;
     }
+}
+
+void bcm_set_adapt_swing(bcm_t *p_m, float swing_frac)
+{
+    adt_init(&p_m->adt, p_m->white, p_m->black, p_m->det_hys, swing_frac);
 }
 
 bool bcm_open(const bcm_t *p_m)
@@ -146,10 +164,21 @@ bc_result_t bcm_sample(bcm_t *p_m, const bc_params_t *p_par, uint32_t pos_um, ui
     for (uint32_t i = 0u; i < p_m->n_levels; i++)
     {
         det_edge_t  e[DET_MAX_OUT];
-        uint32_t    n = det_sample(&p_m->det[i], pos_um, adc, e);
+        uint32_t    n;
+        uint32_t    poll_um = pos_um;
         char        code = 0;
         bool        b_rev = false;
         bc_result_t r;
+
+        if (i < BCM_FIXED_LEVELS)
+        {
+            n = det_sample(&p_m->det[i], pos_um, adc, e);
+        }
+        else
+        {
+            n       = adt_sample(&p_m->adt, pos_um, adc, e);
+            poll_um = adt_done_um(&p_m->adt);    /* its edges come ~4.5 mm late */
+        }
 
         for (uint32_t q = 0u; q < n; q++)
         {
@@ -167,7 +196,7 @@ bc_result_t bcm_sample(bcm_t *p_m, const bc_params_t *p_par, uint32_t pos_um, ui
                 }
             }
         }
-        r = bc_poll(&p_m->bc[i], p_par, pos_um, &code, &b_rev);
+        r = bc_poll(&p_m->bc[i], p_par, poll_um, &code, &b_rev);
         note(p_m, i, r, code, b_rev, pos_um);
     }
     if (p_m->b_pass && p_m->b_settle && ((int32_t)(pos_um - p_m->settle_um) >= 0))

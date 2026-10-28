@@ -106,6 +106,7 @@ sys_state_t sys_state(void);
 void       fault_set(uint32_t fault_bits);       /* NFR19: reported in telemetry */
 void       fault_clear(uint32_t fault_bits);
 extern const char * volatile g_stop_reason;      /* why the last E-stop / ERROR happened */
+extern volatile uint32_t g_reacq_seq;            /* bumped by the bypass: TSK_LINE re-arms its line watch */
 
 /* Shared odometry (written by the motion task) */
 typedef struct

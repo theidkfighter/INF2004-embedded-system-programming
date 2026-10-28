@@ -25,6 +25,7 @@ IMPORT void tsk_nav(INT stacd, void *exinf);
 IMPORT void tsk_telemetry(INT stacd, void *exinf);
 
 volatile uint32_t g_hb[HB_COUNT];
+volatile uint32_t g_reacq_seq;
 
 ID g_flg_sys;
 ID g_mbx_motion;

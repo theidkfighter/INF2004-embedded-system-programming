@@ -51,6 +51,34 @@ typedef struct
 bool  obstacle_profile(const scan_t *p_fine, const float *p_coarse_cm,
                        float robot_half_mm, float margin_mm, obstacle_profile_t *p_out);
 
+/* Sides already tried and found blocked during this avoidance */
+#define OBST_BLOCKED_L   (1u)
+#define OBST_BLOCKED_R   (2u)
+
+/* Is there room for the car on 'side' ('L' / 'R') of the profiled obstacle? */
+bool  obstacle_side_room(const obstacle_profile_t *p_prof, char side, float robot_half_mm, float margin_mm);
+
+/* The side to pass on, among the sides that have room and are not in
+   'blocked' (OBST_BLOCKED_*): the one with MORE clearance; if the two
+   clearances are within OBST_SIDE_TIE_CM (e.g. both "no echo") the one
+   needing the smaller sideways shift. 0 = none. obstacle_profile() uses it
+   with blocked = 0. */
+#define OBST_SIDE_TIE_CM (10.0f)
+char  obstacle_choose_side(const obstacle_profile_t *p_prof, float robot_half_mm, float margin_mm,
+                           uint32_t blocked);
+
+/* How far (mm) the car must stand off the obstacle's front before the
+   first 45 deg leg on 'side', so that leg passes the near corner by at
+   least robot_half_mm + margin_mm: e + sqrt(2) (half + margin), e = how far
+   the corner is out to that side of the car's centre line. If r_min is
+   less, reverse the difference after the scan. */
+float obstacle_standoff_mm(const obstacle_profile_t *p_prof, char side, float robot_half_mm, float margin_mm);
+
+/* Bypass-leg watch: is a ping r_cm at deg (+ right) inside the car's path,
+   i.e. within robot_half_mm + side_mm of the centre line and no more than
+   ahead_cm in front? (r < 0 = no echo = no.) */
+bool  obstacle_in_path(float r_cm, float deg, float robot_half_mm, float side_mm, float ahead_cm);
+
 /* ---- STAGE4: bypass plan ----
  * (1) pivot 45 deg away, (2) forward d1 so the car clears the edge,
  * (3) pivot back 45 deg (parallel to the course), (4) forward d2 past the
@@ -71,5 +99,27 @@ typedef struct
 
 bool  bypass_plan(const obstacle_profile_t *p_prof, float robot_half_mm, float margin_mm,
                   float depth_mm, float max_lateral_mm, bypass_plan_t *p_plan);
+
+/* Parallel leg (side-following at 60 deg, the servo's limit): does a ping
+   at 60 deg towards the obstacle still hit its side, gap_mm beside the car? */
+bool  obstacle_side_seen(float r_cm, float gap_mm);
+
+/* How far to drive on after the side was last seen at 60 deg before the
+   45 deg turn back clears its back corner (us_ahead_mm: ultrasonic sensor
+   ahead of the axle). */
+float obstacle_side_trail_mm(float gap_mm, float us_ahead_mm, float robot_half_mm, float margin_mm);
+
+/* Look-before-turning with the car pivoted 30 deg towards the obstacle and
+   the servo at 60 (= square to its side): the side is still there if the
+   ping is within the gap (less the 40 mm the pivot moved the sensor) +
+   10 cm. If it is not, the back corner is at most ~10 cm ahead of the
+   centre: drive on obstacle_side_trail90_mm() before the 45 deg turn. */
+bool  obstacle_side_beside(float r90_cm, float gap_mm);
+float obstacle_side_trail90_mm(float gap_mm, float us_ahead_mm, float robot_half_mm, float margin_mm);
+
+/* Bypass dead reckoning: advance (x right, y forward) by ds_mm on the mean
+   of two headings (deg, + = clockwise). */
+void  obstacle_pose_advance(float *p_x, float *p_y, float h_prev_deg, float h_deg, float ds_mm);
+float obstacle_sin_deg(float deg);
 
 #endif /* OBSTACLE_LOGIC_H */

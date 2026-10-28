@@ -78,10 +78,20 @@ bool     hal_btn1_down(void);
 bool     hal_btn2_down(void);
 
 /* ---- IMU (LSM303DLHC accelerometer on I2C1) ---- */
-bool     hal_imu_init(void);                     /* +-4 g, 100 Hz, INT1 = 2 g high-pass, latched */
+typedef enum
+{
+    HAL_IMU_NONE = 0,
+    HAL_IMU_LSM303DLHC,                          /* accel 0x19 (+ mag 0x1E): INT1 used */
+    HAL_IMU_LSM303D                              /* accel + mag on 0x1E / 0x1D: INT1 not used */
+} hal_imu_chip_t;
+
+bool     hal_imu_init(void);                     /* finds the chip; +-4 g, 100 Hz (DLHC: INT1 = 2 g high-pass, latched) */
 bool     hal_imu_accel_g(float *p_x, float *p_y, float *p_z);  /* false = I2C timeout (2 ms) */
-bool     hal_imu_int1_src(uint8_t *p_src);       /* reads INT1_SRC_A, clears the latch */
-bool     hal_imu_int1_level(void);
+bool     hal_imu_int1_src(uint8_t *p_src);       /* reads INT1_SRC_A, clears the latch (LSM303D: 0) */
+bool     hal_imu_int1_level(void);               /* false when INT1 is not used */
+bool     hal_imu_int1_used(void);                /* only with the LSM303DLHC */
+hal_imu_chip_t hal_imu_chip(void);
+const char    *hal_imu_chip_name(void);          /* "LSM303DLHC at 0x19", "LSM303D at 0x1E", "none" */
 void     hal_i2c_recover(void);                  /* 9 SCL clocks, then re-initialise I2C1 */
 
 #endif /* HAL_H */

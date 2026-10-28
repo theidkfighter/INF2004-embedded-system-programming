@@ -173,7 +173,7 @@ void hal_gpio_isr(uint32_t intno)
     }
     if ((pin_events(ints, PIN_IMU_INT1) & GPIO_IRQ_EDGE_RISE) != 0u)
     {
-        if (gp_int1_cb != NULL)
+        if ((gp_int1_cb != NULL) && hal_imu_int1_used())   /* LSM303D: INT1 not configured */
         {
             gp_int1_cb();
         }

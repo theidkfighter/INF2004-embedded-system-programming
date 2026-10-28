@@ -27,6 +27,7 @@ static const param_def_t PARAMS[] =
     { "SERVO_MAX_US",          &g_params.servo_max_us,        1500.0f, 2800.0f },
     { "SERVO_CALIBRATED",      &g_params.servo_calibrated,    -1.0f,  1.0f     },
     { "SERVO_LOW_ANGLE_IS_RIGHT", &g_params.servo_low_angle_is_right, 0.0f, 1.0f },
+    { "SERVO_TRIM_DEG",        &g_params.servo_trim_deg,      -45.0f, 45.0f    },
     { "IMU_FORWARD_AXIS",      &g_params.imu_forward_axis,    -1.0f,  2.0f     },
     { "IMU_FORWARD_SIGN",      &g_params.imu_forward_sign,    -1.0f,  1.0f     },
     { "ROBOT_HALF_WIDTH_MM",   &g_params.robot_half_width_mm, 40.0f,  200.0f   },
@@ -56,13 +57,15 @@ static const param_def_t PARAMS[] =
     { "BARCODE_DETECT",        &g_params.barcode_detect,      0.0f,   1.0f     },
     { "BARCODE_DET_HYS",       &g_params.barcode_det_hys,     0.005f, 0.30f    },
     { "BARCODE_SENSOR_Y_MM",   &g_params.barcode_sensor_y_mm, -150.0f, 150.0f  },
-    { "BARCODE_LEVELS",        &g_params.barcode_levels,      1.0f,   5.0f     },
+    { "BARCODE_LEVELS",        &g_params.barcode_levels,      1.0f,   6.0f     },
+    { "BARCODE_ADAPT_SWING",   &g_params.barcode_adapt_swing, 0.05f,  0.60f    },
     { "BARCODE_DEBUG",         &g_params.barcode_debug,       0.0f,   1.0f     },
     { "TURN_MM_S",             &g_params.turn_mm_s,           30.0f,  (float)SPEED_MAX_MM_S },
     { "BYPASS_MM_S",           &g_params.bypass_mm_s,         30.0f,  (float)SPEED_MAX_MM_S },
     { "OBSTACLE_STOP_CM",      &g_params.obstacle_stop_cm,    10.0f,  60.0f    },
     { "OBST_MARGIN_MM",        &g_params.obst_margin_mm,      0.0f,   300.0f   },
     { "OBST_DEPTH_MM",         &g_params.obst_depth_mm,       20.0f,  600.0f   },
+    { "OBST_LEG_STOP_CM",      &g_params.obst_leg_stop_cm,    0.0f,   40.0f    },
     { "IR_TO_AXLE_MM",         &g_params.ir_to_axle_mm,       0.0f,   200.0f   },
 };
 
@@ -79,6 +82,7 @@ void params_init(void)
     g_params.servo_max_us             = (float)SERVO_MAX_US;
     g_params.servo_calibrated         = (float)SERVO_CALIBRATED;
     g_params.servo_low_angle_is_right = (float)SERVO_LOW_ANGLE_IS_RIGHT;
+    g_params.servo_trim_deg           = (float)SERVO_TRIM_DEG;
     g_params.imu_forward_axis         = (float)IMU_FORWARD_AXIS;
     g_params.imu_forward_sign         = (float)IMU_FORWARD_SIGN;
     g_params.robot_half_width_mm      = (float)ROBOT_HALF_WIDTH_MM;
@@ -110,12 +114,14 @@ void params_init(void)
     g_params.barcode_det_hys     = BARCODE_DET_HYS;
     g_params.barcode_sensor_y_mm = (float)BARCODE_SENSOR_Y_MM;
     g_params.barcode_levels      = (float)BARCODE_LEVELS;
+    g_params.barcode_adapt_swing = BARCODE_ADAPT_SWING;
     g_params.barcode_debug       = (float)BARCODE_DEBUG;
     g_params.turn_mm_s           = (float)TURN_MM_S;
     g_params.bypass_mm_s         = (float)BYPASS_MM_S;
     g_params.obstacle_stop_cm    = (float)OBSTACLE_STOP_CM;
     g_params.obst_margin_mm      = (float)OBST_MARGIN_MM;
     g_params.obst_depth_mm       = (float)OBST_DEPTH_MM;
+    g_params.obst_leg_stop_cm    = (float)OBST_LEG_STOP_CM;
     g_params.ir_to_axle_mm       = (float)IR_TO_AXLE_MM;
 }
 
@@ -242,4 +248,11 @@ float params_mm_per_count(void)
     }
     /* 4x decoding: A edges + B edges = 2 x A edges per revolution */
     return (3.14159265f * g_params.wheel_diameter_mm) / (2.0f * g_params.enc_a_edges_per_rev);
+}
+
+float params_servo_phys(float robot_deg)
+{
+    float a = robot_deg + g_params.servo_trim_deg;     /* + = right, trimmed */
+
+    return (g_params.servo_low_angle_is_right > 0.5f) ? (90.0f - a) : (90.0f + a);
 }

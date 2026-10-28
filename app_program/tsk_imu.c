@@ -132,7 +132,7 @@ void tsk_imu(INT stacd, void *exinf)
                     recoveries = 0u;
                     warm       = 0u;
                     fault_clear(FAULT_IMU_DEAD | FAULT_IMU_I2C);
-                    (void)post_event("IMU_OK", "GY-511 answering again");
+                    (void)post_event("IMU_OK", hal_imu_chip_name());
                     log_line("[imu] GY-511 answering: hump and collision detection on");
                 }
             }

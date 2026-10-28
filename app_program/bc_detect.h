@@ -79,6 +79,60 @@ typedef struct
     int32_t  last_space;
 } det_t;
 
+/* ---- local-contrast detector (the 6th read of BARCODE_LEVELS = 6) ----
+ *
+ * A pale or streaky bar (toner running out at the page ends, an inkjet
+ * print, a crease) may reach only 20-40 % of the calibrated black, below
+ * every fixed switch level, while the bars next to it are fully black. This
+ * detector switches at the middle of the LOCAL darkest and lightest values
+ * within +-ADT_HALF_MM of each point instead of a level fixed by
+ * IR_WHITE_ADC / IR_BLACK_ADC:
+ *   - local range (max - min) below swing_frac x span: no edge here (the
+ *     middle of a wide bar, the white quiet zone, a light crease, noise);
+ *   - otherwise switch at (max + min) / 2, with hysteresis
+ *     max(hys, ADT_HYS_FRAC x local range), edge interpolated between bins
+ *     like det_sample.
+ * It needs ADT_HALF_MM of look-ahead, so its edges come about 4.5 mm late;
+ * adt_done_um() tells the window how far the decisions have got.
+ */
+#define ADT_HALF_BINS   (16u)     /* +-4 mm window (0.25 mm bins) */
+#define ADT_RING        (2u * ADT_HALF_BINS + 1u)
+#define ADT_HYS_FRAC    (0.2f)    /* hysteresis: this fraction of the local range */
+#define ADT_SWING_DEF   (0.15f)   /* BARCODE_ADAPT_SWING default */
+
+typedef struct
+{
+    bool     b_inv;
+    int32_t  span;
+    int32_t  swing;               /* smallest local range that can make an edge */
+    int32_t  hys;                 /* smallest hysteresis */
+    /* binning + 1-2-1 smoothing (as det_t) */
+    uint32_t bin_idx;
+    uint32_t sum;
+    uint32_t cnt;
+    bool     b_started;
+    int32_t  raw0;
+    int32_t  raw1;
+    uint32_t raw_n;
+    /* smoothed bins, ring */
+    int32_t  ring[ADT_RING];
+    uint32_t n_s;                 /* smoothed bins so far (index of the next one) */
+    /* decision for the bin in the middle of the ring */
+    bool     b_black;
+    int32_t  prev_c;              /* previous centre value */
+    uint32_t done_um;             /* decisions made up to here */
+} adt_t;
+
+/* swing_frac: BARCODE_ADAPT_SWING (0.15); hys_frac: BARCODE_DET_HYS */
+void     adt_init(adt_t *p_a, uint32_t white, uint32_t black, float hys_frac, float swing_frac);
+
+/* As det_sample. Edges are up to ~4.5 mm behind pos_um. */
+uint32_t adt_sample(adt_t *p_a, uint32_t pos_um, uint32_t adc, det_edge_t *p_out);
+
+/* Position up to which edges have been decided: give THIS (not the sensor
+   position) to bc_poll, or the window would see white that is not decided. */
+uint32_t adt_done_um(const adt_t *p_a);
+
 /* white / black: IR_WHITE_ADC / IR_BLACK_ADC. hys_frac: BARCODE_DET_HYS. */
 void     det_init(det_t *p_d, uint32_t white, uint32_t black, float hys_frac);
 

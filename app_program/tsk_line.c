@@ -15,7 +15,8 @@
  *   MBX_NAV_EVENT.
  * OBSTACLE AVOIDANCE: no motion output (the bypass owns the wheels); the
  *   task only reports EVF_LINE_FOUND when a line sensor sees black
- *   (the light-weight reacquisition path of DR 6.1).
+ *   (the light-weight reacquisition path of DR 6.1); after the bypass
+ *   re-arms it (g_reacq_seq) a sensor must read white first.
  */
 #include <tk/tkernel.h>
 
@@ -75,6 +76,7 @@ LOCAL void barcode_arm(void)
 
         bcm_init(&g_bcm, (uint32_t)w, (uint32_t)b, g_params.barcode_det_hys,
                  (uint32_t)(g_params.barcode_levels + 0.5f));
+        bcm_set_adapt_swing(&g_bcm, g_params.barcode_adapt_swing);
         thr_black = (uint32_t)(b_high ? (mid + dh) : (mid - dh));
         thr_white = (uint32_t)(b_high ? (mid - dh) : (mid + dh));
         hal_barcode_config(thr_black, thr_white, b_high, false);
@@ -213,9 +215,10 @@ LOCAL void debug_widths(const bc_ctx_t *p_bc, uint32_t n)
 }
 
 /* BARCODE_DEBUG with several levels: after every pass (3+ elements at some
-   level) a summary, the result per level ("Z29" = decoded Z from 29
+   level) a summary, the result per read ("50%:Z29" = decoded Z from 29
    elements, "x27" = 27 elements, no letter, "-3" = stray mark of 3), then
-   the widths of the level that gave the letter (else of the longest window). */
+   the widths of the read that gave the letter (else of the longest window).
+   "adapt" is the local-contrast read (BARCODE_LEVELS = 6). */
 LOCAL void debug_pass(bc_result_t res, char code, bool b_rev)
 {
     char     text[TLM_EVENT_DETAIL_LEN];
@@ -244,8 +247,7 @@ LOCAL void debug_pass(bc_result_t res, char code, bool b_rev)
         jb_raw(&jb, " decoded ");
         jb_char(&jb, code);
         jb_raw(&jb, b_rev ? " (backwards) at " : " (forwards) at ");
-        jb_uint(&jb, bcm_level_pct((uint32_t)k));
-        jb_char(&jb, '%');
+        jb_raw(&jb, bcm_level_name((uint32_t)k));
     }
     else if (res == BC_NONE)
     {
@@ -270,7 +272,7 @@ LOCAL void debug_pass(bc_result_t res, char code, bool b_rev)
         for (uint32_t i = 0u; i < g_bcm.n_levels; i++)
         {
             jb_char(&jb, ' ');
-            jb_uint(&jb, bcm_level_pct(i));
+            jb_raw(&jb, bcm_level_name(i));
             jb_char(&jb, ':');
             if (g_bcm.last_res[i] == BC_DECODED)
             {
@@ -481,6 +483,9 @@ void tsk_line(INT stacd, void *exinf)
     float       heading_prev = 0.0f;
     sys_state_t prev_state = SYS_INIT;
     uint32_t    found_n = 0u;
+    uint32_t    reacq_seen = 0u;
+    uint32_t    white_l = 0u;
+    uint32_t    white_r = 0u;
 
     (void)stacd;
     (void)exinf;
@@ -542,8 +547,21 @@ void tsk_line(INT stacd, void *exinf)
         }
         else if (st == SYS_OBSTACLE_AVOIDANCE)
         {
-            /* reacquisition watch: 2 samples in a row, so one speck does not count */
-            found_n = (b_l || b_r) ? (found_n + 1u) : 0u;
+            /* reacquisition watch: 2 samples in a row, so one speck does not
+               count. Re-armed by the bypass (g_reacq_seq) before the return:
+               a sensor then counts only after it has read white, so one
+               sitting on something dark (off the mat, a seam) cannot hide the
+               line from the other one. */
+            if (reacq_seen != g_reacq_seq)
+            {
+                reacq_seen = g_reacq_seq;
+                found_n    = 0u;
+                white_l    = 0u;
+                white_r    = 0u;
+            }
+            white_l = b_l ? white_l : ((white_l < 1000u) ? (white_l + 1u) : white_l);
+            white_r = b_r ? white_r : ((white_r < 1000u) ? (white_r + 1u) : white_r);
+            found_n = ((b_l && (white_l >= 3u)) || (b_r && (white_r >= 3u))) ? (found_n + 1u) : 0u;
             if (found_n == 2u)
             {
                 flag_set(EVF_LINE_FOUND);

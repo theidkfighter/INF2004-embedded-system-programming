@@ -189,3 +189,159 @@ void det_stats(const det_t *p_d, uint32_t *p_bars, int32_t *p_faintest_bar, int3
     *p_faintest_bar  = fb;
     *p_palest_space  = ps;
 }
+
+/* ---------------- local-contrast detector ---------------- */
+
+void adt_init(adt_t *p_a, uint32_t white, uint32_t black, float hys_frac, float swing_frac)
+{
+    int32_t w = (int32_t)white;
+    int32_t b = (int32_t)black;
+
+    p_a->b_inv = (b < w);
+    if (p_a->b_inv)
+    {
+        w = 4095 - w;
+        b = 4095 - b;
+    }
+    p_a->span = b - w;
+    if (p_a->span < 1)
+    {
+        p_a->span = 1;
+    }
+    if (swing_frac < 0.03f) { swing_frac = 0.03f; }
+    if (swing_frac > 0.9f)  { swing_frac = 0.9f; }
+    p_a->swing = (int32_t)(swing_frac * (float)p_a->span);
+    p_a->hys   = (int32_t)(hys_frac * (float)p_a->span);
+    if (p_a->hys < DET_HYS_MIN)
+    {
+        p_a->hys = DET_HYS_MIN;
+    }
+    p_a->bin_idx   = 0u;
+    p_a->sum       = 0u;
+    p_a->cnt       = 0u;
+    p_a->b_started = false;
+    p_a->raw0      = 0;
+    p_a->raw1      = 0;
+    p_a->raw_n     = 0u;
+    p_a->n_s       = 0u;
+    p_a->b_black   = false;
+    p_a->prev_c    = 0;
+    p_a->done_um   = 0u;
+    for (uint32_t i = 0u; i < ADT_RING; i++)
+    {
+        p_a->ring[i] = 0;
+    }
+}
+
+uint32_t adt_done_um(const adt_t *p_a)
+{
+    return p_a->done_um;
+}
+
+/* smoothed bin number k arrives: decide the bin ADT_HALF_BINS before it */
+static uint32_t adt_bin(adt_t *p_a, int32_t s, uint32_t k, det_edge_t *p_out)
+{
+    uint32_t n = 0u;
+
+    p_a->ring[p_a->n_s % ADT_RING] = s;
+    p_a->n_s++;
+    if (p_a->n_s >= ADT_RING)
+    {
+        uint32_t j   = k - ADT_HALF_BINS;                       /* centre bin */
+        int32_t  c   = p_a->ring[(p_a->n_s - 1u - ADT_HALF_BINS) % ADT_RING];
+        int32_t  lo  = p_a->ring[0];
+        int32_t  hi  = p_a->ring[0];
+
+        for (uint32_t i = 1u; i < ADT_RING; i++)
+        {
+            if (p_a->ring[i] < lo) { lo = p_a->ring[i]; }
+            if (p_a->ring[i] > hi) { hi = p_a->ring[i]; }
+        }
+        if ((hi - lo) > p_a->swing)
+        {
+            int32_t mid = (hi + lo) / 2;
+            int32_t h   = (int32_t)(ADT_HYS_FRAC * (float)(hi - lo));
+            bool    b_now;
+
+            if (h < p_a->hys)
+            {
+                h = p_a->hys;
+            }
+            b_now = p_a->b_black ? (c > (mid - h)) : (c >= (mid + h));
+            if ((b_now != p_a->b_black) && (p_a->n_s > ADT_RING))
+            {
+                float f = (c != p_a->prev_c) ? ((float)(mid - p_a->prev_c) / (float)(c - p_a->prev_c)) : 0.5f;
+
+                if (f < 0.0f) { f = 0.0f; }
+                if (f > 1.0f) { f = 1.0f; }
+                p_out[0].pos_um  = (uint32_t)((((float)(j - 1u) + f) * (float)DET_BIN_UM) + (float)(DET_BIN_UM / 2u));
+                p_out[0].b_black = b_now;
+                n = 1u;
+            }
+            p_a->b_black = b_now;
+        }
+        p_a->prev_c  = c;
+        p_a->done_um = (j + 1u) * DET_BIN_UM;
+    }
+    return n;
+}
+
+uint32_t adt_sample(adt_t *p_a, uint32_t pos_um, uint32_t adc, det_edge_t *p_out)
+{
+    uint32_t bin = pos_um / DET_BIN_UM;
+    uint32_t v   = p_a->b_inv ? (4095u - adc) : adc;
+    uint32_t n   = 0u;
+
+    if (!p_a->b_started)
+    {
+        p_a->b_started = true;
+        p_a->bin_idx   = bin;
+        p_a->sum       = v;
+        p_a->cnt       = 1u;
+        p_a->done_um   = pos_um;
+        return 0u;
+    }
+    if (bin == p_a->bin_idx)
+    {
+        p_a->sum += v;
+        p_a->cnt++;
+        return 0u;
+    }
+    if (bin < p_a->bin_idx)
+    {
+        return 0u;                            /* positions never go back */
+    }
+    {
+        int32_t  done = (int32_t)(p_a->sum / p_a->cnt);
+        uint32_t k    = p_a->bin_idx;
+
+        if ((bin - k) > 64u)
+        {
+            k = bin - 64u;                    /* a long jump (16 mm): replay only the end */
+        }
+        for (; k < bin; k++)
+        {
+            det_edge_t e[1];
+
+            if (p_a->raw_n == 0u)
+            {
+                p_a->raw0 = done;
+                p_a->raw1 = done;
+            }
+            else if (adt_bin(p_a, (p_a->raw0 + (2 * p_a->raw1) + done) / 4, k - 1u, e) != 0u)
+            {
+                if (n < DET_MAX_OUT)
+                {
+                    p_out[n++] = e[0];
+                }
+            }
+            p_a->raw0 = p_a->raw1;
+            p_a->raw1 = done;
+            p_a->raw_n++;
+        }
+        p_a->bin_idx = bin;
+        p_a->sum     = v;
+        p_a->cnt     = 1u;
+    }
+    return n;
+}

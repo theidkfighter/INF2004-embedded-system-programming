@@ -22,6 +22,7 @@
 #include "os_glue.h"
 #include "motion_api.h"
 #include "app_check.h"
+#include "app_params.h"
 #include "hal.h"
 #include "jfmt.h"
 #include "robot_config.h"
@@ -124,7 +125,7 @@ LOCAL void kill(void)
     hal_motor_kill();                         /* direct PWM write first (NFR21) */
     flag_set(EVF_ESTOP);
     motion_stop(SRC_SAFETY);
-    hal_servo_deg(90.0f);
+    hal_servo_deg(params_servo_phys(0.0f));   /* straight ahead, trimmed */
 }
 
 LOCAL void enter_estop(const char *p_reason)

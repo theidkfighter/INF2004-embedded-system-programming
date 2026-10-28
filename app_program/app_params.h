@@ -31,6 +31,7 @@ typedef struct
     float servo_max_us;
     float servo_calibrated;
     float servo_low_angle_is_right;
+    float servo_trim_deg;
     float imu_forward_axis;
     float imu_forward_sign;
     float robot_half_width_mm;
@@ -64,6 +65,7 @@ typedef struct
     float barcode_det_hys;
     float barcode_sensor_y_mm;
     float barcode_levels;
+    float barcode_adapt_swing;
     float barcode_debug;
     /* motion primitives / obstacles */
     float turn_mm_s;
@@ -71,6 +73,7 @@ typedef struct
     float obstacle_stop_cm;
     float obst_margin_mm;
     float obst_depth_mm;
+    float obst_leg_stop_cm;
     float ir_to_axle_mm;
 } app_params_t;
 
@@ -94,5 +97,6 @@ uint32_t params_count(void);
 
 /* Derived values (0 if the calibration is missing) */
 float params_mm_per_count(void);     /* 4x quadrature count */
+float params_servo_phys(float robot_deg);   /* pan angle (+ right, 0 = straight ahead) -> servo degrees, with SERVO_TRIM_DEG */
 
 #endif /* APP_PARAMS_H */

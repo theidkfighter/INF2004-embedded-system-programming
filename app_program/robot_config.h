@@ -49,6 +49,12 @@
 #define SERVO_MAX_US              (2500)
 #define SERVO_CALIBRATED          (1)      /* PLACEHOLDER: assumed */   /* 1 once V2 passes */
 #define SERVO_LOW_ANGLE_IS_RIGHT  (1)
+#define SERVO_TRIM_DEG            (20.5f)       /* [P] added to every pan angle, + = turn the sensor RIGHT. 28 Oct: at
+                                                   the servo's centre (90) the sensor pointed 15-17 deg to the car's
+                                                   left; 16 still left it 2-3 deg left, 18.5 still 2 deg left, so
+                                                   20.5: straight ahead is 90 - 20.5 = 69.5, and the left / right
+                                                   limits (-60 / +60 from straight ahead) are 129.5 / 9.5. Tune with
+                                                   a flat board square ahead: shortest reading at 0 */
 
 /* ---- From part_tests: test_imu U5 ---- */
 #define IMU_FORWARD_AXIS          (1)      /* PLACEHOLDER: spec 5 says X forward; test_imu U5 */   /* 1 = X forward (spec 5 says X), 2 = Y */
@@ -90,9 +96,13 @@
 #define BARCODE_DETECT            (1)           /* [P] 1 = bars found on 0.25 mm distance bins with edges at the
                                                    mid level (bc_detect.c: copes with a blurred sensor spot),
                                                    0 = the original 1 kHz two-level interrupt (BARCODE_HYS) */
-#define BARCODE_LEVELS            (5)           /* [P] BARCODE_DETECT = 1 only: read every barcode at this many switch
-                                                   levels at once (1 = mid level only; 3 = 50/35/65 %; 5 = also 25/75 %),
+#define BARCODE_LEVELS            (6)           /* [P] BARCODE_DETECT = 1 only: read every barcode this many ways at once
+                                                   (1 = mid level only; 3 = 50/35/65 %; 5 = also 25/75 %; 6 = also the
+                                                   local-contrast detector for pale / streaky bars next to black ones),
                                                    so faded / grey prints still decode (bc_multi.c). Applies at START */
+#define BARCODE_ADAPT_SWING       (0.15f)       /* [P] BARCODE_LEVELS = 6: the local-contrast read makes an edge only where
+                                                   the signal within +-4 mm changes by more than this x (black - white).
+                                                   Lower = paler bars, but more false edges from ADC noise. Applies at START */
 #define BARCODE_SENSOR_Y_MM       (35)          /* [P] barcode sensor's distance to the LEFT of the car's centre line
                                                    (negative = right; 0 = use the wheels' mean distance as before).
                                                    BARCODE_DETECT = 1 only: bar widths follow the sensor's own path,
@@ -105,7 +115,8 @@
 /* ---- Motion primitives ---- */
 #define TURN_MM_S                 (90)          /* [P] wheel speed for pivot turns */
 #define TURN_SNAP                 (0)           /* [P] 1 = finish junction turns on the line sensors (test first) */
-#define BYPASS_MM_S               (100)         /* [P] speed for bypass legs */
+#define BYPASS_MM_S               (60)          /* [P] speed for bypass legs (28 Oct: was 100; the leg watch sweeps the
+                                                   sensor, one 0 / 30 / 0 / 60 deg cycle takes ~0.65 s = 4 cm at 60 mm/s) */
 #define SPEED_MAX_MM_S            (250)         /* NFR18 speed cap */
 #define HUMP_SPEED_PCT            (60)          /* DR A2: speed limit on a hump */
 #define ENC_LOSS_DUTY             (0.30f)       /* DR 5: duty above this ... */
@@ -120,6 +131,25 @@
 #define PROXIMITY_STOP_CM         (8)           /* NFR21 */
 #define OBST_MARGIN_MM            (60)          /* [P] extra side clearance in the bypass */
 #define OBST_DEPTH_MM             (150)         /* [P] assumed depth (ultrasonic cannot see the back) */
+#define OBST_LEG_STOP_CM          (15)          /* [P] during bypass legs and the return the sensor sweeps 0 / 30 / 0 / 60 deg
+                                                   towards the obstacle side: anything in the car's path (car width
+                                                   + OBST_PATH_SIDE_MM) closer than this ahead, seen twice at the same
+                                                   angle = this side is blocked: stop, back out along the legs, then
+                                                   the other side or a rescan. Keep it above PROXIMITY_STOP_CM (8,
+                                                   the E-stop); 0 = off */
+#define OBST_PATH_SIDE_MM         (20)          /* leg watch: corridor = car half width + this on each side */
+#define OBST_BACKOFF_MAX_MM       (250)         /* longest reverse to get the 45 deg standoff (see obstacle_standoff_mm) */
+#define OBST_RESCAN_REVERSE_MM    (100)         /* reverse before a rescan */
+#define OBST_RETURN_PAST_MM       (80)          /* return: drive this far (sideways) past the original path before
+                                                   deciding the line was missed */
+#define OBST_US_AHEAD_MM          (80)          /* PLACEHOLDER: ultrasonic sensor ahead of the wheel axle (measure) */
+#define OBST_SIDE_MAX_MM          (1000)        /* parallel leg follows the obstacle's side at most this far */
+#define OBST_SIDE_STEP_MM         (100)         /* look-before-turning: drive on this far while the side is still there */
+#define OBST_TURN_LOOK_STEPS      (8)           /* ... at most this many times */
+#define OBST_LOOK_PIVOT_DEG       (30)          /* look-before-turning: pivot this far towards the obstacle; with the
+                                                   servo at 60 the sensor looks square at its side (90 deg) */
+#define OBST_TIE_PIVOT_DEG        (30)          /* tie: pivot this far + servo 60 deg = a 90 deg look each way */
+#define OBST_RETRY_WIDER_MM       (100)         /* a side tried again after it was blocked: this much more side margin */
 #define REACQ_MAX_LATERAL_MM      (300)         /* DR: abort if the line is not found */
 #define FINE_STEP_DEG             (2)
 #define SERVO_SETTLE_MS           (50)          /* DR A6 */
