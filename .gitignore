@@ -28,3 +28,7 @@ config/mqtt_config.h
 # IS-02 robot: host test binary
 tests/test_logic
 tests/test_logic.exe
+
+# DO NOT push import leftovers
+/pico_sdk_import.cmake
+/build/
