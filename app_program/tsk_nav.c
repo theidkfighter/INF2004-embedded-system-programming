@@ -19,6 +19,7 @@
 
 #include "os_glue.h"
 #include "status.h"
+#include "msg_codec.h"
 #include "motion_api.h"
 #include "app_params.h"
 #include "app_check.h"
@@ -302,7 +303,9 @@ void tsk_nav(INT stacd, void *exinf)
 
         if (p_msg != NULL)
         {
-            nav_event_t ev = p_msg->body.nav;
+            nav_event_t ev;
+
+            msg_nav_unpack(&p_msg->body.nav, &ev);
 
             msg_free(p_msg);
             on_nav_event(&ev);

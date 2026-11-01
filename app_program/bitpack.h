@@ -179,4 +179,40 @@ static inline uint32_t bp_sat_inc(uint32_t v, uint32_t max)
     return (v >= max) ? max : (v + 1u);
 }
 
+/* ---- multi-word Packed_Records (fields may cross a 32-bit boundary) ------
+ * Bit pos counts from bit 0 of p_w[0] upwards (pos 32 = bit 0 of p_w[1]).
+ * Used for records that are copied whole inside one Critical_Section
+ * (odometry record, inter-task messages), so a field straddling two words
+ * is never seen half-written. */
+static inline void bp_wput(uint32_t *p_w, uint32_t pos, uint32_t w, uint32_t v)
+{
+    uint32_t i  = pos >> 5;
+    uint32_t sh = pos & 31u;
+    uint32_t n0 = 32u - sh;                   /* bits that fit in word i */
+
+    v &= BP_MASK(w);
+    if (w <= n0)
+    {
+        p_w[i] = BP_PUT(p_w[i], sh, w, v);
+    }
+    else
+    {
+        p_w[i]      = BP_PUT(p_w[i], sh, n0, v);
+        p_w[i + 1u] = BP_PUT(p_w[i + 1u], 0u, w - n0, v >> n0);
+    }
+}
+
+static inline uint32_t bp_wget(const uint32_t *p_w, uint32_t pos, uint32_t w)
+{
+    uint32_t i  = pos >> 5;
+    uint32_t sh = pos & 31u;
+    uint32_t n0 = 32u - sh;
+
+    if (w <= n0)
+    {
+        return BP_GET(p_w[i], sh, w);
+    }
+    return BP_GET(p_w[i], sh, n0) | (BP_GET(p_w[i + 1u], 0u, w - n0) << n0);
+}
+
 #endif /* BITPACK_H */

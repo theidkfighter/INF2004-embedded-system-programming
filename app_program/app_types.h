@@ -106,13 +106,30 @@ typedef struct
  * Binary Event_Frame arguments (evt.h); TSK_TELEMETRY adds the header. */
 #include "evt.h"
 
-/* One mailbox message body (the kernel header is added in os_glue.h) */
+/* ---- Packed mailbox bodies (msg_codec.h): what actually travels ---- */
+typedef struct
+{
+    uint32_t w[3];             /* motion_cmd_t in at most 69 bits (was 32 bytes) */
+} motion_msg_t;
+
+typedef struct
+{
+    uint8_t b;                 /* nav_event_t: type E3, letter U5 (was 2 bytes) */
+} nav_msg_t;
+
+typedef struct
+{
+    uint32_t w[6];             /* obstacle_profile_t in 181 bits (was 64 bytes) */
+} obst_msg_t;
+
+/* One mailbox message body (the kernel header is added in os_glue.h).
+   The largest member is the event (32 bytes); it was the 92-byte text event. */
 typedef union
 {
-    motion_cmd_t       motion;
-    nav_event_t        nav;
-    obstacle_profile_t obstacle;
-    evt_msg_t          event;
+    motion_msg_t motion;
+    nav_msg_t    nav;
+    obst_msg_t   obstacle;
+    evt_msg_t    event;
 } app_msg_body_t;
 
 /* ---- Motion events (FR24, DR 6.3 region B) ---- */

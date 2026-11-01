@@ -108,17 +108,21 @@ void       fault_clear(uint32_t fault_bits);
 /* why the last E-stop / ERROR happened: st_stop() (status.h), stop_reason_t */
 extern volatile uint32_t g_reacq_seq;            /* bumped by the bypass: TSK_LINE re-arms its line watch */
 
-/* Shared odometry (written by the motion task) */
+/* Shared odometry (written by the motion task). The callers use this float
+   form; the shared copy in os_glue.c is a packed 5-word record (D3.4):
+     odo_um U32 (um, monotonic, wraps), dist S28 (0.01 mm, +-1 km),
+     heading S25 (0.01 deg, +-100,000 deg), v S18 (0.01 mm/s, +-1000),
+     a_fwd S17 (1e-4 g, +-4 g), turn S18 (0.01 deg/s, +-720)  = 138 bits.
+   odometry_get() returns the dequantized values; a reader that differences
+   two reads (heading, distance) sees no drift, because both values come
+   from the same exact accumulators in the motion task. */
 typedef struct
 {
-    int32_t enc_r;
-    int32_t enc_l;
-    float   dist_r_mm;          /* signed, forward + */
-    float   dist_l_mm;
-    float   heading_deg;        /* from the encoders, + = clockwise */
-    float   v_mm_s;             /* mean of both wheels */
-    float   a_fwd_g;            /* forward acceleration from the encoder speed */
-    float   turn_dps;
+    float    dist_mm;           /* mean of both wheels, signed, forward + */
+    float    heading_deg;       /* from the encoders, + = clockwise */
+    float    v_mm_s;            /* mean of both wheels */
+    float    a_fwd_g;           /* forward acceleration from the encoder speed */
+    float    turn_dps;
     uint32_t odo_um;            /* travelled distance, monotonic, micrometres */
 } odometry_t;
 void       odometry_get(odometry_t *p_out);

@@ -402,7 +402,7 @@ LOCAL void pose_reset(void)
     g_pose.y_mm   = 0.0f;
     g_pose.h_deg  = 0.0f;
     g_pose.h0_deg = o.heading_deg;
-    g_pose.d_prev = 0.5f * (o.dist_r_mm + o.dist_l_mm);
+    g_pose.d_prev = o.dist_mm;
 }
 
 LOCAL void pose_update(void)
@@ -412,7 +412,7 @@ LOCAL void pose_update(void)
     float      h;
 
     odometry_get(&o);
-    d = 0.5f * (o.dist_r_mm + o.dist_l_mm);
+    d = o.dist_mm;
     h = o.heading_deg - g_pose.h0_deg;
     obstacle_pose_advance(&g_pose.x_mm, &g_pose.y_mm, g_pose.h_deg, h, d - g_pose.d_prev);
     g_pose.h_deg  = h;
@@ -424,7 +424,7 @@ LOCAL float odo_fwd_mm(void)
     odometry_t o;
 
     odometry_get(&o);
-    return 0.5f * (o.dist_r_mm + o.dist_l_mm);
+    return o.dist_mm;
 }
 
 /* Runs one primitive; pings ahead while it moves (forward legs only).
