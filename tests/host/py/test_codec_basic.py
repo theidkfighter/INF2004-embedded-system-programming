@@ -1,6 +1,6 @@
 """Quick self-tests of the Python Laptop_Codec (MQTT/is02_codec.py, tasks 14.1 and
 14.2): hand-made records for each payload kind, hand-built frames, the CRC,
-the code tables against wire_ids.h and app_params.c, and the event texts
+the code tables against wire_ids.h and the parameter table against wire_dump, and the event texts
 against the Baseline_Build strings.
 
 The property tests and the cross-codec vectors are LT-04."""
@@ -13,10 +13,10 @@ import struct
 
 import pytest
 
+import wire_spec
 from codec_helpers import REPO_DIR, is02_codec as codec
 
 WIRE_IDS = (REPO_DIR / "app_program" / "wire_ids.h").read_text(encoding="utf-8")
-APP_PARAMS = (REPO_DIR / "app_program" / "app_params.c").read_text(encoding="utf-8")
 
 TELEMETRY = {
     "seq": 32767, "t": 16777215, "state": 2, "spd_l": -1234, "spd_r": 1000, "duty_l": -1000, "duty_r": 455,
@@ -200,13 +200,14 @@ def test_text_tables_match_wire_ids():
 
 
 def test_param_table_matches_app_params():
-    rows = re.findall(r'\{ "(\w+)",\s*&g_params\.\w+,\s*([^,]+),\s*([^}]+?)\s*\},', APP_PARAMS)
-    limits = {"(float)LINE_BASE_SAFE_MIN_MM_S": 30.0, "(float)LINE_BASE_SAFE_MAX_MM_S": 150.0,
-              "(float)SPEED_MAX_MM_S": 250.0}
-    assert len(rows) == len(codec.PARAMS) == 55
-    for (name, low, high), param in zip(rows, codec.PARAMS):
-        values = [limits[v] if v in limits else float(v.rstrip("f")) for v in (low, high)]
-        assert (name, values[0], values[1]) == (param[0], param[2], param[3])
+    """Names, order, store widths and the table CRC against the C side
+    (wire_dump). The limits are not in wire_dump, so they are not checked here."""
+    dump = wire_spec.dump()
+    assert len(codec.PARAMS) == len(dump["params"]) == 55
+    for i, (param, c_param) in enumerate(zip(codec.PARAMS, dump["params"])):
+        assert c_param["id"] == i
+        assert (param[0], codec.PARAM_KINDS[param[1]]) == (c_param["name"], c_param["store_width"]), i
+    assert codec.PARAM_CRC == dump["param_table_crc"]
 
 
 def test_packed_params_match_d15():

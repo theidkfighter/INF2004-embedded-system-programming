@@ -4,37 +4,38 @@
 
 Status values: `todo`, `present-unverified`, `done` (gate passed, with a commit), `car-open`, `car-ok`, `waiting` (blocked by a sync point).
 
-## Current state (1 Nov 2026)
+## Current state (2 Nov 2026)
 
-LT-01, LT-02 and LT-03 are coded on `cr1/laptop`, but **their gate can't pass yet**: `run_all.sh` stops at the host library build, because `tests/host/Makefile` still lists the reverted `wire.c`. That was already so on `542368f`. FW-01a repairs it. So 14.1 to 14.4, 14.6 to 14.9 and 14.18 stay `present-unverified` until `run_all.sh` passes with FW-01a merged. Don't merge `cr1/laptop` into `Poh-Loon` before that. **That merge is sync point S3.**
-- The five tools now use `MQTT/is02_codec.py` and `MQTT/is02_codec.js`. Received payloads are auto-detected. Commands, map and config stay baseline text by default (`--legacy-json`, dashboard box ticked).
-- Checkpoint 15 needs a robot (`car-open`).
-- `tests/host/js/package.json` already depends on `fast-check`.
+LT-01 to LT-04 are done on `cr1/laptop` (with `origin/Wei-En` merged: S1 and S2 met). The full gate passes: `rm -rf tests/host/build && bash tests/host/run_all.sh --seed 12345` ends `Host_Test_Suite: PASSED`.
+- The five tools use `MQTT/is02_codec.py` and `MQTT/is02_codec.js`. Received payloads are auto-detected. Commands, map and config stay baseline text by default (`--legacy-json`, dashboard box ticked).
+- **The firmware on this branch accepts binary commands only** (`docs/CR1_FW_STATUS.md`), so the tools' legacy-text default cannot command it. That is LT-05 (S4); until then the tools only read.
+- The C-side drift guard is in: `py/test_codec_tables.py` and `js/tables.test.js` compare both codecs' tables with `build/wire_dump`.
+- Checkpoint 15 needs a robot (`car-open`). Merging `cr1/laptop` into `Poh-Loon` is sync point **S3**.
 
 ## Ledger
 
 | Guide | Task (spec/tasks.md) | Status | Commit | Note |
 |---|---|---|---|---|
-| LT-01 | 14.1 Python field layer (`MQTT/is02_codec.py`) | present-unverified | `CR1 LT-01` on `cr1/laptop` | `test_codec_basic.py` passes; `run_all.sh` blocked until FW-01a |
-| LT-01 | 14.2 Python presentation layer | present-unverified | `CR1 LT-01` on `cr1/laptop` | flags R4, R7 open: spec followed as written; `run_all.sh` blocked until FW-01a |
-| LT-02 | 14.3 JavaScript field layer (`MQTT/is02_codec.js`) | present-unverified | `CR1 LT-02` on `cr1/laptop` | `codec_basic.test.js` passes; `run_all.sh` blocked until FW-01a |
-| LT-02 | 14.4 JavaScript presentation layer | present-unverified | `CR1 LT-02` on `cr1/laptop` | same choices as the LT-01 design readings; `run_all.sh` blocked until FW-01a |
-| LT-03 | 14.6 telemetry_monitor.py | present-unverified | `CR1 LT-03` on `cr1/laptop` | `test_tools.py` passes; 6,135 JSON messages through old and new monitor: CSV identical; `run_all.sh` blocked until FW-01a |
-| LT-03 | 14.7 is02_tool.py, robot_params.py, robot_map.py | present-unverified | `CR1 LT-03` on `cr1/laptop` | `test_tools.py` passes; run as real processes with paho-mqtt against a throwaway broker; `run_all.sh` blocked until FW-01a |
-| LT-03 | 14.8 dashboard.html | present-unverified | `CR1 LT-03` on `cr1/laptop` | line-speed box and its 3.00–15.00 check unchanged; checked in headless Chrome from `file://`; `run_all.sh` blocked until FW-01a |
-| LT-03 | 14.9 MQTT/README.md | present-unverified | `CR1 LT-03` on `cr1/laptop` | `run_all.sh` blocked until FW-01a |
-| LT-03 | 14.18 tool unit tests | present-unverified | `CR1 LT-03` on `cr1/laptop` | `test_tools.py`: 96 passed; `run_all.sh` blocked until FW-01a |
+| LT-01 | 14.1 Python field layer (`MQTT/is02_codec.py`) | done | `CR1 LT-01` on `cr1/laptop` | `test_codec_basic.py` passes; `run_all.sh` passes (LT-04 gate, 2 Nov) |
+| LT-01 | 14.2 Python presentation layer | done | `CR1 LT-01` on `cr1/laptop` | flags R4, R7 open: spec followed as written; `run_all.sh` passes (LT-04 gate, 2 Nov) |
+| LT-02 | 14.3 JavaScript field layer (`MQTT/is02_codec.js`) | done | `CR1 LT-02` on `cr1/laptop` | `codec_basic.test.js` passes; `run_all.sh` passes (LT-04 gate, 2 Nov) |
+| LT-02 | 14.4 JavaScript presentation layer | done | `CR1 LT-02` on `cr1/laptop` | same choices as the LT-01 design readings; `run_all.sh` passes (LT-04 gate, 2 Nov) |
+| LT-03 | 14.6 telemetry_monitor.py | done | `CR1 LT-03` on `cr1/laptop` | `test_tools.py` passes; 6,135 JSON messages through old and new monitor: CSV identical; `run_all.sh` passes (LT-04 gate, 2 Nov) |
+| LT-03 | 14.7 is02_tool.py, robot_params.py, robot_map.py | done | `CR1 LT-03` on `cr1/laptop` | `test_tools.py` passes; run as real processes with paho-mqtt against a throwaway broker; `run_all.sh` passes (LT-04 gate, 2 Nov) |
+| LT-03 | 14.8 dashboard.html | done | `CR1 LT-03` on `cr1/laptop` | line-speed box and its 3.00–15.00 check unchanged; checked in headless Chrome from `file://`; `run_all.sh` passes (LT-04 gate, 2 Nov) |
+| LT-03 | 14.9 MQTT/README.md | done | `CR1 LT-03` on `cr1/laptop` | `run_all.sh` passes (LT-04 gate, 2 Nov) |
+| LT-03 | 14.18 tool unit tests | done | `CR1 LT-03` on `cr1/laptop` | `test_tools.py`: 96 passed; `run_all.sh` passes (LT-04 gate, 2 Nov) |
 | LT-03 | checkpoint 15 (tools vs current JSON robot) | car-open | | **needs the car**; merge = sync point **S3** |
-| LT-04 | 14.5 (Python half) `py/make_vectors.py`, `vectors/vectors.json` | waiting | | needs **S1** |
-| LT-04 | 14.10 Property 24 (parameter table version) | waiting | | needs **S2** (`params_table_crc`) |
-| LT-04 | 14.11 Property 25 | waiting | | needs **S1** |
-| LT-04 | 14.12 Property 26 | waiting | | needs **S1** |
-| LT-04 | 14.13 Property 27 | waiting | | needs **S1**; flag R6 |
-| LT-04 | 14.14 Property 28 | waiting | | needs **S1** |
-| LT-04 | 14.15 Property 29 | todo | | no C dependency |
-| LT-04 | 14.16 Property 30 | todo | | no C dependency |
-| LT-04 | 14.17 presentation unit tests | todo | | no C dependency |
-| LT-04 | 16.4 Property 16 (event detail text) | waiting | | needs **S1** (C event builders) |
+| LT-04 | 14.5 (Python half) `py/make_vectors.py`, `vectors/vectors.json` | done | `CR1 LT-04` on `cr1/laptop` | `py/make_vectors.py` writes `vectors/vectors.json` and `vectors.txt` (seed 20261101, 345 vectors, committed); `make vectors-c` runs them through C |
+| LT-04 | 14.10 Property 24 (parameter table version) | done | `CR1 LT-04` on `cr1/laptop` | S2 met: C (`params_table_crc`), Python and JS agree on (55, 9469) |
+| LT-04 | 14.11 Property 25 | done | `CR1 LT-04` on `cr1/laptop` | passes in `run_all.sh` |
+| LT-04 | 14.12 Property 26 | done | `CR1 LT-04` on `cr1/laptop` | passes in `run_all.sh` |
+| LT-04 | 14.13 Property 27 | done | `CR1 LT-04` on `cr1/laptop` | JS part kept (flag R6 still open) |
+| LT-04 | 14.14 Property 28 | done | `CR1 LT-04` on `cr1/laptop` | passes in `run_all.sh` |
+| LT-04 | 14.15 Property 29 | done | `CR1 LT-04` on `cr1/laptop` | passes in `run_all.sh` |
+| LT-04 | 14.16 Property 30 | done | `CR1 LT-04` on `cr1/laptop` | passes in `run_all.sh` |
+| LT-04 | 14.17 presentation unit tests | done | `CR1 LT-04` on `cr1/laptop` | passes in `run_all.sh` |
+| LT-04 | 16.4 Property 16 (event detail text) | done | `CR1 LT-04` on `cr1/laptop` | builders via ctypes + `event_golden.json` (84 hand-written texts, every event and variant) |
 | LT-05 | 18.4 tools publish binary by default | waiting | | needs **S4** (FW-09 merged); merge = sync point **S5** |
 | LT-05 | checkpoint 19, laptop part | waiting | | **needs the car** |
 
@@ -48,6 +49,27 @@ LT-01, LT-02 and LT-03 are coded on `cr1/laptop`, but **their gate can't pass ye
 
 Newest first. One entry per session: date, guide, tool (Claude chat / Kiro + model), commit, gate results (host totals), open issues, what the user must check.
 
+- **2026-11-02, LT-04 (Claude Code, local clone, Sonnet 5.5).** Commit `CR1 LT-04: shared vectors and cross-codec properties` on `cr1/laptop`, on top of the merge of `origin/Wei-En` (S1 and S2 met, `params_table_crc` = 9469).
+  - **Gate: passed.** `rm -rf tests/host/build && PYTHON=<venv python> bash tests/host/run_all.sh --seed 12345`: `properties=533 failed=0 | other tests passed=1200 failed=0`, `Host_Test_Suite: PASSED`; seed 777 also passed. `python3 -m py_compile MQTT/*.py` and `node -e "require('./MQTT/is02_codec.js')"` passed; `make -C tests/host vectors-c` runs the 345 vectors (28 are the reject vectors, status != 0 as intended). Run in WSL (Ubuntu 24.04, Node 18.19, `npm ci` done). WSL had no pip and no `python3-venv`, so a venv without pip was made in `~/is02venv` and pip came from the Ubuntu `python3-pip-whl` package; `tests/host/.venv` in the clone exists but has no pytest, and run_all.sh picks it first, so the gate was started with `PYTHON=~/is02venv/bin/python`. 14.1 to 14.9 and 14.18 are `done`.
+  - **First fix:** `test_codec_basic.py::test_param_table_matches_app_params` now compares names, order, store widths and the CRC with the `wire_dump` JSON (the 16 packed rows no longer match the old `PARAMS[]` row regex). **The limits (min, max) of the parameters are no longer checked against C**: `wire_dump` has no limits. Add them to `wire_dump` (a request below) if the team wants that check back.
+  - **What was added** (all LT-owned; no firmware-track file was touched):
+    - `py/codec_gen.py` (seeded generators for the 7 payload kinds, the `wire_vectors` line of a record, a running `wire_vectors` process), `py/event_ref.py` (the `evt.c` builders through ctypes and the reference formatter, which uses the firmware's own `jb_fixed`), `py/make_vectors.py`, `py/cross_cases.py` (cases for the JS tests).
+    - `vectors/vectors.json` and `vectors.txt` (seed 20261101, committed; `test_vectors_file_is_current` fails when they are stale) and `vectors/event_golden.json` (84 texts from the Baseline_Build `post_event` / `event2` calls, one per event and variant, with the `evt.c` builder calls).
+    - Python: `test_codec_tables.py` (drift guard), `test_codec_cross.py` (P25 to P28), `test_codec_params.py` (P24, P29, P30), `test_codec_events.py` (P16), `test_presentation.py` (14.17). JavaScript: `tables.test.js`, `cross.test.js` (P16, P25 to P28), `params.test.js` (P24, P29, P30), `presentation.test.js`, helper `cross_helper.js`.
+    - Each property prints its `P<n> ... | cases | failed | seed` lines: 1,000 telemetry, heartbeat and ack sets, 100 or more per Event_Code (200 for P16), 1,000 per command code, map and config, 1,000 per kind for P27, 345 shared vectors (+100 random picks in Python). Checked once by hand that the tests can fail: a changed event text and changed field widths in either codec each failed the expected tests.
+  - **How the JavaScript half gets C bytes:** the JS codec cannot call C, so `js/cross_helper.js` runs `py/cross_cases.py --seed <IS02_SEED>` (stdlib only, `$PYTHON` or `python3`), which writes `build/cross/cases_<seed>.json` with bytes from the C Wire_Codec (P25, P27, P16) or bytes from the Python codec that C was shown to decode to the same fields (P26). The Python tests draw their own cases with Hypothesis, so a JS failure is a JS failure. P28 replays the committed vectors in all three.
+  - **Where the guide was unclear, and how it was read:**
+    - **P27 valid payloads:** the bytes are C-encoded frames of generated records (padding 0, codes in range, thresholds consistent: the C telemetry decoder rejects `thr_valid=0` with non-zero thresholds, so generated frames honour that). R6 is open, so the JS part of P27 is implemented.
+    - **P24:** `params_table_crc` takes no list, so C is compared on the real table (via ctypes, 55 and 9469); for random name lists Python and JS are compared with an independent CRC written in the test, and an added, removed or swapped name must change the version.
+    - **P28 reject vectors:** one frame per kind with a wrong version, one byte short, one byte long and zero length; all three decoders must reject them (the guide only requires the laptop codecs for the telemetry-side kinds; C rejects them too).
+    - **P29:** the tool input is `parse_config` / `encodeConfig` (the shared parsing of `robot_params.py` and `is02_tool.py config`); the bad line is reported as (line number, NAME) and nothing is encoded.
+    - **P30:** an Event_Code 45..63, a Reason_Code 28..31 and an ack command code 12..14 come back as the number and are logged. An unknown code in the Command_Frame is not "shown": `decode_fields` refuses it.
+  - **Requests from LT to the firmware track (C-side; not done here):**
+    1. **`SIDE_FOLLOW` near distance:** `tsk_obstacle.c` `side_follow_event()` sends `nr > 0 ? ... : 0` for the `near` field, so the baseline's "no echo" (`near_cm = -1.0f`, printed `near -1.0cm`) arrives as 0 and prints `near 0.0cm`. The codec (and the LT-01 log entry) read 8191 as -1.0. FW should send 8191 when `near_cm < 0` (the golden entry for this is built with `evt_u(8191, 13)`). Behaviour difference on the laptop only, visible only in that event text.
+    2. `app_program/evt.h` comment: the argument lists for `SIDE_FOLLOW`, `OBSTACLE_PROFILE`, `OBST_REVERSE_CAP`, `OBSTACLE_TIE` and `BYPASS_BLOCKED` disagree with design D10 (the call sites follow D10; the comment does not).
+    3. Optional: add each parameter's min and max to `wire_dump` so the limits can be checked against C again.
+  - **Flags:** none applied, all open (R1, R4, R6, R7).
+  - **Must do:** merge `cr1/laptop` into `Poh-Loon` only after checkpoint 15 (car) if the team wants it first; the merge is S3. At that merge add to `PROGRESS_FW.md` "Car checks waiting": "S3 met: FW-08 builds may be flashed". LT-05 waits for S4 (FW-09); the firmware already accepts binary commands only.
 - **2026-11-01, LT-03 (Claude Code, local clone, Opus 5.5).** Commit `CR1 LT-03: tools use the Laptop_Codec (legacy JSON default)` on `cr1/laptop`, on top of `CR1 LT-02`.
   - **Gate: not passed.**
     - `bash tests/host/run_all.sh --seed 12345` was **not run**: it still fails before any test at the host library build (`wire.c` in `tests/host/Makefile`). No firmware-track file was touched. FW-01a repairs it.
