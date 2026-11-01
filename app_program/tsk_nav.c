@@ -22,6 +22,7 @@
 #include "app_params.h"
 #include "app_check.h"
 #include "hal.h"
+#include "perf.h"
 #include "jfmt.h"
 #include "robot_config.h"
 #include "nav_map.h"
@@ -66,6 +67,7 @@ LOCAL void start_run(void)
                EVF_LINE_FOUND | EVF_HUMP_START | EVF_HUMP_END);
     motion_speed_limit(1.0f);
     buzzer_request(BUZZ_START);
+    perf_reset();                             /* APP_PERF: the [perf] counts cover this run */
     (void)sys_set_state(SYS_LINE_FOLLOWING, false);
 }
 

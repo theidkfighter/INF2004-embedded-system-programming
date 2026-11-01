@@ -29,6 +29,7 @@
 #include "app_net.h"
 #include "app_params.h"
 #include "hal.h"
+#include "perf.h"
 #include "jfmt.h"
 #include "robot_config.h"
 #include "nav_map.h"
@@ -256,66 +257,135 @@ LOCAL void estop_ack(void)
 
 /* ------------------------------------------------------------------------ */
 
-LOCAL void frame(void)
+/* Values of a frame that do not come from g_status */
+typedef struct
 {
-    static char s_frame[NET_FRAME_MAX];
-    jbuf_t      jb;
-    char        bc[2] = { g_status.barcode, '\0' };
-    char        side[2] = { g_status.scan_side, '\0' };
+    uint32_t    seq;
+    uint32_t    t_ms;
+    sys_state_t state;
+    uint32_t    ir_min;
+    uint32_t    ir_max;
+    int32_t     rssi;
+    uint32_t    buf;
+} frame_extra_t;
 
-    jb_init(&jb, s_frame, sizeof(s_frame));
-    jb_raw(&jb, "{\"seq\":");      jb_uint(&jb, g_seq++);
-    jb_raw(&jb, ",\"t\":");        jb_uint(&jb, hal_time_ms());
-    jb_raw(&jb, ",\"state\":");    jb_str(&jb, sys_state_name(sys_state()));
-    jb_raw(&jb, ",\"spd\":[");     jb_fixed(&jb, g_status.spd_l, 1u);
-    jb_char(&jb, ',');             jb_fixed(&jb, g_status.spd_r, 1u);
-    jb_raw(&jb, "],\"duty\":[");   jb_fixed(&jb, 100.0f * g_status.duty_l, 1u);
-    jb_char(&jb, ',');             jb_fixed(&jb, 100.0f * g_status.duty_r, 1u);
-    jb_raw(&jb, "],\"enc\":[");    jb_int(&jb, g_status.enc_l);
-    jb_char(&jb, ',');             jb_int(&jb, g_status.enc_r);
-    jb_raw(&jb, "],\"dist\":");    jb_fixed(&jb, g_status.dist_mm, 1u);
-    jb_raw(&jb, ",\"line\":{\"l\":"); jb_int(&jb, g_status.line_l);
-    jb_raw(&jb, ",\"r\":");        jb_int(&jb, g_status.line_r);
-    jb_raw(&jb, ",\"ir\":");       jb_uint(&jb, g_status.ir_adc);
-    {
-        uint32_t mn;
-        uint32_t mx;
+/* Builds one JSON telemetry frame from p_s (g_status, or a fixed copy for
+   the APP_PERF benchmark) and p_x into p_jb. */
+LOCAL void frame_build(jbuf_t *p_jb, const robot_status_t *p_s, const frame_extra_t *p_x)
+{
+    char bc[2] = { p_s->barcode, '\0' };
+    char side[2] = { p_s->scan_side, '\0' };
 
-        hal_ir_adc_range(&mn, &mx);           /* barcode sensor range over the last 0.5 s */
-        jb_raw(&jb, ",\"irmn\":");  jb_uint(&jb, mn);
-        jb_raw(&jb, ",\"irmx\":");  jb_uint(&jb, mx);
-        jb_raw(&jb, ",\"thr\":[");  jb_uint(&jb, (g_status.bc_enabled != 0u) ? g_status.bc_thr_black : 0u);
-        jb_char(&jb, ',');           jb_uint(&jb, (g_status.bc_enabled != 0u) ? g_status.bc_thr_white : 0u);
-        jb_char(&jb, ']');           /* [black, white] switch levels; [0,0] = sampling off */
-    }
-    jb_raw(&jb, "},\"bc\":");      jb_str(&jb, bc);
-    jb_raw(&jb, ",\"hump\":{\"pitch\":"); jb_fixed(&jb, g_status.pitch_deg, 1u);
-    jb_raw(&jb, ",\"h\":");        jb_fixed(&jb, g_status.hump_mm, 1u);
-    jb_raw(&jb, ",\"peak\":");     jb_fixed(&jb, g_status.hump_peak_mm, 1u);
-    jb_raw(&jb, ",\"max\":");      jb_fixed(&jb, g_status.hump_max_mm, 1u);
-    jb_raw(&jb, "},\"obst\":{\"cm\":"); jb_fixed(&jb, g_status.obst_cm, 1u);
-    jb_raw(&jb, ",\"scan\":[");
+    jb_raw(p_jb, "{\"seq\":");      jb_uint(p_jb, p_x->seq);
+    jb_raw(p_jb, ",\"t\":");        jb_uint(p_jb, p_x->t_ms);
+    jb_raw(p_jb, ",\"state\":");    jb_str(p_jb, sys_state_name(p_x->state));
+    jb_raw(p_jb, ",\"spd\":[");     jb_fixed(p_jb, p_s->spd_l, 1u);
+    jb_char(p_jb, ',');             jb_fixed(p_jb, p_s->spd_r, 1u);
+    jb_raw(p_jb, "],\"duty\":[");   jb_fixed(p_jb, 100.0f * p_s->duty_l, 1u);
+    jb_char(p_jb, ',');             jb_fixed(p_jb, 100.0f * p_s->duty_r, 1u);
+    jb_raw(p_jb, "],\"enc\":[");    jb_int(p_jb, p_s->enc_l);
+    jb_char(p_jb, ',');             jb_int(p_jb, p_s->enc_r);
+    jb_raw(p_jb, "],\"dist\":");    jb_fixed(p_jb, p_s->dist_mm, 1u);
+    jb_raw(p_jb, ",\"line\":{\"l\":"); jb_int(p_jb, p_s->line_l);
+    jb_raw(p_jb, ",\"r\":");        jb_int(p_jb, p_s->line_r);
+    jb_raw(p_jb, ",\"ir\":");       jb_uint(p_jb, p_s->ir_adc);
+    jb_raw(p_jb, ",\"irmn\":");     jb_uint(p_jb, p_x->ir_min);
+    jb_raw(p_jb, ",\"irmx\":");     jb_uint(p_jb, p_x->ir_max);
+    jb_raw(p_jb, ",\"thr\":[");     jb_uint(p_jb, (p_s->bc_enabled != 0u) ? p_s->bc_thr_black : 0u);
+    jb_char(p_jb, ',');             jb_uint(p_jb, (p_s->bc_enabled != 0u) ? p_s->bc_thr_white : 0u);
+    jb_char(p_jb, ']');             /* [black, white] switch levels; [0,0] = sampling off */
+    jb_raw(p_jb, "},\"bc\":");      jb_str(p_jb, bc);
+    jb_raw(p_jb, ",\"hump\":{\"pitch\":"); jb_fixed(p_jb, p_s->pitch_deg, 1u);
+    jb_raw(p_jb, ",\"h\":");        jb_fixed(p_jb, p_s->hump_mm, 1u);
+    jb_raw(p_jb, ",\"peak\":");     jb_fixed(p_jb, p_s->hump_peak_mm, 1u);
+    jb_raw(p_jb, ",\"max\":");      jb_fixed(p_jb, p_s->hump_max_mm, 1u);
+    jb_raw(p_jb, "},\"obst\":{\"cm\":"); jb_fixed(p_jb, p_s->obst_cm, 1u);
+    jb_raw(p_jb, ",\"scan\":[");
     for (uint32_t i = 0u; i < 5u; i++)
     {
         if (i > 0u)
         {
-            jb_char(&jb, ',');
+            jb_char(p_jb, ',');
         }
-        jb_fixed(&jb, g_status.scan_cm[i], 1u);
+        jb_fixed(p_jb, p_s->scan_cm[i], 1u);
     }
-    jb_raw(&jb, "],\"side\":");    jb_str(&jb, side);
-    jb_raw(&jb, "},\"imu\":{\"ev\":"); jb_str(&jb, motion_event_name((motion_event_t)g_status.motion_event));
-    jb_raw(&jb, ",\"tr\":");       jb_fixed(&jb, g_status.turn_rate_dps, 1u);
-    jb_raw(&jb, "},\"faults\":");  jb_uint(&jb, g_status.faults);
-    jb_raw(&jb, ",\"vbat\":");     jb_uint(&jb, g_status.vbat_mv);
-    jb_raw(&jb, ",\"rssi\":");     jb_int(&jb, net_rssi());
-    jb_raw(&jb, ",\"buf\":");      jb_uint(&jb, net_frames_waiting());
-    jb_char(&jb, '}');
+    jb_raw(p_jb, "],\"side\":");    jb_str(p_jb, side);
+    jb_raw(p_jb, "},\"imu\":{\"ev\":"); jb_str(p_jb, motion_event_name((motion_event_t)p_s->motion_event));
+    jb_raw(p_jb, ",\"tr\":");       jb_fixed(p_jb, p_s->turn_rate_dps, 1u);
+    jb_raw(p_jb, "},\"faults\":");  jb_uint(p_jb, p_s->faults);
+    jb_raw(p_jb, ",\"vbat\":");     jb_uint(p_jb, p_s->vbat_mv);
+    jb_raw(p_jb, ",\"rssi\":");     jb_int(p_jb, p_x->rssi);
+    jb_raw(p_jb, ",\"buf\":");      jb_uint(p_jb, p_x->buf);
+    jb_char(p_jb, '}');
+}
+
+LOCAL void frame(void)
+{
+    static char   s_frame[NET_FRAME_MAX];
+    jbuf_t        jb;
+    frame_extra_t x;
+    PERF_BEGIN(t_perf);                       /* PERF_TLM_ENCODE: snapshot read to complete payload */
+
+    x.seq   = g_seq++;
+    x.t_ms  = hal_time_ms();
+    x.state = sys_state();
+    hal_ir_adc_range(&x.ir_min, &x.ir_max);   /* barcode sensor range over the last 0.5 s */
+    x.rssi  = net_rssi();
+    x.buf   = net_frames_waiting();
+    jb_init(&jb, s_frame, sizeof(s_frame));
+    frame_build(&jb, &g_status, &x);
+    PERF_END(PERF_TLM_ENCODE, t_perf, PERF_NO_LIMIT);
     if (!jb.b_overflow)
     {
         (void)net_post_frame(s_frame, jb_len(&jb));
     }
 }
+
+#if APP_PERF
+#define TLM_BENCH_AT_MS  (10000u)
+#define TLM_BENCH_N      (1000u)
+
+/* Requirement 20.4 benchmark: TLM_BENCH_N builds of one fixed snapshot into
+   a scratch buffer (nothing is published), each timed on its own. */
+LOCAL void tlm_bench(void)
+{
+    static robot_status_t s_snap;
+    static char           s_scratch[NET_FRAME_MAX];
+    frame_extra_t         x;
+    jbuf_t                jb;
+    uint32_t              max_us = 0u;
+    uint32_t              sum_us = 0u;
+    char                  line[80];
+
+    s_snap   = g_status;
+    x.seq    = g_seq;
+    x.t_ms   = hal_time_ms();
+    x.state  = sys_state();
+    x.ir_min = s_snap.ir_adc;                 /* hal_ir_adc_range() would reset the live range */
+    x.ir_max = s_snap.ir_adc;
+    x.rssi   = net_rssi();
+    x.buf    = net_frames_waiting();
+    for (uint32_t i = 0u; i < TLM_BENCH_N; i++)
+    {
+        uint32_t t0 = hal_time_us32();
+        uint32_t us;
+
+        jb_init(&jb, s_scratch, sizeof(s_scratch));
+        frame_build(&jb, &s_snap, &x);
+        us = hal_time_us32() - t0;
+        max_us = (us > max_us) ? us : max_us;
+        sum_us += us;
+    }
+    jb_init(&jb, line, sizeof(line));
+    jb_raw(&jb, "[perf] tlm_bench n=");
+    jb_uint(&jb, TLM_BENCH_N);
+    jb_raw(&jb, " max=");
+    jb_uint(&jb, max_us);
+    jb_raw(&jb, " avg=");
+    jb_fixed(&jb, (float)sum_us / (float)TLM_BENCH_N, 1u);
+    log_line(line);
+}
+#endif /* APP_PERF */
 
 LOCAL void heartbeat(void)
 {
@@ -455,6 +525,7 @@ LOCAL void console_status(void)
         jb_raw(&jb, g_stop_reason);
     }
     log_line(line);
+    perf_report();                            /* APP_PERF: one [perf] line per probe */
 }
 
 void tsk_telemetry(INT stacd, void *exinf)
@@ -463,6 +534,9 @@ void tsk_telemetry(INT stacd, void *exinf)
     uint32_t t_hb = t_frame;
     uint32_t t_console = t_frame;
     bool     b_blink = false;
+#if APP_PERF
+    bool     b_bench_done = false;
+#endif
 
     (void)stacd;
     (void)exinf;
@@ -533,5 +607,12 @@ void tsk_telemetry(INT stacd, void *exinf)
             t_console = now;
             console_status();
         }
+#if APP_PERF
+        if (!b_bench_done && (now >= TLM_BENCH_AT_MS) && (sys_state() == SYS_IDLE))
+        {
+            b_bench_done = true;              /* once, 10 s after boot, while IDLE */
+            tlm_bench();
+        }
+#endif
     }
 }

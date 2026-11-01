@@ -1,0 +1,16 @@
+{
+  "name": "is02-host-tests",
+  "version": "1.0.0",
+  "private": true,
+  "description": "IS-02 Host_Test_Suite: fast-check property tests for MQTT/is02_codec.js",
+  "type": "commonjs",
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "fast-check": "^3.23.2"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -13,11 +13,14 @@
 #include "hardware/adc.h"
 #include "hardware/pio.h"
 #include "hardware/resets.h"
+#include "hardware/sync.h"
 #include "hardware/structs/timer.h"
 #include "hardware/structs/watchdog.h"
 
+#include "crit.h"
 #include "hal.h"
 #include "hal_internal.h"
+#include "perf.h"
 #include "pins.h"
 #include "robot_config.h"
 
@@ -66,9 +69,60 @@ uint64_t hal_time_us(void)
     return ((uint64_t)hi0 << 32) | lo;
 }
 
+/* One timerawl read: differences of two values are correct across a wrap
+   for intervals below 71 minutes (used by the perf.h timing probes). */
+uint32_t hal_time_us32(void)
+{
+    return timer_hw->timerawl;
+}
+
 uint32_t hal_time_ms(void)
 {
     return (uint32_t)(hal_time_us() / 1000u);
+}
+
+/* ------------------------------------------------------------------------ */
+/* Critical_Section with interrupts masked (crit.h)                          */
+/* ------------------------------------------------------------------------ */
+
+#if APP_PERF
+/* Nesting depth and start of the outermost open section. Both are read and
+   written only while interrupts are masked, and a handler that opens a
+   section closes it before it returns, so no other context sees a partial
+   update. Only the outermost section is timed: nested sections are part of
+   its length. */
+static uint32_t g_cs_irq_depth;
+static uint32_t g_cs_irq_t0;
+#endif
+
+uint32_t crit_irq_enter(void)
+{
+    uint32_t saved = save_and_disable_interrupts();
+
+#if APP_PERF
+    if (g_cs_irq_depth == 0u)
+    {
+        g_cs_irq_t0 = hal_time_us32();
+    }
+    g_cs_irq_depth++;
+#endif
+    return saved;
+}
+
+void crit_irq_exit(uint32_t saved)
+{
+#if APP_PERF
+    if (g_cs_irq_depth > 0u)
+    {
+        g_cs_irq_depth--;
+        if (g_cs_irq_depth == 0u)
+        {
+            /* probe recorded while interrupts are still masked (perf.h) */
+            PERF_END(PERF_CS_IRQ, g_cs_irq_t0, PERF_LIMIT_CS_US);
+        }
+    }
+#endif
+    restore_interrupts(saved);
 }
 
 static void pwm_pin(uint32_t pin, uint32_t wrap, float clkdiv)

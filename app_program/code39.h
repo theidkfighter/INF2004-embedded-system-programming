@@ -25,4 +25,20 @@ char code39_char(const uint32_t *p_w9);
 bool code39_decode(const uint32_t *p_w, const bool *p_is_bar, uint32_t n,
                    char *p_out, size_t out_len, bool *p_reversed);
 
+/* 6-bit Code 39 index (Requirement 5.3), in the Data_Representation_Table
+   order: '0'..'9' = 0..9, 'A'..'Z' = 10..35, '-' = 36, '.' = 37, ' ' = 38,
+   '$' = 39, '/' = 40, '+' = 41, '%' = 42. C39_NONE (63) means "none".
+   Codes 43..62 are never stored. */
+#define C39_COUNT   43u     /* data characters, indices 0..42 */
+#define C39_NONE    63u     /* "none" */
+
+/* Index of c (0..42), or C39_NONE for any other character, including 0 and
+   the start/stop character '*'. */
+uint32_t c39_to_index(char c);
+
+/* Character for index idx (0..42). Returns 0 for C39_NONE and also for the
+   never-stored codes 43..62 and anything larger, so a corrupt index reads
+   back as "none". */
+char c39_from_index(uint32_t idx);
+
 #endif /* CODE39_H */

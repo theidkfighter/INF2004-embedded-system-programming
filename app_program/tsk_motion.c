@@ -22,6 +22,7 @@
 #include "speed_ctl.h"
 #include "app_params.h"
 #include "hal.h"
+#include "perf.h"
 #include "robot_config.h"
 
 #define LINE_STALE_MS     (100u)
@@ -61,9 +62,12 @@ LOCAL uint16_t new_id(void)
 {
     uint16_t id;
 
+    PERF_BEGIN(t_cs);
+
     (void)tk_dis_dsp();
     id = g_next_id;
     g_next_id = (uint16_t)((g_next_id == 0xFFFFu) ? 1u : (g_next_id + 1u));
+    PERF_END(PERF_CS_DSP, t_cs, PERF_LIMIT_CS_US);
     (void)tk_ena_dsp();
     return id;
 }
@@ -374,6 +378,7 @@ void tsk_motion(INT stacd, void *exinf)
         uint32_t   now;
         bool       b_stop;
 
+        PERF_CYCLE_END(PERF_TSK_MOTION, PERF_LIMIT_20MS_US);   /* end of the previous cycle */
         (void)tk_slp_tsk(TMO_FEVR);          /* released every 20 ms by the cyclic tick */
         g_hb[HB_MOTION]++;
 

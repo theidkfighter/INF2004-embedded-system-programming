@@ -24,6 +24,7 @@
 #include "app_check.h"
 #include "app_params.h"
 #include "hal.h"
+#include "perf.h"
 #include "jfmt.h"
 #include "robot_config.h"
 
@@ -242,6 +243,7 @@ void tsk_safety(INT stacd, void *exinf)
         bool        b_btn1 = false;
         bool        b_btn2 = false;
 
+        PERF_CYCLE_END(PERF_TSK_SAFETY, PERF_LIMIT_10MS_US);   /* end of the previous cycle */
         (void)tk_slp_tsk(TMO_FEVR);          /* every 10 ms, or at once on a hazard */
         st = sys_state();
         f  = flag_peek();

@@ -4,3 +4,4 @@
 **/*.d
 **/*.o
 tools/elf2uf2
+build_check*.log

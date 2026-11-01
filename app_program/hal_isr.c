@@ -19,6 +19,7 @@
 
 #include "hal.h"
 #include "hal_internal.h"
+#include "perf.h"
 #include "pins.h"
 #include "robot_config.h"
 
@@ -136,6 +137,7 @@ static uint32_t pin_events(const uint32_t *p_ints, uint32_t pin)
 
 void hal_gpio_isr(uint32_t intno)
 {
+    PERF_BEGIN(t_perf);
     uint32_t ints[4];
 
     (void)intno;
@@ -178,6 +180,7 @@ void hal_gpio_isr(uint32_t intno)
             gp_int1_cb();
         }
     }
+    PERF_END(PERF_ISR_GPIO, t_perf, PERF_NO_LIMIT);
 }
 
 int32_t hal_enc_count(uint32_t wheel)
@@ -241,6 +244,7 @@ void hal_barcode_config(uint32_t thr_black, uint32_t thr_white, bool b_black_hig
 
 void hal_timer_isr(uint32_t intno)
 {
+    PERF_BEGIN(t_perf);
     uint32_t v;
 
     (void)intno;
@@ -323,6 +327,7 @@ void hal_timer_isr(uint32_t intno)
         adc_select_input(ADC_CH_IR);
     }
 #endif
+    PERF_END(PERF_ISR_TIMER, t_perf, PERF_NO_LIMIT);
 }
 
 bool hal_barcode_pop(hal_bc_edge_t *p_edge)

@@ -24,6 +24,7 @@
 #include "imu_logic.h"
 #include "app_params.h"
 #include "hal.h"
+#include "perf.h"
 #include "jfmt.h"
 #include "robot_config.h"
 
@@ -113,6 +114,7 @@ void tsk_imu(INT stacd, void *exinf)
         sys_state_t st;
         hump_out_t  ho;
 
+        PERF_CYCLE_END(PERF_TSK_IMU, PERF_LIMIT_20MS_US);      /* end of the previous cycle (also after "continue") */
         (void)tk_slp_tsk(TMO_FEVR);          /* released every 20 ms by the cyclic tick */
         g_hb[HB_IMU]++;
         st = sys_state();

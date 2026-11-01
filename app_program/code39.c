@@ -140,6 +140,27 @@ char code39_char(const uint32_t *p_w9)
     return 0;
 }
 
+/* Index order of the Data_Representation_Table (Requirement 5.3). */
+static const char C39_CHARS[C39_COUNT + 1u] =
+    "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-. $/+%";
+
+uint32_t c39_to_index(char c)
+{
+    for (uint32_t i = 0u; i < C39_COUNT; i++)
+    {
+        if (C39_CHARS[i] == c)
+        {
+            return i;
+        }
+    }
+    return C39_NONE;
+}
+
+char c39_from_index(uint32_t idx)
+{
+    return (idx < C39_COUNT) ? C39_CHARS[idx] : (char)0;
+}
+
 static bool decode_one_way(const uint32_t *p_w, const bool *p_is_bar, uint32_t n,
                            char *p_out, size_t out_len)
 {

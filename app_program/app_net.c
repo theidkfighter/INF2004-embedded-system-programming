@@ -14,6 +14,7 @@
 
 #include "app_net.h"
 #include "hal.h"
+#include "perf.h"
 #include "mqtt_config.h"
 #include "wifi_credentials.h"
 
@@ -92,6 +93,7 @@ bool net_post_frame(const char *p_json, uint32_t len)
     {
         return false;
     }
+    PERF_BEGIN(t_cs);
     irq = save_and_disable_interrupts();
     if ((g_f_head - g_f_tail) >= NET_FRAME_SLOTS)
     {
@@ -102,6 +104,7 @@ bool net_post_frame(const char *p_json, uint32_t len)
     memcpy(g_frames[slot].data, p_json, len);
     g_frames[slot].len = (uint16_t)len;
     g_f_head++;
+    PERF_END(PERF_CS_IRQ, t_cs, PERF_LIMIT_CS_US);
     restore_interrupts(irq);
     return true;
 }
@@ -116,6 +119,7 @@ bool net_post(net_topic_t topic, const char *p_json)
     {
         return false;
     }
+    PERF_BEGIN(t_cs);
     irq = save_and_disable_interrupts();
     if ((g_m_head - g_m_tail) >= NET_MSG_SLOTS)
     {
@@ -126,6 +130,7 @@ bool net_post(net_topic_t topic, const char *p_json)
     g_msgs[slot].len   = (uint16_t)len;
     g_msgs[slot].topic = (uint8_t)topic;
     g_m_head++;
+    PERF_END(PERF_CS_IRQ, t_cs, PERF_LIMIT_CS_US);
     restore_interrupts(irq);
     return true;
 }
@@ -426,6 +431,7 @@ static void flush(void)
     while ((sent < PUBLISH_PER_POLL) && (g_f_tail != g_f_head))
     {
         frame_slot_t *p;
+        PERF_BEGIN(t_cs);
         uint32_t      irq = save_and_disable_interrupts();
         uint16_t      len;
 
@@ -433,6 +439,7 @@ static void flush(void)
         p   = &g_frames[g_f_tail % NET_FRAME_SLOTS];
         len = p->len;
         memcpy(g_tx_frame, p->data, len);
+        PERF_END(PERF_CS_IRQ, t_cs, PERF_LIMIT_CS_US);
         restore_interrupts(irq);
 
         if (mqtt_publish(gp_client, NET_TOPIC_TELEMETRY, g_tx_frame, len, 0u, 0u,
@@ -440,11 +447,13 @@ static void flush(void)
         {
             return;
         }
+        PERF_BEGIN(t_cs2);
         irq = save_and_disable_interrupts();
         if ((g_f_head - g_f_tail) > 0u)
         {
             g_f_tail++;
         }
+        PERF_END(PERF_CS_IRQ, t_cs2, PERF_LIMIT_CS_US);
         restore_interrupts(irq);
         sent++;
     }

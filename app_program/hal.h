@@ -25,6 +25,7 @@ void     hal_timer_isr(uint32_t intno);          /* registered with tk_def_int()
 void     hal_set_int1_callback(void (*p_cb)(void));   /* called from the GPIO ISR */
 
 uint64_t hal_time_us(void);
+uint32_t hal_time_us32(void);                    /* low 32 bits of the us timer (one read, wraps every 71 min) */
 uint32_t hal_time_ms(void);
 
 /* ---- motors (Robo Pico driver): motor 1 = right wheel, motor 2 = left ---- */

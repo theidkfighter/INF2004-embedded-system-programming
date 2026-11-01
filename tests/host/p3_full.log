@@ -1,0 +1,996 @@
+== Host_Test_Suite (seed=12345) ==
+
+== Host_Test_Suite summary ==
+P1 Continuous stores round to the nearest step | frame.event.BC_DBG.width | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.event.BC_DBG.width | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.event.BC_DBG.width | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.event.CM13 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.event.CM13 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.event.CM13 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.event.CM9 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.event.CM9 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.event.CM9 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.event.HUMP.h | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.event.HUMP.h | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.event.HUMP.h | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.event.HUMP.max | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.event.HUMP.max | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.event.HUMP.max | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.event.MISSION_COMPLETE.dist | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.event.MISSION_COMPLETE.dist | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.event.MISSION_COMPLETE.dist | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.event.MISSION_COMPLETE.max | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.event.MISSION_COMPLETE.max | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.event.MISSION_COMPLETE.max | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.event.OBSTACLE.cm | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.event.OBSTACLE.cm | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.event.OBSTACLE.cm | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.event.SIDE_FOLLOW.limit | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.event.SIDE_FOLLOW.limit | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.event.SIDE_FOLLOW.limit | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.event.SIDE_FOLLOW.near | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.event.SIDE_FOLLOW.near | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.event.SIDE_FOLLOW.near | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.dist | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.dist | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.dist | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.duty_l | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.duty_l | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.duty_l | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.duty_r | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.duty_r | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.duty_r | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.hump_h | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.hump_h | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.hump_h | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.hump_max | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.hump_max | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.hump_max | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.hump_peak | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.hump_peak | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.hump_peak | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.obst_cm | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.obst_cm | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.obst_cm | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.pitch | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.pitch | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.pitch | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.scan0 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.scan0 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.scan0 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.scan1 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.scan1 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.scan1 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.scan2 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.scan2 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.scan2 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.scan3 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.scan3 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.scan3 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.scan4 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.scan4 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.scan4 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.spd_l | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.spd_l | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.spd_l | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.spd_r | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.spd_r | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.spd_r | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.turn_dps | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.turn_dps | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.turn_dps | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.motion.MC_BYPASS.dist | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.motion.MC_BYPASS.dist | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.motion.MC_BYPASS.dist | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.motion.MC_BYPASS.speed | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.motion.MC_BYPASS.speed | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.motion.MC_BYPASS.speed | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.motion.MC_BYPASS.timeout_ms | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.motion.MC_BYPASS.timeout_ms | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.motion.MC_BYPASS.timeout_ms | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.motion.MC_LINE.left | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.motion.MC_LINE.left | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.motion.MC_LINE.left | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.motion.MC_LINE.right | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.motion.MC_LINE.right | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.motion.MC_LINE.right | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.motion.MC_SPEED_LIMIT.scale | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.motion.MC_SPEED_LIMIT.scale | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.motion.MC_SPEED_LIMIT.scale | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.motion.MC_TURN.speed | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.motion.MC_TURN.speed | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.motion.MC_TURN.speed | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.motion.MC_TURN.timeout_ms | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.motion.MC_TURN.timeout_ms | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.motion.MC_TURN.timeout_ms | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.motion.MC_TURN.turn_deg | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.motion.MC_TURN.turn_deg | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.motion.MC_TURN.turn_deg | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.clear_left | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.clear_left | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.clear_left | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.clear_right | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.clear_right | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.clear_right | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.offset | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.offset | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.offset | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.r_min | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.r_min | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.r_min | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.scan0 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.scan0 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.scan0 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.scan1 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.scan1 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.scan1 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.scan2 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.scan2 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.scan2 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.scan3 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.scan3 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.scan3 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.scan4 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.scan4 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.scan4 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.theta_l | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.theta_l | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.theta_l | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.theta_r | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.theta_r | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.theta_r | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.width | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.width | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.width | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.x_l | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.x_l | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.x_l | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.x_r | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.x_r | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.x_r | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | odo.a_fwd_g | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | odo.a_fwd_g | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | odo.a_fwd_g | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | odo.dist_mm | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | odo.dist_mm | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | odo.dist_mm | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | odo.heading_deg | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | odo.heading_deg | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | odo.heading_deg | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | odo.turn_dps | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | odo.turn_dps | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | odo.turn_dps | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | odo.v_mm_s | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | odo.v_mm_s | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | odo.v_mm_s | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.imu_a.hump_h | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.imu_a.hump_h | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.imu_a.pitch | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.imu_a.pitch | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.imu_b.hump_max | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.imu_b.hump_max | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.imu_b.hump_max | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.imu_b.hump_peak | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.imu_b.hump_peak | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.imu_c.turn_dps | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.imu_c.turn_dps | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.imu_c.turn_dps | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.mot_a.spd_l | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.mot_a.spd_r | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.mot_b.duty_l | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.mot_b.duty_r | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.mot_b.speed_scale | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.mot_e.dist_mm | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.obs_a.obst_cm | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.obs_a.obst_cm | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.obs_a.obst_cm | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.obs_a.scan0 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.obs_a.scan0 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.obs_a.scan0 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.obs_b.scan1 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.obs_b.scan1 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.obs_b.scan1 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.obs_b.scan2 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.obs_b.scan2 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.obs_b.scan2 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.obs_c.scan3 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.obs_c.scan3 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.obs_c.scan3 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.obs_c.scan4 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.obs_c.scan4 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.obs_c.scan4 | cases=200 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.BC_DBG.width | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.BC_DBG.width | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.BC_DBG.width | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.BC_DBG.width | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.BC_DBG.width | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.BC_DBG.width | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.BC_DBG.width | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.BC_DBG.width | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.BC_DBG.width | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.CM13 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.CM13 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.CM13 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.CM13 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.CM13 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.CM13 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.CM13 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.CM13 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.CM13 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.CM9 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.CM9 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.CM9 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.CM9 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.CM9 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.CM9 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.CM9 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.CM9 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.CM9 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.HUMP.h | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.HUMP.h | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.HUMP.h | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.HUMP.h | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.HUMP.h | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.HUMP.h | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.HUMP.h | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.HUMP.h | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.HUMP.h | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.HUMP.max | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.HUMP.max | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.HUMP.max | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.HUMP.max | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.HUMP.max | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.HUMP.max | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.HUMP.max | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.HUMP.max | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.HUMP.max | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.MISSION_COMPLETE.dist | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.MISSION_COMPLETE.dist | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.MISSION_COMPLETE.dist | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.MISSION_COMPLETE.dist | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.MISSION_COMPLETE.dist | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.MISSION_COMPLETE.dist | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.MISSION_COMPLETE.dist | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.MISSION_COMPLETE.dist | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.MISSION_COMPLETE.dist | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.MISSION_COMPLETE.max | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.MISSION_COMPLETE.max | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.MISSION_COMPLETE.max | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.MISSION_COMPLETE.max | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.MISSION_COMPLETE.max | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.MISSION_COMPLETE.max | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.MISSION_COMPLETE.max | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.MISSION_COMPLETE.max | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.MISSION_COMPLETE.max | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.OBSTACLE.cm | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.OBSTACLE.cm | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.OBSTACLE.cm | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.OBSTACLE.cm | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.OBSTACLE.cm | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.OBSTACLE.cm | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.OBSTACLE.cm | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.OBSTACLE.cm | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.OBSTACLE.cm | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.SIDE_FOLLOW.limit | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.SIDE_FOLLOW.limit | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.SIDE_FOLLOW.limit | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.SIDE_FOLLOW.limit | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.SIDE_FOLLOW.limit | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.SIDE_FOLLOW.limit | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.SIDE_FOLLOW.limit | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.SIDE_FOLLOW.limit | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.SIDE_FOLLOW.limit | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.SIDE_FOLLOW.near | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.SIDE_FOLLOW.near | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.SIDE_FOLLOW.near | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.SIDE_FOLLOW.near | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.SIDE_FOLLOW.near | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.SIDE_FOLLOW.near | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.SIDE_FOLLOW.near | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.SIDE_FOLLOW.near | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.SIDE_FOLLOW.near | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.dist | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.dist | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.dist | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.dist | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.dist | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.dist | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.dist | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.dist | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.dist | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.dist | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.dist | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.duty_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.duty_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.duty_l | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.duty_l | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.duty_l | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.duty_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.duty_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.duty_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.duty_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.duty_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.duty_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.duty_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.duty_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.duty_r | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.duty_r | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.duty_r | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.duty_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.duty_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.duty_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.duty_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.duty_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.duty_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.hump_h | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.hump_h | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.hump_h | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.hump_h | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.hump_h | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.hump_h | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.hump_h | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.hump_h | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.hump_h | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.hump_h | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.hump_h | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.hump_max | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.hump_max | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.hump_max | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.hump_max | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.hump_max | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.hump_max | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.hump_max | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.hump_max | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.hump_max | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.hump_max | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.hump_peak | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.hump_peak | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.hump_peak | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.hump_peak | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.hump_peak | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.hump_peak | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.hump_peak | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.hump_peak | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.hump_peak | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.hump_peak | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.obst_cm | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.obst_cm | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.obst_cm | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.obst_cm | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.obst_cm | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.obst_cm | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.obst_cm | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.obst_cm | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.obst_cm | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.obst_cm | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.pitch | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.pitch | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.pitch | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.pitch | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.pitch | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.pitch | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.pitch | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.pitch | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.pitch | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.pitch | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.pitch | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan0 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan0 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan0 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan0 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan0 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan0 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan0 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan0 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan0 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan1 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan1 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan1 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan1 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan1 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan1 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan1 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan1 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan1 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan2 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan2 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan2 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan2 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan2 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan2 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan2 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan2 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan3 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan3 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan3 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan3 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan3 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan3 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan3 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan3 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan3 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan4 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan4 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan4 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan4 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan4 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan4 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan4 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan4 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan4 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.spd_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.spd_l | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.spd_l | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.spd_l | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.spd_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.spd_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.spd_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.spd_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.spd_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.spd_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.spd_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.spd_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.spd_r | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.spd_r | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.spd_r | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.spd_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.spd_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.spd_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.spd_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.spd_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.spd_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.turn_dps | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.turn_dps | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.turn_dps | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.turn_dps | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.turn_dps | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.turn_dps | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.turn_dps | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.turn_dps | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.turn_dps | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | g_sat_count | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | g_sat_count | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | g_sat_count | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_BYPASS.dist | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_BYPASS.dist | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_BYPASS.dist | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_BYPASS.dist | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_BYPASS.dist | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_BYPASS.dist | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_BYPASS.dist | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_BYPASS.dist | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_BYPASS.dist | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_BYPASS.speed | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_BYPASS.speed | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_BYPASS.speed | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_BYPASS.speed | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_BYPASS.speed | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_BYPASS.speed | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_BYPASS.speed | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_BYPASS.speed | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_BYPASS.speed | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_BYPASS.timeout_ms | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_BYPASS.timeout_ms | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_BYPASS.timeout_ms | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_BYPASS.timeout_ms | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_BYPASS.timeout_ms | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_BYPASS.timeout_ms | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_BYPASS.timeout_ms | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_BYPASS.timeout_ms | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_BYPASS.timeout_ms | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_LINE.left | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_LINE.left | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_LINE.left | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_LINE.left | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_LINE.left | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_LINE.left | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_LINE.left | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_LINE.left | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_LINE.left | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_LINE.right | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_LINE.right | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_LINE.right | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_LINE.right | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_LINE.right | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_LINE.right | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_LINE.right | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_LINE.right | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_LINE.right | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_SPEED_LIMIT.scale | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_SPEED_LIMIT.scale | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_SPEED_LIMIT.scale | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_SPEED_LIMIT.scale | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_SPEED_LIMIT.scale | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_SPEED_LIMIT.scale | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_SPEED_LIMIT.scale | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_SPEED_LIMIT.scale | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_SPEED_LIMIT.scale | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_TURN.speed | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_TURN.speed | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_TURN.speed | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_TURN.speed | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_TURN.speed | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_TURN.speed | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_TURN.speed | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_TURN.speed | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_TURN.speed | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_TURN.timeout_ms | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_TURN.timeout_ms | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_TURN.timeout_ms | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_TURN.timeout_ms | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_TURN.timeout_ms | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_TURN.timeout_ms | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_TURN.timeout_ms | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_TURN.timeout_ms | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_TURN.timeout_ms | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_TURN.turn_deg | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_TURN.turn_deg | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_TURN.turn_deg | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_TURN.turn_deg | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_TURN.turn_deg | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_TURN.turn_deg | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_TURN.turn_deg | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_TURN.turn_deg | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_TURN.turn_deg | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.clear_left | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.clear_left | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.clear_left | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.clear_left | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.clear_left | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.clear_left | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.clear_left | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.clear_left | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.clear_left | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.clear_right | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.clear_right | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.clear_right | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.clear_right | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.clear_right | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.clear_right | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.clear_right | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.clear_right | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.clear_right | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.offset | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.offset | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.offset | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.offset | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.offset | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.offset | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.offset | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.offset | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.offset | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.r_min | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.r_min | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.r_min | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.r_min | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.r_min | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.r_min | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.r_min | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.r_min | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.r_min | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan0 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan0 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan0 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan0 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan0 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan0 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan0 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan0 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan0 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan1 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan1 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan1 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan1 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan1 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan1 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan1 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan1 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan1 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan2 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan2 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan2 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan2 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan2 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan2 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan2 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan2 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan2 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan3 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan3 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan3 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan3 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan3 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan3 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan3 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan3 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan3 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan4 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan4 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan4 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan4 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan4 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan4 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan4 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan4 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan4 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan4 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.theta_l | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.theta_l | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.theta_l | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.theta_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.theta_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.theta_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.theta_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.theta_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.theta_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.theta_r | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.theta_r | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.theta_r | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.theta_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.theta_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.theta_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.theta_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.theta_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.theta_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.width | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.width | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.width | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.width | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.width | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.width | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.width | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.width | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.width | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.x_l | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.x_l | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.x_l | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.x_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.x_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.x_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.x_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.x_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.x_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.x_r | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.x_r | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.x_r | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.x_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.x_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.x_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.x_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.x_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.x_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.a_fwd_g | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.a_fwd_g | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.a_fwd_g | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.a_fwd_g | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.a_fwd_g | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.a_fwd_g | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.a_fwd_g | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.a_fwd_g | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.a_fwd_g | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.dist_mm | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.dist_mm | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.dist_mm | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.dist_mm | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.dist_mm | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.dist_mm | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.dist_mm | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.dist_mm | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.dist_mm | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.heading_deg | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.heading_deg | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.heading_deg | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.heading_deg | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.heading_deg | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.heading_deg | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.heading_deg | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.heading_deg | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.heading_deg | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.turn_dps | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.turn_dps | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.turn_dps | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.turn_dps | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.turn_dps | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.turn_dps | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.turn_dps | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.turn_dps | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.turn_dps | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.v_mm_s | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.v_mm_s | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.v_mm_s | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.v_mm_s | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.v_mm_s | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.v_mm_s | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.v_mm_s | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.v_mm_s | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.v_mm_s | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_a.hump_h | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_a.hump_h | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_a.hump_h | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_a.hump_h | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_a.hump_h | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_a.hump_h | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_a.hump_h | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_a.hump_h | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_a.hump_h | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_a.pitch | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_a.pitch | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_a.pitch | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_a.pitch | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_a.pitch | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_a.pitch | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_a.pitch | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_a.pitch | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_a.pitch | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_b.hump_max | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_b.hump_max | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_b.hump_max | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_b.hump_max | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_b.hump_max | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_b.hump_max | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_b.hump_max | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_b.hump_max | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_b.hump_max | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_b.hump_peak | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_b.hump_peak | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_b.hump_peak | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_b.hump_peak | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_b.hump_peak | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_b.hump_peak | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_b.hump_peak | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_b.hump_peak | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_b.hump_peak | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_c.turn_dps | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_c.turn_dps | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_c.turn_dps | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_c.turn_dps | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_c.turn_dps | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_c.turn_dps | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_c.turn_dps | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_c.turn_dps | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_c.turn_dps | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_a.spd_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_a.spd_l | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_a.spd_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_a.spd_l | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_a.spd_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_a.spd_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_a.spd_l | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_a.spd_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_a.spd_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_a.spd_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_a.spd_r | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_a.spd_r | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_a.spd_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_a.spd_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_a.spd_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_a.spd_r | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_a.spd_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_a.spd_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_b.duty_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_b.duty_l | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_b.duty_l | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_b.duty_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_b.duty_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_b.duty_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_b.duty_l | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_b.duty_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_b.duty_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_b.duty_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_b.duty_r | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_b.duty_r | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_b.duty_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_b.duty_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_b.duty_r | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_b.duty_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_b.duty_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_b.duty_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_b.speed_scale | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_b.speed_scale | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_b.speed_scale | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_b.speed_scale | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_b.speed_scale | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_b.speed_scale | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_b.speed_scale | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_b.speed_scale | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_b.speed_scale | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_e.dist_mm | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_e.dist_mm | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_e.dist_mm | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_e.dist_mm | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_e.dist_mm | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_e.dist_mm | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_e.dist_mm | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_e.dist_mm | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_e.dist_mm | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_a.obst_cm | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_a.obst_cm | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_a.obst_cm | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_a.obst_cm | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_a.obst_cm | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_a.obst_cm | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_a.obst_cm | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_a.obst_cm | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_a.obst_cm | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_a.scan0 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_a.scan0 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_a.scan0 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_a.scan0 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_a.scan0 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_a.scan0 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_a.scan0 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_a.scan0 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_a.scan0 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_b.scan1 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_b.scan1 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_b.scan1 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_b.scan1 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_b.scan1 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_b.scan1 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_b.scan1 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_b.scan1 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_b.scan1 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_b.scan2 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_b.scan2 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_b.scan2 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_b.scan2 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_b.scan2 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_b.scan2 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_b.scan2 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_b.scan2 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_b.scan2 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_c.scan3 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_c.scan3 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_c.scan3 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_c.scan3 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_c.scan3 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_c.scan3 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_c.scan3 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_c.scan3 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_c.scan3 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_c.scan4 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_c.scan4 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_c.scan4 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_c.scan4 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_c.scan4 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_c.scan4 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_c.scan4 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_c.scan4 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_c.scan4 | cases=1000 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | code39_index | cases=256 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | code39_index | cases=200 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | code39_index | cases=256 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | code39_index | cases=200 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | code39_index | cases=256 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | code39_index | cases=200 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.event.CM13 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.event.CM13 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.event.CM13 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.event.CM13 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.event.CM13 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.event.CM13 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.event.CM9 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.event.CM9 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.event.CM9 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.event.CM9 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.event.CM9 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.event.CM9 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.event.OBSTACLE.cm | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.event.OBSTACLE.cm | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.event.OBSTACLE.cm | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.event.OBSTACLE.cm | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.event.OBSTACLE.cm | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.event.OBSTACLE.cm | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.telemetry.obst_cm | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.telemetry.obst_cm | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.telemetry.obst_cm | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.telemetry.obst_cm | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.telemetry.obst_cm | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.telemetry.obst_cm | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.telemetry.scan0 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.telemetry.scan0 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.telemetry.scan0 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.telemetry.scan0 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.telemetry.scan0 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.telemetry.scan0 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.telemetry.scan1 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.telemetry.scan1 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.telemetry.scan1 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.telemetry.scan1 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.telemetry.scan1 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.telemetry.scan1 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.telemetry.scan2 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.telemetry.scan2 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.telemetry.scan2 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.telemetry.scan2 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.telemetry.scan2 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.telemetry.scan2 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.telemetry.scan3 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.telemetry.scan3 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.telemetry.scan3 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.telemetry.scan3 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.telemetry.scan3 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.telemetry.scan3 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.telemetry.scan4 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.telemetry.scan4 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.telemetry.scan4 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.telemetry.scan4 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.telemetry.scan4 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.telemetry.scan4 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | msg.obstacle.r_min | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | msg.obstacle.r_min | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | msg.obstacle.r_min | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | msg.obstacle.r_min | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | msg.obstacle.r_min | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | msg.obstacle.r_min | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | msg.obstacle.scan0 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | msg.obstacle.scan0 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | msg.obstacle.scan0 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | msg.obstacle.scan0 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | msg.obstacle.scan0 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | msg.obstacle.scan0 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | msg.obstacle.scan1 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | msg.obstacle.scan1 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | msg.obstacle.scan1 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | msg.obstacle.scan1 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | msg.obstacle.scan1 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | msg.obstacle.scan1 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | msg.obstacle.scan2 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | msg.obstacle.scan2 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | msg.obstacle.scan2 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | msg.obstacle.scan2 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | msg.obstacle.scan2 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | msg.obstacle.scan2 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | msg.obstacle.scan3 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | msg.obstacle.scan3 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | msg.obstacle.scan3 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | msg.obstacle.scan3 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | msg.obstacle.scan3 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | msg.obstacle.scan3 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | msg.obstacle.scan4 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | msg.obstacle.scan4 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | msg.obstacle.scan4 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | msg.obstacle.scan4 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | msg.obstacle.scan4 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | msg.obstacle.scan4 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | status.obs_a.obst_cm | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | status.obs_a.obst_cm | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | status.obs_a.obst_cm | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | status.obs_a.obst_cm | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | status.obs_a.obst_cm | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | status.obs_a.obst_cm | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | status.obs_a.scan0 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | status.obs_a.scan0 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | status.obs_a.scan0 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | status.obs_a.scan0 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | status.obs_a.scan0 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | status.obs_a.scan0 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | status.obs_b.scan1 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | status.obs_b.scan1 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | status.obs_b.scan1 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | status.obs_b.scan1 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | status.obs_b.scan1 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | status.obs_b.scan1 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | status.obs_b.scan2 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | status.obs_b.scan2 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | status.obs_b.scan2 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | status.obs_b.scan2 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | status.obs_b.scan2 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | status.obs_b.scan2 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | status.obs_c.scan3 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | status.obs_c.scan3 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | status.obs_c.scan3 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | status.obs_c.scan3 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | status.obs_c.scan3 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | status.obs_c.scan3 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | status.obs_c.scan4 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | status.obs_c.scan4 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | status.obs_c.scan4 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | status.obs_c.scan4 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | status.obs_c.scan4 | cases=1007 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | status.obs_c.scan4 | cases=100 | failed=0 | seed=12345
+other tests: passed=472 failed=0 skipped=0
+
+properties=988 failed=0 | other tests failed=0 | seed=12345
+Host_Test_Suite: PASSED (seed=12345)
+EXIT=0

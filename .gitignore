@@ -10,6 +10,7 @@ Release
 build_make/tools/elf2uf2
 tools/elf2uf2/elf2uf2
 build_make/.build_profile
+build_make/.robot_opts
 
 # Local Wi-Fi credentials. Copy config/wifi_credentials.example.h to this
 # path and edit it; never commit the populated file.
