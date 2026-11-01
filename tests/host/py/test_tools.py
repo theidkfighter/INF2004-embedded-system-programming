@@ -105,7 +105,7 @@ def no_waiting(monkeypatch):
 
 
 def tool_args(**kw):
-    kw.setdefault("legacy_json", True)
+    kw.setdefault("legacy_json", False)
     return argparse.Namespace(broker="localhost", port=1883, **kw)
 
 
@@ -161,7 +161,7 @@ def published():
 def mon(tmp_path):
     def make(**kw):
         args = argparse.Namespace(broker="localhost", port=1883, out=str(tmp_path), quiet=True,
-                                  legacy_json=kw.get("legacy_json", True))
+                                  legacy_json=kw.get("legacy_json", False))
         m = monitor.Monitor(args)
         m.connected = True
         return m
@@ -207,7 +207,7 @@ def test_binary_and_json_are_read_in_both_modes(mon, legacy):
 
 
 def test_commands_are_text_in_legacy_mode(mon):
-    m = mon()
+    m = mon(legacy_json=True)
     for key in "erabcd":
         m.send(monitor.KEYS[key])
     m.ping()
@@ -215,8 +215,8 @@ def test_commands_are_text_in_legacy_mode(mon):
         "ESTOP", "RESUME", "BARCODE:A", "BARCODE:B", "BARCODE:C", "BARCODE:D", "PING:1")]
 
 
-def test_commands_are_binary_with_legacy_off(mon):
-    m = mon(legacy_json=False)
+def test_commands_are_binary_by_default(mon):
+    m = mon()
     m.send("ESTOP")
     m.ping()
     assert FakeClient.last.published == [("is02/cmd", codec.encode_command_text("ESTOP"), False),
@@ -368,20 +368,20 @@ def test_keyboard_help_still_splits(mon):
 @pytest.mark.parametrize("text", ["START", "ESTOP", "PING:1", "GET:MAP", "BARCODE:K", "PING:Dabc", "NONSENSE"])
 def test_cmd_is_text_in_legacy_mode(text):
     FakeClient.replies = [(is02_tool.T_ACK, json_ack(text))]
-    is02_tool.cmd_cmd(tool_args(text=[text]))
+    is02_tool.cmd_cmd(tool_args(text=[text], legacy_json=True))
     assert published() == [("is02/cmd", text, False)]
     assert FakeEvent.waits[-1] == 4.0
 
 
 @pytest.mark.parametrize("text", ["START", "ESTOP", "PING:1", "GET:MAP", "BARCODE:K", "GET:PARAMS"])
-def test_cmd_is_binary_with_legacy_off(text):
-    is02_tool.cmd_cmd(tool_args(text=[text], legacy_json=False))
+def test_cmd_is_binary_by_default(text):
+    is02_tool.cmd_cmd(tool_args(text=[text]))
     assert published() == [("is02/cmd", codec.encode_command_text(text), False)]
 
 
 def test_cmd_with_legacy_off_refuses_what_a_frame_cannot_carry():
     with pytest.raises(SystemExit, match="PING:Dabc"):
-        is02_tool.cmd_cmd(tool_args(text=["PING:Dabc"], legacy_json=False))
+        is02_tool.cmd_cmd(tool_args(text=["PING:Dabc"]))
     assert FakeClient.last is None
 
 
@@ -405,10 +405,10 @@ def test_ack_for_another_command_is_not_taken(capsys):
 
 
 def test_set_in_both_modes():
-    is02_tool.cmd_set(tool_args(pairs=["LINE_BASE_MM_S=100"]))
+    is02_tool.cmd_set(tool_args(pairs=["LINE_BASE_MM_S=100"], legacy_json=True))
     assert published() == [("is02/cmd", "SET:LINE_BASE_MM_S=100", False)]
     assert FakeEvent.waits[-1] == 3
-    is02_tool.cmd_set(tool_args(pairs=["LINE_BASE_MM_S=100"], legacy_json=False))
+    is02_tool.cmd_set(tool_args(pairs=["LINE_BASE_MM_S=100"]))
     assert published() == [("is02/cmd", codec.encode_command_text("SET:LINE_BASE_MM_S=100"), False)]
 
 
@@ -422,14 +422,14 @@ def test_set_validation_names_the_argument_and_publishes_nothing(bad, name, lega
 
 
 def test_map_in_legacy_mode_keeps_baseline_text_even_where_a_frame_could_not():
-    is02_tool.cmd_map(tool_args(pairs=["f=fwd", "K=LEFT"], clear=False))
+    is02_tool.cmd_map(tool_args(pairs=["f=fwd", "K=LEFT"], clear=False, legacy_json=True))
     assert published() == [("is02/map", "F=FWD,K=LEFT", True)]
-    is02_tool.cmd_map(tool_args(pairs=["A=FWD", "B=FWD"], clear=False))     # flag R4: legal as text
+    is02_tool.cmd_map(tool_args(pairs=["A=FWD", "B=FWD"], clear=False, legacy_json=True))     # flag R4: legal as text
     assert published() == [("is02/map", "A=FWD,B=FWD", True)]
 
 
 def test_map_binary():
-    is02_tool.cmd_map(tool_args(pairs=["F=FWD", "K=LEFT", "R=RIGHT", "U=UTURN"], clear=False, legacy_json=False))
+    is02_tool.cmd_map(tool_args(pairs=["F=FWD", "K=LEFT", "R=RIGHT", "U=UTURN"], clear=False))
     assert published() == [("is02/map", codec.encode_map("F=FWD,K=LEFT,R=RIGHT,U=UTURN"), True)]
 
 
@@ -453,9 +453,9 @@ CONFIG = "# calibration\n\nLINE_BASE_MM_S=80   # slow\nTURN_MM_S=70\n"
 
 def test_config_in_both_modes(tmp_path):
     path = write_config(tmp_path, CONFIG)
-    is02_tool.cmd_config(tool_args(file=path))
+    is02_tool.cmd_config(tool_args(file=path, legacy_json=True))
     assert published() == [("is02/config", CONFIG.strip(), True)]
-    is02_tool.cmd_config(tool_args(file=path, legacy_json=False))
+    is02_tool.cmd_config(tool_args(file=path))
     assert published() == [("is02/config", codec.encode_config(CONFIG), True)]
 
 
@@ -533,22 +533,24 @@ def run_params(monkeypatch, *argv):
 
 
 def test_params_text_is_the_baseline_text(tmp_path, monkeypatch):
-    run_params(monkeypatch, "--file", write_config(tmp_path, CONFIG))
+    run_params(monkeypatch, "--file", write_config(tmp_path, CONFIG), "--legacy-json")
     assert published() == [("is02/config", "LINE_BASE_MM_S=80\nTURN_MM_S=70", True)]
 
 
 def test_params_binary(tmp_path, monkeypatch):
-    run_params(monkeypatch, "--file", write_config(tmp_path, CONFIG), "--no-legacy-json")
+    run_params(monkeypatch, "--file", write_config(tmp_path, CONFIG))
     assert published() == [("is02/config", codec.encode_config(CONFIG), True)]
 
 
 def test_params_real_file_is_valid(monkeypatch):
-    run_params(monkeypatch)
+    run_params(monkeypatch, "--legacy-json")
     assert published()[0][0] == "is02/config" and published()[0][2] is True
     assert "LINE_DO_BLACK_HIGH=0" in published()[0][1]
+    run_params(monkeypatch)
+    assert published()[0][0] == "is02/config" and isinstance(published()[0][1], bytes)
 
 
-@pytest.mark.parametrize("legacy", [[], ["--no-legacy-json"]])
+@pytest.mark.parametrize("legacy", [[], ["--legacy-json"]])
 def test_params_validation_prints_line_and_name_and_sends_nothing(tmp_path, monkeypatch, legacy):
     path = write_config(tmp_path, "# c\nTURN_MM_S=70\nNOPE=1\nLINE_BASE_MM_S=9999\nnot a pair\n")
     with pytest.raises(SystemExit) as e:
@@ -595,18 +597,18 @@ def run_map(monkeypatch, *argv):
 
 
 def test_map_text_is_the_baseline_text(monkeypatch):
-    run_map(monkeypatch, "--wait", "0", *MAP_ARGS)
+    run_map(monkeypatch, "--wait", "0", "--legacy-json", *MAP_ARGS)
     assert published() == [("is02/map", MAP_TEXT, True)]
 
 
 def test_map_binary_normalises_and_accepts_move_first(monkeypatch):
-    run_map(monkeypatch, "--wait", "0", "--no-legacy-json", "LEFT=K", "Q=RIGHT", "X=FWD", "M=UTURN")
+    run_map(monkeypatch, "--wait", "0", "LEFT=K", "Q=RIGHT", "X=FWD", "M=UTURN")
     assert published() == [("is02/map", codec.encode_map(MAP_TEXT), True)]
 
 
 @pytest.mark.parametrize("argv, ack", [
-    (MAP_ARGS, json_ack("MAP:" + MAP_TEXT, "ok", map="K=LEFT,M=UTURN,Q=RIGHT,X=FWD", n=4)),
-    (["--no-legacy-json"] + MAP_ARGS, None),
+    (["--legacy-json"] + MAP_ARGS, json_ack("MAP:" + MAP_TEXT, "ok", map="K=LEFT,M=UTURN,Q=RIGHT,X=FWD", n=4)),
+    (MAP_ARGS, None),
 ])
 def test_map_waits_for_the_map_ack(monkeypatch, capsys, argv, ack):
     acts = [0] * 26
@@ -619,32 +621,43 @@ def test_map_waits_for_the_map_ack(monkeypatch, capsys, argv, ack):
 
 def test_map_ack_with_nack(monkeypatch, capsys):
     FakeClient.replies = [("is02/ack", json_ack("MAP:" + MAP_TEXT, "nack: empty map"))]
-    run_map(monkeypatch, *MAP_ARGS)
+    run_map(monkeypatch, "--legacy-json", *MAP_ARGS)
     assert "robot refused it: nack: empty map" in capsys.readouterr().out
 
 
 def test_map_no_ack_prints_the_baseline_message(monkeypatch, capsys):
-    run_map(monkeypatch, "--wait", "0", *MAP_ARGS)
+    run_map(monkeypatch, "--wait", "0", "--legacy-json", *MAP_ARGS)
     assert "no answer from the robot (offline?). It will get the mapping when it connects." in capsys.readouterr().out
 
 
 @pytest.mark.parametrize("flag, cmd", [(["--clear"], "MAP:CLEAR"), (["--show"], "GET:MAP")])
 def test_map_clear_and_show(monkeypatch, flag, cmd):
-    run_map(monkeypatch, "--wait", "0", *flag)
+    run_map(monkeypatch, "--wait", "0", "--legacy-json", *flag)
     assert published()[-1] == ("is02/cmd", cmd, False)
-    run_map(monkeypatch, "--wait", "0", "--no-legacy-json", *flag)
+    run_map(monkeypatch, "--wait", "0", *flag)
     assert published()[-1] == ("is02/cmd", codec.encode_command_text(cmd), False)
     if cmd == "MAP:CLEAR":
         assert published()[0] == ("is02/map", "", True)
 
 
-# ---------------- both modes, by default ----------------
+# ---------------- binary by default ----------------
 
 @pytest.mark.parametrize("name", ["telemetry_monitor.py", "is02_tool.py", "robot_params.py", "robot_map.py"])
-def test_every_tool_has_the_option_on_by_default(name):
+def test_every_tool_has_legacy_off_by_default(name):
     text = (REPO_DIR / "MQTT" / name).read_text(encoding="utf-8")
-    assert '"--legacy-json", dest="legacy_json", action="store_true", default=True' in text
+    assert '"--legacy-json", dest="legacy_json", action="store_true", default=False' in text
     assert '"--no-legacy-json", dest="legacy_json", action="store_false"' in text
+
+
+def test_binary_estop_is_a_one_byte_frame(mon):
+    """Requirement 13.3: the E-stop is one byte, version 1 in the high nibble and the command code in the low."""
+    expected = bytes([(codec.FORMAT_VERSION << 4) | codec.WCMD["ESTOP"]])
+    assert codec.encode_command_text("ESTOP") == expected and len(expected) == 1
+    m = mon()
+    m.send("ESTOP")
+    is02_tool.cmd_cmd(tool_args(text=["ESTOP"]))
+    assert m.client.published == [("is02/cmd", expected, False)]
+    assert published() == [("is02/cmd", expected, False)]
 
 
 # ---------------- dashboard.html (it runs in a browser; this checks the source) ----------------
@@ -661,8 +674,8 @@ def test_dashboard_keeps_the_line_speed_box():
     assert "const SPEED_MIN_CM_S = 3.00, SPEED_MAX_CM_S = 15.00;" in DASHBOARD
 
 
-def test_dashboard_legacy_box_is_on_and_not_remembered():
-    assert '<input type="checkbox" id="legacyJson" checked autocomplete="off">' in DASHBOARD
+def test_dashboard_legacy_box_is_off_and_not_remembered():
+    assert '<input type="checkbox" id="legacyJson" autocomplete="off">' in DASHBOARD
     assert 'saveSetting("legacy' not in DASHBOARD
 
 

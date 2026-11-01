@@ -6,9 +6,11 @@ Status values: `todo`, `present-unverified`, `done` (gate passed, with a commit)
 
 ## Current state (2 Nov 2026)
 
+LT-05 is done: all five tools send binary by default (`--legacy-json` / dashboard box ticked = baseline text, only for a Baseline_Build robot). Checkpoints 15 and 19 need the car (`car-open`). Merging `cr1/laptop` is S3, and S5 once LT-05 is in.
+
 LT-01 to LT-04 are done on `cr1/laptop` (with `origin/Wei-En` merged: S1 and S2 met). The full gate passes: `rm -rf tests/host/build && bash tests/host/run_all.sh --seed 12345` ends `Host_Test_Suite: PASSED`.
 - The five tools use `MQTT/is02_codec.py` and `MQTT/is02_codec.js`. Received payloads are auto-detected. Commands, map and config stay baseline text by default (`--legacy-json`, dashboard box ticked).
-- **The firmware on this branch accepts binary commands only** (`docs/CR1_FW_STATUS.md`), so the tools' legacy-text default cannot command it. That is LT-05 (S4); until then the tools only read.
+- **The firmware on this branch accepts binary commands only** (`docs/CR1_FW_STATUS.md`). LT-05 makes binary the tools' default, so they can command it.
 - The C-side drift guard is in: `py/test_codec_tables.py` and `js/tables.test.js` compare both codecs' tables with `build/wire_dump`.
 - Checkpoint 15 needs a robot (`car-open`). Merging `cr1/laptop` into `Poh-Loon` is sync point **S3**.
 
@@ -36,18 +38,27 @@ LT-01 to LT-04 are done on `cr1/laptop` (with `origin/Wei-En` merged: S1 and S2 
 | LT-04 | 14.16 Property 30 | done | `CR1 LT-04` on `cr1/laptop` | passes in `run_all.sh` |
 | LT-04 | 14.17 presentation unit tests | done | `CR1 LT-04` on `cr1/laptop` | passes in `run_all.sh` |
 | LT-04 | 16.4 Property 16 (event detail text) | done | `CR1 LT-04` on `cr1/laptop` | builders via ctypes + `event_golden.json` (84 hand-written texts, every event and variant) |
-| LT-05 | 18.4 tools publish binary by default | waiting | | needs **S4** (FW-09 merged); merge = sync point **S5** |
-| LT-05 | checkpoint 19, laptop part | waiting | | **needs the car** |
+| LT-05 | 18.4 tools publish binary by default | done | `CR1 LT-05` on `cr1/laptop` | S4 treated as met; `test_tools.py`: 97 passed; `run_all.sh` passes (LT-05 gate, 2 Nov); merge = sync point **S5** |
+| LT-05 | checkpoint 19, laptop part | car-open | | **needs the car**, together with FW-09's car check (table below) |
 
 ## Car / bench checks waiting
 
 | Check | From | Done | Result |
 |---|---|---|---|
+| Checkpoint 19 (laptop part), with FW-09's car check, tools at their new binary defaults. **Needs a robot flashed with an FW-09 build.** 1. Flash an `APP_PERF=0` build. 2. **Straight after flashing**, re-publish the retained messages in binary: `py MQTT/robot_params.py --broker <ip>` (the CONFIG ack must show `applied` = the number of active lines and `rejected` 0), then send the map once (dashboard Barcode mapping panel, `robot_map.py` or `is02_tool.py map`), so the retained `is02/config` and `is02/map` are binary. 3. Check: dashboard START / STOP / PING / SET / GET:PARAMS / map; `is02_tool.py cmd PING:1`; `is02_tool.py set LINE_STEER=0.35`; `robot_map.py`; remote ESTOP from the dashboard and from the monitor (`e` key), `pwm_off_us` ≤ 10,000; BTN1 recovery; one barcode turn and one obstacle bypass | LT-05 / FW-09 | no | car-open |
 | Checkpoint 15: dashboard, `telemetry_monitor.py`, `is02_tool.py cmd PING:1`, `robot_map.py`, `robot_params.py` in the default legacy mode against the current JSON firmware. Everything as before, including dashboard ESTOP and the line-speed box | LT-03 | no | car-open |
 
 ## Session log
 
 Newest first. One entry per session: date, guide, tool (Claude chat / Kiro + model), commit, gate results (host totals), open issues, what the user must check.
+
+- **2026-11-02, LT-05 (Claude Code, local clone, Sonnet 5.5).** Commit `CR1 LT-05: tools send binary by default` on `cr1/laptop`, on top of `CR1 LT-04`.
+  - **S4 treated as met, confirmed in the firmware (read only):** `app_net.c` decodes with `wire_dec_cmd` and `wire_dec_map` (and the Config frame); `tsk_telemetry.c` handles the one-byte E-stop fast path (`(WIRE_FORMAT_VERSION << 4) | WCMD_ESTOP`) and the queued binary commands; `APP_LEGACY_TEXT_CMD` defaults to 0 in `build_make/robot_defaults.mk` and `docs/CR1_FW_STATUS.md` says the robot accepts binary only. No firmware-track file was touched.
+  - **Gate: passed.** `rm -rf tests/host/build && PYTHON=~/is02venv/bin/python bash tests/host/run_all.sh --seed 12345` (WSL): `properties=533 failed=0 | other tests passed=1201 failed=0`, `Host_Test_Suite: PASSED`. `python3 -m py_compile MQTT/*.py` and `node -e "require('./MQTT/is02_codec.js')"` passed.
+  - **Changes:** `--legacy-json` defaults to off in `telemetry_monitor.py`, `is02_tool.py`, `robot_params.py`, `robot_map.py` (`--no-legacy-json` is still accepted and does nothing new); the dashboard box is unticked (still not remembered, unticked at every load); docstrings and help texts updated. `MQTT/README.md` section 6: new default, `--legacy-json` only against a Baseline_Build robot, the retained-message step after flashing (`robot_params.py`, then the map once), troubleshooting row. In legacy mode the tools still send text and read JSON (R7 rule from LT-03).
+  - **Tests (`test_tools.py`, 97 passed):** default flipped in the fixtures; legacy tests now pass `legacy_json=True` / `--legacy-json`; new `test_binary_estop_is_a_one_byte_frame` (1 byte, `(version << 4) | ESTOP`, from the monitor and from `is02_tool.py cmd`); the source checks now expect `default=False` and an unticked dashboard box.
+  - **Flags:** none applied. R7 is now resolved in practice (legacy = text, default = binary) but its decision stays `open` for the team.
+  - **Must do (car, checkpoint 19):** see the table above, including re-publishing the retained `is02/config` and `is02/map` in binary right after flashing. Merging `cr1/laptop` = S5 (and S3 if not merged before); `PROGRESS_FW.md` "Car checks waiting" has the S5 line.
 
 - **2026-11-02, LT-04 (Claude Code, local clone, Sonnet 5.5).** Commit `CR1 LT-04: shared vectors and cross-codec properties` on `cr1/laptop`, on top of the merge of `origin/Wei-En` (S1 and S2 met, `params_table_crc` = 9469).
   - **Gate: passed.** `rm -rf tests/host/build && PYTHON=<venv python> bash tests/host/run_all.sh --seed 12345`: `properties=533 failed=0 | other tests passed=1200 failed=0`, `Host_Test_Suite: PASSED`; seed 777 also passed. `python3 -m py_compile MQTT/*.py` and `node -e "require('./MQTT/is02_codec.js')"` passed; `make -C tests/host vectors-c` runs the 345 vectors (28 are the reject vectors, status != 0 as intended). Run in WSL (Ubuntu 24.04, Node 18.19, `npm ci` done). WSL had no pip and no `python3-venv`, so a venv without pip was made in `~/is02venv` and pip came from the Ubuntu `python3-pip-whl` package; `tests/host/.venv` in the clone exists but has no pytest, and run_all.sh picks it first, so the gate was started with `PYTHON=~/is02venv/bin/python`. 14.1 to 14.9 and 14.18 are `done`.

@@ -225,17 +225,22 @@ The formats above are the JSON and text ones. The robot moves to compact binary 
 
 **Receiving is automatic, in both modes.** A payload that starts with `{` is read as JSON, anything else as a binary frame. On `is02/cmd`, `is02/map` and `is02/config`, a payload without the binary version number is shown as text. A frame with a wrong version or length is logged with its topic, version and length, and dropped; the values on screen stay as they were.
 
-**Sending depends on legacy mode:**
+**Sending: binary is the default.** Legacy mode is off unless you ask for it:
 
 | Mode | How to set it | Commands, map and config go out as |
 | --- | --- | --- |
-| Legacy (the default) | `--legacy-json` or nothing; dashboard box **legacy JSON** ticked | baseline text: `ESTOP`, `SET:NAME=VALUE`, `X=FWD,K=LEFT,...`, `NAME=VALUE` lines |
-| Binary | `--no-legacy-json`; dashboard box unticked | binary Command, Map and Config frames, on the same topics with the same retain flags |
+| Binary (the default) | nothing; dashboard box **legacy JSON** unticked (`--no-legacy-json` is still accepted) | binary Command, Map and Config frames, on the same topics with the same retain flags. A single-byte frame is the E-stop |
+| Legacy | `--legacy-json`; dashboard box ticked | baseline text: `ESTOP`, `SET:NAME=VALUE`, `X=FWD,K=LEFT,...`, `NAME=VALUE` lines |
 
-**Stay in legacy mode until the robot runs a build from FW-09 on.** Before that, the robot accepts only text, so it ignores a binary command, **including a binary E-stop**. The dashboard box goes back to ticked at every page load for this reason.
+**Use `--legacy-json` only against a Baseline_Build robot** (the build recorded as `bca7964`, for comparison runs). A robot from FW-09 on accepts binary commands only, so it ignores text, **including a text E-stop**. The dashboard box is unticked again at every page load (it is deliberately not remembered). Received payloads are read as JSON or binary in both modes.
 
-- `is02_tool.py` takes the option before the command word: `py is02_tool.py --no-legacy-json cmd START`.
-- With legacy mode off, the input must fit a frame: `PING` takes a number 0..65535, and the map one letter per movement. The dashboard's Ping uses numbers from 49152 up in this mode.
+**After flashing an FW-09 build, re-publish the retained messages in binary.** The broker still holds the text `is02/config` and `is02/map` from before, and the robot reads them when it connects. Straight after flashing:
+
+1. `py robot_params.py --broker <laptop IP>`: replaces the retained `is02/config`. The CONFIG ack must show `applied` = the number of active lines and `rejected` 0.
+2. Send the map once (`py robot_map.py --broker <laptop IP> K=LEFT Q=RIGHT X=FWD M=UTURN`, `is02_tool.py map ...`, or the dashboard's Barcode mapping panel): replaces the retained `is02/map`.
+
+- `is02_tool.py` takes the option before the command word: `py is02_tool.py --legacy-json cmd START`.
+- In binary mode the input must fit a frame: `PING` takes a number 0..65535, and the map one letter per movement. The dashboard's Ping uses numbers from 49152 up in this mode.
 - `set`, `config` and `robot_params.py` check NAME and value in both modes; a bad one publishes nothing.
 - A binary heartbeat carries the robot's parameter-table version. If it differs from the codec's, the tools show a warning naming both (monitor line, dashboard banner) until a matching heartbeat arrives, and `is02_tool.py config` and `robot_params.py` refuse to publish. They wait up to 1.5 s for a heartbeat first; with none, they publish as before, because the robot picks the retained copy up when it connects. A JSON heartbeat has no version, so it neither raises nor clears the warning.
 - `is02_tool.py log` writes `pc_time, topic, len, hex, decoded_json`, which `tools/evidence/msg_sizes.py` reads.
@@ -252,6 +257,6 @@ The formats above are the JSON and text ones. The robot moves to compact binary 
 | `[FAIL] W2 Wi-Fi connect` | Wrong SSID/password, or the hotspot is 5 GHz only |
 | Dashboard: "cannot reach ... (retrying)" | Mosquitto not running, or started without `-c mosquitto_is02.conf` (no port 9001) |
 | Dashboard: blank values, console says `IS02 is not defined` | `is02_codec.js` is not next to `dashboard.html` |
-| Commands get no ack, the robot ignores E-stop | Binary mode against a robot from before FW-09: go back to legacy mode (section 6) |
+| Commands get no ack, the robot ignores E-stop | Either a Baseline_Build robot (accepts text only: use `--legacy-json` or tick the dashboard box, section 6), or a robot from FW-09 on while legacy mode is on (untick it / drop `--legacy-json`) |
 | "parameter table mismatch" | The tools and the robot come from different versions of `PARAMS[]`: update whichever is older |
 | Frames arrive but no acks | The robot is subscribed but the monitor sent while it was offline; press `p` again |

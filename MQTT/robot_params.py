@@ -11,9 +11,9 @@ If the robot is online it answers on is02/ack (cmd "CONFIG") with how many
 values it applied and the ones it rejected.
 
 Every line is checked against the parameter table first: one bad line prints
-its line number and NAME and nothing is sent. The file goes out as baseline
-text while --legacy-json is on (the default) and as a Config_Frame with
---no-legacy-json, which only a robot from FW-09 on understands. Nothing is sent
+its line number and NAME and nothing is sent. The file goes out as a
+Config_Frame by default. --legacy-json sends baseline text instead, only for a
+Baseline_Build robot. Nothing is sent
 while the robot's heartbeat shows a different parameter table.
 """
 import argparse
@@ -50,10 +50,10 @@ def main():
     ap.add_argument("--file", default=os.path.join(here, "robot_params.txt"))
     ap.add_argument("--clear", action="store_true", help="delete the retained configuration")
     ap.add_argument("--wait", type=float, default=8.0, help="seconds to wait for the robot's ack")
-    ap.add_argument("--legacy-json", dest="legacy_json", action="store_true", default=True,
-                    help="send the file as baseline text (the default)")
+    ap.add_argument("--legacy-json", dest="legacy_json", action="store_true", default=False,
+                    help="send the file as baseline text (only for a Baseline_Build robot)")
     ap.add_argument("--no-legacy-json", dest="legacy_json", action="store_false",
-                    help="send a Config_Frame (robot from FW-09 on)")
+                    help="send a Config_Frame (the default)")
     args = ap.parse_args()
 
     if args.clear:

@@ -25,9 +25,8 @@ Commands (run from a terminal; --broker defaults to localhost):
   python is02_tool.py log run1.csv       record every message to a CSV file
 
 Received payloads are read as JSON or binary automatically. cmd, set, map and
-config send baseline text while --legacy-json is on (the default) and binary
-frames with --no-legacy-json before the command word, which only a robot from
-FW-09 on understands.
+config send binary frames by default. --legacy-json (before the command word)
+sends baseline text instead, only for a Baseline_Build robot.
 
 (Windows: run it with "py is02_tool.py ...". The "#!/usr/bin/env python3"
 first line was removed: with it, the py launcher picks the first python3 on
@@ -264,10 +263,10 @@ def main():
     p = argparse.ArgumentParser(description="IS-02 laptop MQTT tool")
     p.add_argument("--broker", default="localhost", help="broker address (default localhost)")
     p.add_argument("--port", type=int, default=1883)
-    p.add_argument("--legacy-json", dest="legacy_json", action="store_true", default=True,
-                   help="send commands, map and config as baseline text (the default)")
+    p.add_argument("--legacy-json", dest="legacy_json", action="store_true", default=False,
+                   help="send commands, map and config as baseline text (only for a Baseline_Build robot)")
     p.add_argument("--no-legacy-json", dest="legacy_json", action="store_false",
-                   help="send binary frames (robot from FW-09 on)")
+                   help="send binary frames (the default)")
     sub = p.add_subparsers(dest="what", required=True)
 
     s = sub.add_parser("monitor"); s.add_argument("--tlm", action="store_true"); s.set_defaults(fn=cmd_monitor)

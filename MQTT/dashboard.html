@@ -14,9 +14,9 @@
   is02/cmd. Runs side by side with telemetry_monitor.py.
 
   Keep is02_codec.js next to this file. Received payloads are read as JSON or
-  binary automatically. Commands, the map and SET go out as baseline text while
-  "legacy JSON" is ticked, and as binary frames when it is not, which only a
-  robot from FW-09 on understands. It is ticked again at every page load.
+  binary automatically. Commands, the map and SET go out as binary frames by
+  default. Ticking "legacy JSON" sends baseline text instead, only for a
+  Baseline_Build robot. The box is unticked again at every page load.
 
   Another laptop on the hotspot: open dashboard.html?host=<broker laptop IP>
   (the broker laptop then needs the firewall rule for port 9001).
@@ -115,7 +115,7 @@ td:last-child { text-align: right; }
     <input class="host" id="host" aria-label="broker host">
     <input class="port" id="port" aria-label="websocket port">
     <button id="reconnect">Connect</button>
-    <label><input type="checkbox" id="legacyJson" checked autocomplete="off"> legacy JSON</label>
+    <label><input type="checkbox" id="legacyJson" autocomplete="off"> legacy JSON</label>
   </span>
 </header>
 <div class="banner" id="ptabBanner" hidden></div>
