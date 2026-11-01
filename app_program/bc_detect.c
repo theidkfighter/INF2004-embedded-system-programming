@@ -243,7 +243,7 @@ static uint32_t adt_bin(adt_t *p_a, int32_t s, uint32_t k, det_edge_t *p_out)
 {
     uint32_t n = 0u;
 
-    p_a->ring[p_a->n_s % ADT_RING] = s;
+    p_a->ring[p_a->n_s % ADT_RING] = (int16_t)s;     /* s is a mean of 0..4095 samples */
     p_a->n_s++;
     if (p_a->n_s >= ADT_RING)
     {

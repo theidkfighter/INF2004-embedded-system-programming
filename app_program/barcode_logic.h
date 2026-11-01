@@ -43,20 +43,31 @@ typedef struct
     uint32_t max_gap_um;      /* a long window ends after this much white anyway */
 } bc_params_t;
 
+/* Change Requirement 1 (minimum bits), 212 bytes, was 512:
+ *   w        U16 um per element (saturates at 65.535 mm; a Code 39 element on
+ *            the course is 2-8 mm, so every real width is exact)
+ *   (bar/space flags removed: a window opens on a black edge and edges
+ *    alternate, so element i is a bar exactly when i is even)
+ *   n, last_n U7 (0..96), fails U2 (0..BC_FAULT_COUNT-1), b_open, b_black U1
+ *   start_um, edge_um U32: absolute path positions (the odometer path in um
+ *            wraps only after 4295 m; widths are modulo-2^32 differences)
+ *   min_um, max_um U32: kept exact, bc_poll() compares them with um gaps.
+ * One task (TSK_LINE_BARCODE) owns every bc_ctx_t, so no Critical_Section. */
 typedef struct
 {
-    uint32_t w[BC_MAX_ELEMENTS];
-    bool     bar[BC_MAX_ELEMENTS];
-    uint32_t n;
-    bool     b_open;
-    bool     b_black;         /* current level */
+    uint16_t w[BC_MAX_ELEMENTS];
     uint32_t start_um;
     uint32_t edge_um;         /* position of the last edge */
     uint32_t min_um;          /* narrowest element so far */
     uint32_t max_um;          /* widest element so far */
-    uint32_t fails;
-    uint32_t last_n;          /* elements in the window that was just closed (diagnostics) */
+    uint32_t n       : 7;
+    uint32_t last_n  : 7;     /* elements in the window that was just closed (diagnostics) */
+    uint32_t fails   : 2;
+    uint32_t b_open  : 1;
+    uint32_t b_black : 1;     /* current level */
 } bc_ctx_t;
+
+#define BC_W_MAX          (0xFFFFu)
 
 void        bc_reset(bc_ctx_t *p_bc);
 void        bc_cancel(bc_ctx_t *p_bc);      /* drop an open window (e.g. during a turn) */
