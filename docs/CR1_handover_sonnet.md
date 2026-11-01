@@ -50,7 +50,7 @@ Commits on the branch (oldest first):
 | `6e45f37` | Phase 4: ISR-shared data packed (`hal_isr.c`) |
 | `8bfe1d2` | Phase 5a: barcode contexts packed + differential barcode test |
 | `da604f4` | Evidence: `docs/evidence/ram_symbols.md` |
-| (this file) | handover |
+| `30c6430` | this handover file |
 
 ---
 
