@@ -174,7 +174,6 @@ uint32_t wire_enc_telemetry(const wire_tlm_t *p_t, uint8_t *p_out)
     bw_put(&w, b_thr ? sat_u(p_t->thr_b, 12u) : 0u, 12u);
     bw_put(&w, b_thr ? sat_u(p_t->thr_w, 12u) : 0u, 12u);
     bw_put(&w, p_t->bc, 6u);
-    bw_put(&w, p_t->side, 2u);
     bw_put(&w, tc(p_t->pitch, 11u), 11u);
     bw_put(&w, tc(p_t->hump_h, 15u), 15u);
     bw_put(&w, sat_u(p_t->hump_peak, 14u), 14u);
@@ -184,11 +183,12 @@ uint32_t wire_enc_telemetry(const wire_tlm_t *p_t, uint8_t *p_out)
     {
         bw_put(&w, sat_u(p_t->scan[i], 13u), 13u);
     }
+    bw_put(&w, p_t->side, 2u);
     bw_put(&w, p_t->imu_ev, 3u);
-    bw_put(&w, p_t->rssi, 8u);
     bw_put(&w, tc(p_t->turn, 14u), 14u);
     bw_put(&w, p_t->faults, 16u);
     bw_put(&w, sat_u(p_t->vbat, 13u), 13u);
+    bw_put(&w, p_t->rssi, 8u);
     bw_put(&w, sat_u(p_t->buf, 7u), 7u);
     return (w.b_overflow || (w.pos != WIRE_TLM_BITS)) ? 0u : bw_bytes(&w);
 }
@@ -228,7 +228,6 @@ int wire_dec_telemetry(const uint8_t *p, uint32_t len, wire_tlm_t *p_t)
     p_t->thr_b     = (uint16_t)br_get(&r, 12u);
     p_t->thr_w     = (uint16_t)br_get(&r, 12u);
     p_t->bc        = (uint8_t)br_get(&r, 6u);
-    p_t->side      = (uint8_t)br_get(&r, 2u);
     p_t->pitch     = (int16_t)br_get_s(&r, 11u);
     p_t->hump_h    = (int16_t)br_get_s(&r, 15u);
     p_t->hump_peak = (uint16_t)br_get(&r, 14u);
@@ -238,11 +237,12 @@ int wire_dec_telemetry(const uint8_t *p, uint32_t len, wire_tlm_t *p_t)
     {
         p_t->scan[i] = (uint16_t)br_get(&r, 13u);
     }
+    p_t->side      = (uint8_t)br_get(&r, 2u);
     p_t->imu_ev    = (uint8_t)br_get(&r, 3u);
-    p_t->rssi      = (uint8_t)br_get(&r, 8u);
     p_t->turn      = (int16_t)br_get_s(&r, 14u);
     p_t->faults    = (uint16_t)br_get(&r, 16u);
     p_t->vbat      = (uint16_t)br_get(&r, 13u);
+    p_t->rssi      = (uint8_t)br_get(&r, 8u);
     p_t->buf       = (uint8_t)br_get(&r, 7u);
     if ((p_t->thr_valid == 0u) && ((p_t->thr_b != 0u) || (p_t->thr_w != 0u)))
     {
@@ -261,18 +261,18 @@ uint32_t wire_enc_heartbeat(const wire_hb_t *p_h, uint8_t *p_out)
 
     bw_init(&w, p_out, WIRE_HB_LEN);
     put_header(&w);
-    bw_put(&w, sat_u(p_h->seq, 14u), 14u);
+    bw_put(&w, p_h->seq & 0x3FFFu, 14u);           /* M14: modular */
+    bw_put(&w, p_h->t_ms, 24u);
     bw_put(&w, p_h->state, 3u);
     bw_put(&w, p_h->rssi, 8u);
-    bw_put(&w, p_h->t_ms, 24u);
+    bw_put(&w, sat_u(p_h->buf, 7u), 7u);
     bw_put(&w, sat_u(p_h->uptime_s, 17u), 17u);
     bw_put(&w, p_h->reconnects, 16u);
     bw_put(&w, p_h->dropped, 16u);
     bw_put(&w, p_h->sat, 16u);
     bw_put(&w, p_h->faults, 16u);
-    bw_put(&w, p_h->param_crc, 16u);
-    bw_put(&w, sat_u(p_h->buf, 7u), 7u);
     bw_put(&w, sat_u(p_h->n_params, 6u), 6u);
+    bw_put(&w, p_h->param_crc, 16u);
     bw_copy(&w, p_h->ip, 32u);
     return (w.b_overflow || (w.pos != WIRE_HB_BITS)) ? 0u : bw_bytes(&w);
 }
@@ -294,17 +294,17 @@ int wire_dec_heartbeat(const uint8_t *p, uint32_t len, wire_hb_t *p_h)
     br_init(&r, p, len);
     (void)br_get(&r, WIRE_VER_BITS);
     p_h->seq        = (uint16_t)br_get(&r, 14u);
+    p_h->t_ms       = br_get(&r, 24u);
     p_h->state      = (uint8_t)br_get(&r, 3u);
     p_h->rssi       = (uint8_t)br_get(&r, 8u);
-    p_h->t_ms       = br_get(&r, 24u);
+    p_h->buf        = (uint8_t)br_get(&r, 7u);
     p_h->uptime_s   = br_get(&r, 17u);
     p_h->reconnects = (uint16_t)br_get(&r, 16u);
     p_h->dropped    = (uint16_t)br_get(&r, 16u);
     p_h->sat        = (uint16_t)br_get(&r, 16u);
     p_h->faults     = (uint16_t)br_get(&r, 16u);
-    p_h->param_crc  = (uint16_t)br_get(&r, 16u);
-    p_h->buf        = (uint8_t)br_get(&r, 7u);
     p_h->n_params   = (uint8_t)br_get(&r, 6u);
+    p_h->param_crc  = (uint16_t)br_get(&r, 16u);
     for (uint32_t i = 0u; i < 4u; i++)
     {
         p_h->ip[i] = (uint8_t)br_get(&r, 8u);
@@ -320,7 +320,7 @@ int wire_dec_heartbeat(const uint8_t *p, uint32_t len, wire_hb_t *p_h)
 #define BCV_OFF      (0u)
 #define BCV_WINDOW   (1u)     /* n U7, res E2, code U6, rev U1, thr_b U12, thr_w U12, ovr U16 */
 #define BCV_MULTI    (2u)     /* BCV_WINDOW + level U3, conflict U1 */
-#define BCV_LEVELS   (3u)     /* count U3 (1..6), count x (res E2, code U6, n U7) */
+#define BCV_LEVELS   (3u)     /* n_levels U3 (1..6), 6 x (res E2, code C6, n U7) (D10) */
 #define BCV_WIDTHS   (4u)     /* part U3 (1..6), count U5 (0..16), count x U12 */
 
 int wire_evt_arg_bits(uint32_t code, const uint8_t *p_args, uint32_t avail, uint32_t *p_bits)
@@ -372,7 +372,7 @@ int wire_evt_arg_bits(uint32_t code, const uint8_t *p_args, uint32_t avail, uint
                 {
                     return WIRE_BAD_COUNT;
                 }
-                *p_bits = 6u + (15u * n);
+                *p_bits = 6u + (15u * WIRE_BC_PARTS_MAX);   /* always 6 entries */
                 return WIRE_OK;
             case BCV_WIDTHS:
             {

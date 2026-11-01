@@ -94,6 +94,17 @@ LOCAL float ping(void)
     hal_us_trigger();
     (void)tk_dly_tsk(ECHO_WAIT_MS);
     cm = hal_us_read_cm();
+    if ((cm < 0.0f) != fault_has(FAULT_US_NO_ECHO))   /* D1: no-echo bit follows the last ping */
+    {
+        if (cm < 0.0f)
+        {
+            fault_set(FAULT_US_NO_ECHO);
+        }
+        else
+        {
+            fault_clear(FAULT_US_NO_ECHO);
+        }
+    }
     st_set_obst_cm(cm);
 
     /* critical proximity, checked on every ping (2 in a row) */
@@ -364,20 +375,20 @@ LOCAL void bypass_extend_event(uint32_t kind, float cm);
 
 LOCAL void side_follow_event(uint32_t n60, uint32_t n_seen, float near_cm, float leg_mm, float gap_mm)
 {
-    /* SIDE_FOLLOW: pings U5, seen U5, near U13 (0.1 cm), limit U13 (0.1 cm),
-       leg U14 (mm), x U14 (mm) */
+    /* SIDE_FOLLOW (design D10): pings U8, seen U8, near U13 (0.1 cm),
+       limit U13 (0.1 cm), leg U11 (mm), x U11 (mm); each saturates */
     evt_b_t b;
     float   x = (g_pose.x_mm < 0.0f) ? -g_pose.x_mm : g_pose.x_mm;
     float   lim = ((gap_mm + 150.0f) / 8.660254f) * 10.0f;
     float   nr  = near_cm * 10.0f;
 
     evt_begin(&b, EVC_SIDE_FOLLOW);
-    evt_u(&b, n60, 5u);
-    evt_u(&b, n_seen, 5u);
+    evt_u(&b, n60, 8u);
+    evt_u(&b, n_seen, 8u);
     evt_u(&b, (nr > 0.0f) ? (uint32_t)(nr + 0.5f) : 0u, 13u);
     evt_u(&b, (lim > 0.0f) ? (uint32_t)(lim + 0.5f) : 0u, 13u);
-    evt_u(&b, (leg_mm > 0.0f) ? (uint32_t)(leg_mm + 0.5f) : 0u, 14u);
-    evt_u(&b, (uint32_t)(x + 0.5f), 14u);
+    evt_u(&b, (leg_mm > 0.0f) ? (uint32_t)(leg_mm + 0.5f) : 0u, 11u);
+    evt_u(&b, (uint32_t)(x + 0.5f), 11u);
     (void)evt_post(&b);
 }
 
@@ -949,10 +960,11 @@ LOCAL void profile_event(const obstacle_profile_t *p)
 
     evt_begin(&b, EVC_OBSTACLE_PROFILE);
     evt_cm9(&b, p->r_min_cm);
-    evt_u(&b, (w > 0) ? (uint32_t)w : 0u, 9u);
-    evt_s(&b, round_cm(p->offset_cm), 9u);
-    evt_s(&b, round_cm(p->clear_left_cm), 11u);
-    evt_s(&b, round_cm(p->clear_right_cm), 11u);
+    /* D10: r CM9, w U10 cm, off S10, clrL S10, clrR S10, side E2 */
+    evt_u(&b, (w > 0) ? (uint32_t)w : 0u, 10u);
+    evt_s(&b, round_cm(p->offset_cm), 10u);
+    evt_s(&b, round_cm(p->clear_left_cm), 10u);
+    evt_s(&b, round_cm(p->clear_right_cm), 10u);
     evt_u(&b, (p->side == 'L') ? 1u : ((p->side == 'R') ? 2u : 0u), 2u);
     (void)evt_post(&b);
 }
@@ -992,7 +1004,7 @@ typedef enum
 } standoff_res_t;
 
 /* OBST_REVERSE_CAP: kind E2 (0 "standoff N mm refused", 1 "rescan skipped",
-   2 "rescan reverse cut to N mm"), N U9 (mm), used U11, cap U11, total U11 (mm):
+   2 "rescan reverse cut to N mm"), N U10, used U10, cap U10, total U12 (mm, D10):
    "<kind text>: U of C mm used, T mm total" */
 LOCAL uint32_t mm_u(float mm)
 {
@@ -1005,10 +1017,10 @@ LOCAL void rev_cap_event(uint32_t kind, float x)
 
     evt_begin(&b, EVC_OBST_REVERSE_CAP);
     evt_u(&b, kind, 2u);
-    evt_u(&b, mm_u(x), 9u);
-    evt_u(&b, mm_u(g_backed_mm), 11u);
-    evt_u(&b, mm_u(g_rev_cap), 11u);
-    evt_u(&b, mm_u(g_rev_total_mm), 11u);
+    evt_u(&b, mm_u(x), 10u);
+    evt_u(&b, mm_u(g_backed_mm), 10u);
+    evt_u(&b, mm_u(g_rev_cap), 10u);
+    evt_u(&b, mm_u(g_rev_total_mm), 12u);
     (void)evt_post(&b);
 }
 
@@ -1284,7 +1296,8 @@ LOCAL void avoid(void)
         {
             st_obstacle_done();
             /* BYPASS_COMPLETE: U1 searching, U1 right ("passed on the left/right[; on the path, searching for the line]") */
-            (void)evt_post1(EVC_BYPASS_COMPLETE, ((res == LEG_SEARCH) ? 2u : 0u) | ((plan.side > 0) ? 1u : 0u), 2u);
+            /* D10: right F1, search F1 */
+            (void)evt_post1(EVC_BYPASS_COMPLETE, ((plan.side > 0) ? 2u : 0u) | ((res == LEG_SEARCH) ? 1u : 0u), 2u);
             flag_set(EVF_BYPASS_COMPLETE);
             return;
         }
@@ -1329,7 +1342,7 @@ LOCAL void avoid(void)
             {
                 side               = other;
                 st_set_scan_side(other);
-                (void)evt_post1(EVC_BYPASS_RETRY, (other == 'R') ? 1u : 0u, 2u);   /* 0/1 "trying the left/right side (same scan)" */
+                (void)evt_post1(EVC_BYPASS_RETRY, (other == 'R') ? 2u : 0u, 2u);   /* D10 right F1, wider F1 = 0: "trying the left/right side (same scan)" */
                 continue;
             }
             /* 2. a side already tried, the one that got further, wider */
@@ -1349,7 +1362,7 @@ LOCAL void avoid(void)
                     side = (best == 0) ? 'L' : 'R';
                     extra[best] += (float)OBST_RETRY_WIDER_MM;
                     st_set_scan_side(side);
-                    (void)evt_post1(EVC_BYPASS_RETRY, (side == 'R') ? 3u : 2u, 2u);   /* 2/3 "left/right side again, 100 mm wider" */
+                    (void)evt_post1(EVC_BYPASS_RETRY, (side == 'R') ? 3u : 1u, 2u);   /* wider = 1: "left/right side again, 100 mm wider" */
                     continue;
                 }
             }

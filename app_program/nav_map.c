@@ -248,7 +248,7 @@ uint32_t nav_map_actions(uint8_t p_act[26])
 
 uint32_t nav_map_set_slots(const uint8_t p_present[4], const uint8_t p_letter[4])
 {
-    static const nav_action_t SLOT[4] = { ACT_FORWARD, ACT_UTURN, ACT_LEFT, ACT_RIGHT };
+    static const nav_action_t SLOT[4] = { ACT_FORWARD, ACT_LEFT, ACT_RIGHT, ACT_UTURN };   /* design D13 */
     uint8_t  tmp[26] = { 0u };
     uint32_t n = 0u;
 

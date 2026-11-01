@@ -160,8 +160,9 @@ LOCAL void enter_error(stop_reason_t reason)
 }
 
 /* Automated re-check before leaving E-STOP / ERROR (DR Section 5). */
-/* *p_bits: RECOVERY_REFUSED argument U15 = bit 14 obstacle < 8 cm,
-   bit 13 INT1 still active, bits 12..0 missing calibration (app_check.h). */
+/* *p_bits: RECOVERY_REFUSED argument U15 (design D10) = bit 0 obstacle
+   < 8 cm, bit 1 INT1 still active, bits 2..14 missing calibration items in
+   config_check() order (app_check.h item i -> bit i + 2). */
 LOCAL bool recheck(char *p_why, uint32_t size, uint32_t *p_bits)
 {
     jbuf_t jb;
@@ -174,7 +175,7 @@ LOCAL bool recheck(char *p_why, uint32_t size, uint32_t *p_bits)
     if ((cm >= 0.0f) && (cm < (float)PROXIMITY_STOP_CM))
     {
         jb_raw(&jb, "obstacle closer than 8 cm. ");
-        *p_bits |= 1u << 14;
+        *p_bits |= 1u << 0;
         b_ok = false;
     }
     if ((st_faults() & FAULT_IMU_DEAD) == 0u)
@@ -183,14 +184,14 @@ LOCAL bool recheck(char *p_why, uint32_t size, uint32_t *p_bits)
         if (hal_imu_int1_level())
         {
             jb_raw(&jb, "IMU INT1 still active. ");
-            *p_bits |= 1u << 13;
+            *p_bits |= 1u << 1;
             b_ok = false;
         }
     }
     if (!config_check(&p_why[jb_len(&jb)], size - jb_len(&jb)))
     {
         b_ok = false;                         /* the list of missing values was appended */
-        *p_bits |= config_missing_bits();
+        *p_bits |= config_missing_bits() << 2;
     }
     return b_ok;
 }
@@ -204,7 +205,8 @@ LOCAL void try_recover(void)
     {
         flag_clear(EVF_ESTOP | EVF_COLLISION | EVF_PROXIMITY | EVF_REMOTE_ESTOP | EVF_LOCAL_STOP |
                    EVF_ERROR_REQ | EVF_BATTERY_CRITICAL | EVF_IMU_FAULT);
-        fault_clear(~FAULT_IMU_DEAD);           /* IMU state is owned by TSK_TERRAIN_IMU */
+        fault_clear(FAULT_BASE_MASK & ~FAULT_IMU_DEAD);   /* IMU state is owned by TSK_TERRAIN_IMU; link and
+                                                            no-echo bits are not recovery faults (D1) */
         hal_motor_unkill();
         gp_tone = NULL;
         hal_buzzer(0u);
@@ -342,7 +344,7 @@ void tsk_safety(INT stacd, void *exinf)
 
         /* ---- ERROR only because of missing calibration: leave it by itself
                 once the values arrive (SET: or the retained is02/config) ---- */
-        if ((st == SYS_ERROR) && (st_faults() == FAULT_CONFIG) && config_check(missing, sizeof(missing)))
+        if ((st == SYS_ERROR) && ((st_faults() & FAULT_BASE_MASK) == FAULT_CONFIG) && config_check(missing, sizeof(missing)))
         {
             try_recover();
             st = sys_state();

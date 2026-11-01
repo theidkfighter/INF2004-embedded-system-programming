@@ -85,15 +85,16 @@ def test_every_write_is_one_section(st):
 
 def test_state_faults_stop_mev_share_one_unit(st):
     st.st_set_state(6)
-    st.st_fault_set(0x1FFF)
+    st.st_fault_set(0xFFFF)                     # design D1: 16 fault bits
     st.st_set_stop(9)
     st.st_set_motion_event(7)
-    assert (st.st_state(), st.st_faults(), st.st_stop(), st.st_motion_event()) == (6, 0x1FFF, 9, 7)
+    assert (st.st_state(), st.st_faults(), st.st_stop(), st.st_motion_event()) == (6, 0xFFFF, 9, 7)
     st.st_fault_clear(0x0801)
     st.st_set_state(1)
-    assert (st.st_state(), st.st_faults(), st.st_stop(), st.st_motion_event()) == (1, 0x17FE, 9, 7)
-    st.st_fault_set(0xFFFFE000)                 # bits above the 13 faults are ignored
-    assert st.st_faults() == 0x17FE
+    assert (st.st_state(), st.st_faults(), st.st_stop(), st.st_motion_event()) == (1, 0xF7FE, 9, 7)
+    st.st_fault_clear(0xFFFF)
+    st.st_fault_set(0xFFFF0000)                 # bits above the 16 faults are ignored
+    assert st.st_faults() == 0 and st.st_stop() == 9 and st.st_motion_event() == 7
 
 
 @pytest.mark.parametrize("value,expect", [(0.0, 0.0), (1234.56, 1234.6), (99999.0, 99999.0),

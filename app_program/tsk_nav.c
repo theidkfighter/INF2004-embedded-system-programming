@@ -95,15 +95,15 @@ LOCAL void complete_run(void)
 
     motion_stop(SRC_NAV);
     (void)sys_set_state(SYS_MISSION_COMPLETE, false);
-    /* MISSION_COMPLETE (FR22): time U12 s, dist U14 0.01 m, barcodes U7,
-       humps U6, hump max U14 0.1 mm, obstacles U6 */
+    /* MISSION_COMPLETE (FR22, design D10): time U17 s, dist U14 0.01 m,
+       barcodes U6, humps U4, hump max U14 0.1 mm, obstacles U4 (each saturates) */
     evt_begin(&b, EVC_MISSION_COMPLETE);
-    evt_u(&b, (hal_time_ms() - g_t_start) / 1000u, 12u);
+    evt_u(&b, (hal_time_ms() - g_t_start) / 1000u, 17u);
     evt_u(&b, (dist_cm > 0.0f) ? (uint32_t)(dist_cm + 0.5f) : 0u, 14u);
-    evt_u(&b, st_barcodes_read(), 7u);
-    evt_u(&b, st_humps(), 6u);
+    evt_u(&b, st_barcodes_read(), 6u);
+    evt_u(&b, st_humps(), 4u);
     evt_u(&b, (hmax > 15000.0f) ? 15000u : ((hmax > 0.0f) ? (uint32_t)hmax : 0u), 14u);
-    evt_u(&b, st_obstacles(), 6u);
+    evt_u(&b, st_obstacles(), 4u);
     (void)evt_post(&b);
     jb_init(&jb, text, sizeof(text));
     jb_raw(&jb, "t ");
@@ -165,14 +165,14 @@ LOCAL motion_result_t turn_on_line(float deg)
         if ((b_seen && !b_lead) || (b_seen && b_trail))
         {
             motion_stop(SRC_NAV);              /* line is between the sensors */
-            (void)evt_post1(EVC_TURN_SNAP, 1u, 1u);   /* "stopped on the line" */
+            (void)evt_post1(EVC_TURN_SNAP, 0u, 1u);   /* not_seen 0: "stopped on the line" */
             return MOTION_OK;
         }
         if (motion_wait(id, 0u, 10u, &r2, &other))
         {
             /* swept SNAP_MAX_DEG without finding the line: keep the
                encoder result and let line following / search sort it out */
-            (void)evt_post1(EVC_TURN_SNAP, 0u, 1u);   /* "line not seen, encoder angle kept" */
+            (void)evt_post1(EVC_TURN_SNAP, 1u, 1u);   /* not_seen 1: "line not seen, encoder angle kept" */
             return (r2 == MOTION_STOPPED) ? MOTION_STOPPED : MOTION_OK;
         }
         if ((sys_state() != SYS_MANEUVER) || ((hal_time_ms() - t0) > 5000u))

@@ -13,7 +13,6 @@
 #define CODE39_H
 
 #include <stdbool.h>
-#include <stddef.h>
 #include <stdint.h>
 
 /* Returns the character for a 9-element window (bar first), or 0 if invalid. */
@@ -25,7 +24,7 @@ char code39_char(const uint16_t *p_w9);
    the text between the stars to p_out, sets *p_reversed (true = read
    right-to-left) and returns true. */
 bool code39_decode(const uint16_t *p_w, bool b_first_bar, uint32_t n,
-                   char *p_out, size_t out_len, bool *p_reversed);
+                   char *p_out, uint32_t out_len, bool *p_reversed);
 
 /* 6-bit Code 39 index (Requirement 5.3), in the Data_Representation_Table
    order: '0'..'9' = 0..9, 'A'..'Z' = 10..35, '-' = 36, '.' = 37, ' ' = 38,

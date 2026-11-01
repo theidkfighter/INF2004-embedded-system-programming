@@ -31,6 +31,7 @@ EXPORT INT usermain(void)
     tm_printf((UB *)"\n=== IS-02 Robo-Wheeler, micro T-Kernel 3.0 ===\n");
 
     st_set_state(SYS_INIT);
+    fault_set(FAULT_BOOT_VALUE);              /* no Wi-Fi / MQTT yet (design D1) */
     params_init();
 
     if (!os_create_objects())

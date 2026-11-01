@@ -148,20 +148,8 @@ typedef enum
 
 const char *motion_event_name(motion_event_t ev);
 
-/* ---- Fault bits (NFR19), reported in telemetry ---- */
-#define FAULT_IMU_I2C        (1u << 0)
-#define FAULT_IMU_DEAD       (1u << 1)
-#define FAULT_ENCODER_LOSS   (1u << 2)
-#define FAULT_MOTION_TIMEOUT (1u << 3)
-#define FAULT_ULTRASONIC     (1u << 4)
-#define FAULT_LINE_LOST      (1u << 5)
-#define FAULT_BYPASS_ABORT   (1u << 6)
-#define FAULT_WATCHDOG       (1u << 7)
-#define FAULT_BATTERY_LOW    (1u << 8)
-#define FAULT_BATTERY_CRIT   (1u << 9)
-#define FAULT_CONFIG         (1u << 10)
-#define FAULT_BARCODE        (1u << 11)
-#define FAULT_TELEMETRY      (1u << 12)
+/* ---- Fault bits (NFR19), reported in telemetry: fault_mask.h (design D1) ---- */
+#include "fault_mask.h"
 
 /* ---- Robot snapshot for telemetry: the packed Status_Snapshot ----
  * Field layout, writers and access rules: status.h. Only app_status.c

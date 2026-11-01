@@ -38,7 +38,7 @@
  *
  * Command_Frame (is02/cmd): ver U4 | cmd E4 | arguments:
  *   BARCODE letter U5 (0 = 'A') + 3 zero bits; MAP 4 x (present U1,
- *   letter U5) in the order FORWARD, UTURN, LEFT, RIGHT; PING U16;
+ *   letter U5) in the order FORWARD, LEFT, RIGHT, UTURN (D13); PING U16;
  *   SET param_id U6, value F32, 2 zero bits; others none.
  * Map_Frame (is02/map, retained): ver U4 | the 24-bit MAP body.
  * Config_Frame (is02/config, retained): ver U4 | count U6 |
@@ -202,7 +202,7 @@ typedef struct
     uint16_t ping;
     uint8_t  param_id;        /* SET */
     uint32_t value_bits;      /* SET: F32 bits */
-    uint8_t  map_present[4];  /* MAP: FORWARD, UTURN, LEFT, RIGHT */
+    uint8_t  map_present[4];  /* MAP: FORWARD, LEFT, RIGHT, UTURN (D13) */
     uint8_t  map_letter[4];
 } wire_cmd_t;
 

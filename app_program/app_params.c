@@ -77,8 +77,12 @@ static const param_def_t PARAMS[] =
 
 #define PARAM_COUNT (sizeof(PARAMS) / sizeof(PARAMS[0]))
 
+static uint16_t g_table_crc;   /* params_table_crc(), set in params_init() */
+static uint16_t table_crc(void);
+
 void params_init(void)
 {
+    g_table_crc = table_crc();
     g_params.motor_mapping_confirmed  = (float)MOTOR_MAPPING_CONFIRMED;
     g_params.enc_r_reversed           = (float)ENC_R_REVERSED;
     g_params.enc_l_reversed           = (float)ENC_L_REVERSED;
@@ -261,25 +265,37 @@ const char *params_name(uint32_t id)
     return (id < PARAM_COUNT) ? PARAMS[id].p_name : (const char *)0;
 }
 
-uint16_t params_crc16(void)
+/* Parameter table version (design D15): CRC-16/CCITT-FALSE (poly 0x1021,
+   init 0xFFFF, no reflection, no final XOR) over every NAME in ID order, each
+   followed by '\n'. The table is fixed at build time, so it is computed once. */
+static uint32_t crc_byte(uint32_t crc, uint32_t byte)
+{
+    crc ^= (byte & 0xFFu) << 8;
+    for (uint32_t b = 0u; b < 8u; b++)
+    {
+        crc = ((crc & 0x8000u) != 0u) ? (((crc << 1) ^ 0x1021u) & 0xFFFFu) : ((crc << 1) & 0xFFFFu);
+    }
+    return crc;
+}
+
+static uint16_t table_crc(void)
 {
     uint32_t crc = 0xFFFFu;
 
     for (uint32_t i = 0u; i < PARAM_COUNT; i++)
     {
-        union { float f; uint32_t u; } v;
-
-        v.f = *PARAMS[i].p_value;
-        for (uint32_t k = 0u; k < 4u; k++)
+        for (const char *p = PARAMS[i].p_name; *p != '\0'; p++)
         {
-            crc ^= ((v.u >> (24u - (8u * k))) & 0xFFu) << 8;
-            for (uint32_t b = 0u; b < 8u; b++)
-            {
-                crc = ((crc & 0x8000u) != 0u) ? (((crc << 1) ^ 0x1021u) & 0xFFFFu) : ((crc << 1) & 0xFFFFu);
-            }
+            crc = crc_byte(crc, (uint32_t)(uint8_t)*p);
         }
+        crc = crc_byte(crc, (uint32_t)'\n');
     }
     return (uint16_t)crc;
+}
+
+uint16_t params_table_crc(void)
+{
+    return g_table_crc;
 }
 
 uint32_t params_count(void)

@@ -99,7 +99,7 @@ def test_telemetry_c_to_python(wl):
     t.dist, t.line_l, t.line_r = 123456, 1, 0
     t.ir, t.ir_min, t.ir_max = 2000, 300, 3100
     t.thr_valid, t.thr_b, t.thr_w = 1, 1700, 1300
-    t.bc = ord("K") - 32
+    t.bc = 20                                   # D8: Code 39 index of "K"
     t.side, t.pitch, t.hump_h = 2, -35, 251
     t.hump_peak, t.hump_max, t.us = 312, 400, 8191
     for i, v in enumerate([1234, 8191, 4310, 0, 99]):
@@ -141,16 +141,17 @@ def _rand_event_fields(code, rng):
         v = rng.choice([0, 1, 2, 3, 4])
         if v == 0:
             return [(0, 3)]
-        win = [(rng.randint(0, 96), 7), (rng.randint(0, 3), 2), (rng.randint(0, 58), 6), (rng.randint(0, 1), 1),
+        win = [(rng.randint(0, 96), 7), (rng.randint(0, 3), 2), (rng.choice([63, rng.randint(0, 42)]), 6), (rng.randint(0, 1), 1),
                (rng.randint(0, 4095), 12), (rng.randint(0, 4095), 12), (rng.randint(0, 65535), 16)]
         if v == 1:
             return [(1, 3)] + win
         if v == 2:
             return [(2, 3)] + win + [(rng.randint(0, 5), 3), (rng.randint(0, 1), 1)]
         if v == 3:
-            k = rng.randint(1, 6)
-            return [(3, 3), (k, 3)] + [x for _ in range(k) for x in
-                                       ((rng.randint(0, 3), 2), (rng.randint(0, 58), 6), (rng.randint(0, 96), 7))]
+            k = rng.randint(1, 6)                      # D10: always 6 entries
+            return [(3, 3), (k, 3)] + [x for _ in range(6) for x in
+                                       ((rng.randint(0, 3), 2), (rng.choice([63, rng.randint(0, 42)]), 6),
+                                        (rng.randint(0, 96), 7))]
         k = rng.randint(0, 16)
         return [(4, 3), (rng.randint(1, 6), 3), (k, 5)] + [(rng.randint(0, 4095), 12) for _ in range(k)]
     if fixed == 0:
@@ -178,7 +179,7 @@ def test_event_texts_match_baseline():
     assert lw.decode_event(w.bytes())["detail"] == "at 18.3 cm, STOP issued in 412 us"
     w = lw.BitWriter().u(1, 4).u(5, 24).u(lw.EVENT_CODE["HUMP_END"], 6).u(1, 1).u(312, 14).u(400, 14)
     assert lw.decode_event(w.bytes())["detail"] == "height 31.2 mm, run max 40.0 mm"
-    w = lw.BitWriter().u(1, 4).u(5, 24).u(lw.EVENT_CODE["BARCODE"], 6).u(ord("Z") - 32, 6).u(1, 1)
+    w = lw.BitWriter().u(1, 4).u(5, 24).u(lw.EVENT_CODE["BARCODE"], 6).u(35, 6).u(1, 1)   # C6 index of Z
     assert lw.decode_event(w.bytes())["detail"] == "Z (read backwards)"
     w = lw.BitWriter().u(1, 4).u(5, 24).u(lw.EVENT_CODE["EMERGENCY_STOP"], 6).u(1, 4)
     assert lw.decode_event(w.bytes())["detail"] == "remote E-stop (MQTT)"
@@ -250,9 +251,10 @@ def test_argument_commands_python_to_c(wl):
     assert struct.unpack(">f", struct.pack(">I", c.value_bits))[0] == pytest.approx(0.35)
     st, c = _dec_cmd(wl, lw.encode_cmd("MAP:F=FWD,K=LEFT,R=RIGHT,U=UTURN"))
     assert st == 0 and list(c.map_present) == [1, 1, 1, 1]
-    assert [chr(65 + x) for x in c.map_letter] == ["F", "U", "K", "R"]   # FWD, UTURN, LEFT, RIGHT
+    assert [chr(65 + x) for x in c.map_letter] == ["F", "K", "R", "U"]   # D13: FWD, LEFT, RIGHT, UTURN
     st, c = _dec_cmd(wl, lw.encode_cmd("MAP:Q,W,E,T"))
-    assert st == 0 and [chr(65 + x) for x in c.map_letter] == ["Q", "W", "E", "T"]
+    # positional text is FWD,UTURN,LEFT,RIGHT (baseline); the binary slots are D13 order
+    assert st == 0 and [chr(65 + x) for x in c.map_letter] == ["Q", "E", "T", "W"]
 
 
 def test_map_frame_python_to_c(wl):
@@ -260,7 +262,7 @@ def test_map_frame_python_to_c(wl):
     assert len(data) == 4
     c = WireCmd()
     assert wl.wire_dec_map(data, len(data), ctypes.byref(c)) == 0
-    assert [chr(65 + x) for x in c.map_letter] == ["C", "D", "A", "B"]
+    assert [chr(65 + x) for x in c.map_letter] == ["C", "A", "B", "D"]   # D13: FWD, LEFT, RIGHT, UTURN
     with pytest.raises(lw.WireError):
         lw.encode_map("A=LEFT,A=RIGHT")
 

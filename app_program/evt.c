@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "evt.h"
+#include "code39.h"
 
 bool post_evt(const evt_msg_t *p_m);          /* os_glue.c (host: stubs) */
 uint32_t evt_now_ms(void);                    /* os_glue.c (host: stubs) */
@@ -105,5 +106,5 @@ void evt_map26(evt_b_t *p_b, const uint8_t p_act[26])
 
 uint32_t evt_char6(char c)
 {
-    return ((c > ' ') && (c <= '_')) ? (uint32_t)(c - ' ') : 0u;
+    return c39_to_index(c);                  /* C6 (design D10): Code 39 index 0..42, 63 none */
 }

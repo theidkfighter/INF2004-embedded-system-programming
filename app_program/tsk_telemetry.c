@@ -25,6 +25,7 @@
  */
 #include <tk/tkernel.h>
 
+#include "code39.h"
 #include "os_glue.h"
 #include "status.h"
 #include "app_net.h"
@@ -464,7 +465,11 @@ LOCAL void frame_fill(wire_tlm_t *p_t, const robot_status_t *p_s, const frame_ex
     p_t->thr_valid = b_thr ? 1u : 0u;
     p_t->thr_b     = (uint16_t)BP_GET(lb, 0u, 12u);
     p_t->thr_w     = (uint16_t)BP_GET(lb, 12u, 12u);
-    p_t->bc        = (uint8_t)BP_GET(la, 17u, 6u);
+    {
+        uint32_t c = BP_GET(la, 17u, 6u);      /* Status_Snapshot: ASCII - 32, 0 = none */
+
+        p_t->bc = (uint8_t)((c == 0u) ? C39_NONE : c39_to_index((char)(c + 32u)));   /* wire: D8 Code 39 index */
+    }
     p_t->side      = (uint8_t)BP_GET(oa, 13u, 2u);
     p_t->pitch     = (int16_t)bp_sext(BP_GET(ia, 0u, 11u), 11u);
     p_t->hump_h    = (int16_t)bp_sext(BP_GET(ia, 11u, 15u), 15u);
@@ -572,7 +577,7 @@ LOCAL void heartbeat(void)
     h.dropped    = (uint16_t)((net_frames_dropped() > 0xFFFFu) ? 0xFFFFu : net_frames_dropped());
     h.sat        = sat_count();
     h.faults     = (uint16_t)st_faults();
-    h.param_crc  = params_crc16();
+    h.param_crc  = params_table_crc();
     h.buf        = (uint8_t)((net_frames_waiting() > 127u) ? 127u : net_frames_waiting());
     h.n_params   = (uint8_t)params_count();
     (void)net_broker_ip4(h.ip);
@@ -678,7 +683,7 @@ LOCAL void console_status(void)
             "IMU_I2C", "IMU_DEAD", "ENCODER_LOSS", "MOTION_TIMEOUT", "ULTRASONIC", "LINE_LOST",
             "BYPASS_ABORT", "WATCHDOG", "BATTERY_LOW", "BATTERY_CRIT", "CONFIG", "BARCODE", "TELEMETRY"
         };
-        uint32_t f = st_faults();
+        uint32_t f = st_faults() & FAULT_BASE_MASK;   /* console keeps the 13 baseline names */
 
         jb_raw(&jb, "  faults:");
         if (f == 0u)

@@ -114,10 +114,10 @@ uint32_t       st_vbat(void);
 #define ST_SH_STATE   (0u)
 #define ST_W_STATE    (3u)
 #define ST_SH_FAULTS  (3u)
-#define ST_W_FAULTS   (13u)
-#define ST_SH_STOP    (16u)
+#define ST_W_FAULTS   (16u)       /* Fault_Mask, design D1 */
+#define ST_SH_STOP    (19u)
 #define ST_W_STOP     (4u)
-#define ST_SH_MEV     (20u)
+#define ST_SH_MEV     (23u)
 #define ST_W_MEV      (3u)
 
 #define ST_US_NONE    (8191u)

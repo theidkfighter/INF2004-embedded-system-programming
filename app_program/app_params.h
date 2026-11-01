@@ -107,7 +107,7 @@ uint32_t params_count(void);
 int32_t     params_set_id(uint32_t id, float value);
 bool        params_get_id(uint32_t id, float *p_value);
 const char *params_name(uint32_t id);            /* NULL for an unknown ID */
-uint16_t    params_crc16(void);                  /* CRC-16/CCITT of every value (heartbeat) */
+uint16_t    params_table_crc(void);              /* D15 table version: CRC-16/CCITT-FALSE of the NAMEs (heartbeat) */
 
 /* Derived values (0 if the calibration is missing) */
 float params_mm_per_count(void);     /* 4x quadrature count */

@@ -162,7 +162,7 @@ char c39_from_index(uint32_t idx)
 }
 
 static bool decode_one_way(const uint16_t *p_w, bool b_first_bar, uint32_t n,
-                           char *p_out, size_t out_len)
+                           char *p_out, uint32_t out_len)
 {
     for (uint32_t start = 0u; (start + 9u) <= n; start++)
     {
@@ -205,7 +205,7 @@ static bool decode_one_way(const uint16_t *p_w, bool b_first_bar, uint32_t n,
 }
 
 bool code39_decode(const uint16_t *p_w, bool b_first_bar, uint32_t n,
-                   char *p_out, size_t out_len, bool *p_reversed)
+                   char *p_out, uint32_t out_len, bool *p_reversed)
 {
     static uint16_t rw[128];
 

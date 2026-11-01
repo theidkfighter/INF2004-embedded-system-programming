@@ -33,7 +33,7 @@ ACTION_NAMES = ["NONE", "FWD", "UTURN", "LEFT", "RIGHT"]
 BCM_LEVELS = ["50%", "35%", "65%", "25%", "75%", "adapt"]
 FAULT_NAMES = ["IMU_I2C", "IMU_DEAD", "ENCODER_LOSS", "MOTION_TIMEOUT", "ULTRASONIC", "LINE_LOST",
                "BYPASS_ABORT", "WATCHDOG", "BATTERY_LOW", "BATTERY_CRIT", "CONFIG", "BARCODE",
-               "TELEMETRY"]
+               "TELEMETRY", "WIFI_LOSS", "MQTT_LOSS", "US_NO_ECHO"]   # design D1 (16 bits)
 CONFIG_ITEMS = ["MOTOR_MAPPING_CONFIRMED", "ENC_DIRECTION_CONFIRMED", "ENC_A_EDGES_PER_REV",
                 "WHEEL_DIAMETER_MM", "TRACK_WIDTH_MM", "SPEED_FF_DEADBAND_PCT",
                 "SPEED_FF_MM_S_PER_PCT", "LINE_DO_BLACK_HIGH", "IR_WHITE_ADC", "IR_BLACK_ADC",
@@ -56,6 +56,19 @@ PARAM_NAMES = [
     "OBST_TRUST_MISS", "OBST_EDGE_PAD_MM", "ROBOT_LEFT_HALF_MM", "IR_TO_AXLE_MM",
 ]
 PARAM_ID = {n: i for i, n in enumerate(PARAM_NAMES)}
+
+
+def crc16_ccitt_false(data, crc=0xFFFF):
+    for b in data:
+        crc ^= b << 8
+        for _ in range(8):
+            crc = ((crc << 1) ^ 0x1021) & 0xFFFF if crc & 0x8000 else (crc << 1) & 0xFFFF
+    return crc
+
+
+# Parameter table version (design D15): CRC over every NAME + '\n' in ID order.
+# A heartbeat whose param_crc or n_params differs means the laptop's table is stale.
+PARAM_TABLE_CRC = crc16_ccitt_false("".join(n + "\n" for n in PARAM_NAMES).encode("ascii"))
 
 # wire_ids.h WIRE_EVENT_TABLE: (name, fixed argument bits or None = variable)
 EVENTS = [
@@ -180,8 +193,13 @@ def _f32_bits(x):
     return struct.unpack(">I", struct.pack(">f", float(x)))[0]
 
 
+C39_CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-. $/+%"
+C39_NONE = 63
+
+
 def _char6(c):
-    return chr(c + 32) if c else ""
+    """C6 (design D10): Code 39 index 0..42, 63 = none (\"\")."""
+    return C39_CHARS[c] if c < len(C39_CHARS) else ""
 
 
 def _cm13(v):
@@ -216,15 +234,16 @@ def decode_telemetry(data):
     ir, irmn, irmx = r.u(12), r.u(12), r.u(12)
     thr_valid, thr_b, thr_w = r.u(1), r.u(12), r.u(12)
     bc = _char6(r.u(6))
-    side = ["", "L", "R", "?"][r.u(2)]
     pitch, hump_h = r.s(11) / 10.0, r.s(15) / 10.0
     peak, hmax = r.u(14) / 10.0, r.u(14) / 10.0
     us = _cm13(r.u(13))
     scan = [_cm13(r.u(13)) for _ in range(5)]
+    side = ["", "L", "R", "?"][r.u(2)]
     ev = r.u(3)
-    rssi = -r.u(8)
     tr = r.s(14) / 10.0
-    faults, vbat, buf = r.u(16), r.u(13), r.u(7)
+    faults, vbat = r.u(16), r.u(13)
+    rssi = -r.u(8)
+    buf = r.u(7)
     f.update({
         "spd": spd, "duty": duty, "enc": enc, "dist": dist,
         "line": {"l": line_l, "r": line_r, "ir": ir, "irmn": irmn, "irmx": irmx,
@@ -244,14 +263,14 @@ def decode_heartbeat(data):
         raise WireError(f"Heartbeat_Frame must be {HB_LEN} bytes, got {len(data)}")
     r = BitReader(data)
     r.u(4)
-    h = {"seq": r.u(14)}
+    h = {"seq": r.u(14), "t": r.u(24)}
     h["state"] = STATE_NAMES[r.u(3)]
     h["rssi"] = -r.u(8)
-    h["t"] = r.u(24)
+    h["buf"] = r.u(7)
     h["up"] = r.u(17)
     h["reconnects"], h["dropped"], h["sat"] = r.u(16), r.u(16), r.u(16)
-    h["faults"], h["param_crc"] = r.u(16), r.u(16)
-    h["buf"], h["n_params"] = r.u(7), r.u(6)
+    h["faults"] = r.u(16)
+    h["n_params"], h["param_crc"] = r.u(6), r.u(16)
     h["broker"] = ".".join(str(r.u(8)) for _ in range(4))
     if not r.rest_zero():
         raise WireError("padding bits set")
@@ -296,12 +315,12 @@ def _event_args(code, r):
     if name == "START_REFUSED":
         return "calibration missing (see console)", {}
     if name == "MISSION_COMPLETE":
-        t, d, bc, humps, mx, ob = r.u(12), r.u(14) / 100.0, r.u(7), r.u(6), r.u(14) / 10.0, r.u(6)
+        t, d, bc, humps, mx, ob = r.u(17), r.u(14) / 100.0, r.u(6), r.u(4), r.u(14) / 10.0, r.u(4)
         return (f"t {t}s dist {d:.2f}m bc {bc} humps {humps} max {mx:.1f}mm obst {ob}",
                 {"time_s": t, "dist_m": d, "barcodes": bc, "humps": humps, "hump_max_mm": mx,
                  "obstacles": ob})
     if name == "TURN_SNAP":
-        return ("stopped on the line" if r.u(1) else "line not seen, encoder angle kept"), {}
+        return ("line not seen, encoder angle kept" if r.u(1) else "stopped on the line"), {}
     if name == "NAV_ACTION":
         letter, act = chr(65 + r.u(5)), r.u(3)
         an = ACTION_NAMES[act] if act < len(ACTION_NAMES) else str(act)
@@ -319,11 +338,11 @@ def _event_args(code, r):
     if name == "RECOVERY_REFUSED":
         b = r.u(15)
         parts = []
-        if b & (1 << 14):
+        if b & 1:
             parts.append("obstacle closer than 8 cm.")
-        if b & (1 << 13):
+        if b & 2:
             parts.append("IMU INT1 still active.")
-        missing = [CONFIG_ITEMS[i] for i in range(13) if b & (1 << i)]
+        missing = [CONFIG_ITEMS[i] for i in range(13) if b & (1 << (i + 2))]
         if missing:
             parts.append(", ".join(missing))
         return " ".join(parts), {}
@@ -350,7 +369,7 @@ def _event_args(code, r):
             raise WireError("FINE_SCAN count outside 1..11")
         return f"{first}deg+2: " + " ".join(str(_cm9(r.u(9))) for _ in range(n)), {}
     if name == "SIDE_FOLLOW":
-        n60, seen, near, lim, leg, x = r.u(5), r.u(5), r.u(13) / 10.0, r.u(13) / 10.0, r.u(14), r.u(14)
+        n60, seen, near, lim, leg, x = r.u(8), r.u(8), r.u(13) / 10.0, r.u(13) / 10.0, r.u(11), r.u(11)
         return f"60deg pings {n60} seen {seen} near {near:.1f}cm (<={lim:.1f}) leg {leg} x {x}", {}
     if name == "SIDE_LOOK":
         d90, d60, gone = _cm13(r.u(13)), _cm13(r.u(13)), r.u(1)
@@ -366,13 +385,13 @@ def _event_args(code, r):
     if name == "BYPASS_RETURN":
         return "line not seen crossing the original path: back to it, then search", {}
     if name == "OBSTACLE_PROFILE":
-        rr, w, off, cl, cr, side = _cm9(r.u(9)), r.u(9), r.s(9), r.s(11), r.s(11), r.u(2)
+        rr, w, off, cl, cr, side = _cm9(r.u(9)), r.u(10), r.s(10), r.s(10), r.s(10), r.u(2)
         return f"r {rr}cm w {w}cm off {off} clrL {cl} clrR {cr} side {'-LR?'[side]}", {}
     if name == "AVOIDANCE_ABORT":
         c = r.u(4)
         return ABORT_TEXTS[c] if c < len(ABORT_TEXTS) else f"reason {c}", {}
     if name == "OBST_REVERSE_CAP":
-        kind, x, used, cap, tot = r.u(2), r.u(9), r.u(11), r.u(11), r.u(11)
+        kind, x, used, cap, tot = r.u(2), r.u(10), r.u(10), r.u(10), r.u(12)
         head = [f"standoff {x} mm refused: ", "rescan skipped: ",
                 f"rescan reverse cut to {x} mm: ", ""][kind]
         return f"{head}{used} of {cap} mm used, {tot} mm total", {}
@@ -387,9 +406,9 @@ def _event_args(code, r):
     if name == "OBSTACLE_CLEARED":
         return "coarse sweep clear: resume line following", {}
     if name == "BYPASS_COMPLETE":
-        v = r.u(2)
-        return (f"passed on the {'right' if v & 1 else 'left'}"
-                + ("; on the path, searching for the line" if v & 2 else "")), {}
+        right, search = r.u(1), r.u(1)
+        return (f"passed on the {'right' if right else 'left'}"
+                + ("; on the path, searching for the line" if search else "")), {}
     if name == "BYPASS_BLOCKED":
         right, long_, cm, deg = r.u(1), r.u(1), _cm9(r.u(9)), r.s(8)
         sd = "right" if right else "left"
@@ -397,8 +416,9 @@ def _event_args(code, r):
             return f"{sd} side: obstacle side did not end in 1 m; backing out", {}
         return f"{sd} side: something at {cm} cm, {deg} deg; backing out", {}
     if name == "BYPASS_RETRY":
-        return ["trying the left side (same scan)", "trying the right side (same scan)",
-                "left side again, 100 mm wider", "right side again, 100 mm wider"][r.u(2)], {}
+        right, wider = r.u(1), r.u(1)
+        sd = "right" if right else "left"
+        return (f"{sd} side again, 100 mm wider" if wider else f"trying the {sd} side (same scan)"), {}
     if name == "OBSTACLE":
         cm, us = _cm13(r.u(13)), r.u(16)
         return f"at {cm:.1f} cm, STOP issued in {us} us", {}
@@ -431,8 +451,9 @@ def _bc_dbg(r):
     if v == 3:
         k = r.u(3)
         parts = []
-        for i in range(k):
-            res, code, n = r.u(2), _char6(r.u(6)), r.u(7)
+        entries = [(r.u(2), _char6(r.u(6)), r.u(7)) for _ in range(6)]    # D10: always 6
+        for i in range(min(k, 6)):
+            res, code, n = entries[i]
             mark = code if res == 1 else ("-" if res == 0 else "x")
             parts.append(f"{BCM_LEVELS[i] if i < 6 else i}:{mark}{n}")
         return "levels " + " ".join(parts)
@@ -534,7 +555,9 @@ def decode(topic, payload):
 
 _ACT_WORDS = {"FWD": 1, "FORWARD": 1, "STRAIGHT": 1, "F": 1, "UTURN": 2, "U": 2, "BACK": 2,
               "LEFT": 3, "L": 3, "RIGHT": 4, "R": 4}
-_SLOT_OF_ACTION = {1: 0, 2: 1, 3: 2, 4: 3}       # FORWARD, UTURN, LEFT, RIGHT
+# binary map slots (design D13): forward, left, right, U-turn
+_SLOT_OF_ACTION = {1: 0, 3: 1, 4: 2, 2: 3}
+_POSITIONAL_ACTIONS = (1, 2, 3, 4)               # text "F,U,K,R" = FWD,UTURN,LEFT,RIGHT (baseline)
 
 
 def _map_body(text):
@@ -545,7 +568,7 @@ def _map_body(text):
         if len(items) != 4:
             raise WireError("positional form takes exactly 4 letters: FWD,UTURN,LEFT,RIGHT")
         for k, i in enumerate(items):
-            slots[k] = i.strip().upper()
+            slots[_SLOT_OF_ACTION[_POSITIONAL_ACTIONS[k]]] = i.strip().upper()
     else:
         for i in items:
             if "=" not in i:
@@ -663,7 +686,7 @@ def describe_cmd(data):
 
 def _describe_body(r):
     out = []
-    for word in ("FWD", "UTURN", "LEFT", "RIGHT"):
+    for word in ("FWD", "LEFT", "RIGHT", "UTURN"):       # D13 slot order
         present, letter = r.u(1), r.u(5)
         if present:
             out.append(f"{chr(65 + letter)}={word}")

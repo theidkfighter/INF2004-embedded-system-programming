@@ -13,6 +13,7 @@
 #include "lwip/udp.h"
 
 #include "app_net.h"
+#include "fault_mask.h"
 #include "wire.h"
 #include "hal.h"
 #include "perf.h"
@@ -48,8 +49,25 @@ static msg_slot_t     g_msgs[NET_MSG_SLOTS];
 static uint32_t       g_m_head;
 static uint32_t       g_m_tail;
 
-static volatile bool     g_wifi_up;
-static volatile bool     g_mqtt_up;
+/* Wi-Fi / MQTT link state lives in the Fault_Mask (design D1): bits
+   FAULT_WIFI_LOSS / FAULT_MQTT_LOSS, written only when they change. */
+static inline bool wifi_up(void) { return !fault_has(FAULT_WIFI_LOSS); }
+static inline bool mqtt_up(void) { return !fault_has(FAULT_MQTT_LOSS); }
+
+static void set_link(uint32_t loss_bit, bool b_up)
+{
+    if (b_up == fault_has(loss_bit))      /* bit set means "lost": change only on a difference */
+    {
+        if (b_up)
+        {
+            fault_clear(loss_bit);
+        }
+        else
+        {
+            fault_set(loss_bit);
+        }
+    }
+}
 static volatile bool     g_led;
 static bool              g_led_applied;
 static volatile int32_t  g_rssi = -100;
@@ -115,7 +133,7 @@ bool net_post(net_topic_t topic, const uint8_t *p, uint32_t len)
     uint32_t irq;
     uint32_t slot;
 
-    if ((len == 0u) || (len > NET_MSG_MAX) || ((topic == NET_T_STATUS) && !g_mqtt_up))
+    if ((len == 0u) || (len > NET_MSG_MAX) || ((topic == NET_T_STATUS) && !mqtt_up()))
     {
         return false;
     }
@@ -140,8 +158,8 @@ void net_set_led(bool b_on)
     g_led = b_on;
 }
 
-bool     net_wifi_up(void)             { return g_wifi_up; }
-bool     net_mqtt_up(void)             { return g_mqtt_up; }
+bool     net_wifi_up(void)             { return wifi_up(); }
+bool     net_mqtt_up(void)             { return mqtt_up(); }
 int32_t  net_rssi(void)                { return g_rssi; }
 uint32_t net_frames_waiting(void)      { return g_f_head - g_f_tail; }
 uint32_t net_frames_dropped(void)      { return g_dropped; }
@@ -254,7 +272,7 @@ static void on_beacon(void *p_arg, struct udp_pcb *p_pcb, struct pbuf *p, const 
     n = pbuf_copy_partial(p, text, sizeof(text) - 1u, 0u);
     text[n] = '\0';
     pbuf_free(p);
-    if ((strncmp(text, "IS02_BROKER", 11) != 0) || g_mqtt_up || (g_connect_fails < DISCOVERY_FAILS))
+    if ((strncmp(text, "IS02_BROKER", 11) != 0) || mqtt_up() || (g_connect_fails < DISCOVERY_FAILS))
     {
         return;
     }
@@ -280,7 +298,7 @@ static void on_connect(mqtt_client_t *p_client, void *p_arg, mqtt_connection_sta
             g_reconnects++;
         }
         g_ever_connected = true;
-        g_mqtt_up        = true;
+        set_link(FAULT_MQTT_LOSS, true);
         g_backoff        = 1000u;
         g_connect_fails  = 0u;
         (void)mqtt_subscribe(p_client, NET_TOPIC_CMD, 1u, on_sub_done, NULL);
@@ -290,11 +308,11 @@ static void on_connect(mqtt_client_t *p_client, void *p_arg, mqtt_connection_sta
     else
     {
         /* refused, timed out or disconnected: try again after the back-off */
-        if (!g_mqtt_up)
+        if (!mqtt_up())
         {
             g_connect_fails++;
         }
-        g_mqtt_up = false;
+        set_link(FAULT_MQTT_LOSS, false);
         schedule_retry(hal_time_ms());
     }
 }
@@ -314,8 +332,8 @@ static void manage_wifi(uint32_t now)
     int32_t link = cyw43_wifi_link_status(&cyw43_state, CYW43_ITF_STA);
     struct netif *p_nif = &cyw43_state.netif[CYW43_ITF_STA];
 
-    g_wifi_up = netif_is_up(p_nif) && netif_is_link_up(p_nif) &&
-                !ip4_addr_isany_val(*netif_ip4_addr(p_nif));
+    set_link(FAULT_WIFI_LOSS, netif_is_up(p_nif) && netif_is_link_up(p_nif) &&
+                              !ip4_addr_isany_val(*netif_ip4_addr(p_nif)));
 
     if (link == CYW43_LINK_JOIN)
     {
@@ -374,17 +392,17 @@ static void manage_mqtt(uint32_t now)
         g_ci.keep_alive = 5u;                 /* the broker notices a dead robot in ~7 s */
     }
 
-    if (g_mqtt_up && !mqtt_client_is_connected(gp_client))
+    if (mqtt_up() && !mqtt_client_is_connected(gp_client))
     {
-        g_mqtt_up = false;                    /* connection lost without a callback */
+        set_link(FAULT_MQTT_LOSS, false);                    /* connection lost without a callback */
         schedule_retry(now);
     }
-    if (!g_wifi_up)
+    if (!wifi_up())
     {
-        if (g_mqtt_up || g_connecting)
+        if (mqtt_up() || g_connecting)
         {
             mqtt_disconnect(gp_client);       /* drop the dead TCP session now */
-            g_mqtt_up    = false;
+            set_link(FAULT_MQTT_LOSS, false);
             g_connecting = false;
         }
         return;
@@ -396,7 +414,7 @@ static void manage_mqtt(uint32_t now)
         g_connect_fails++;
         schedule_retry(now);
     }
-    if (!g_mqtt_up && !g_connecting && ((int32_t)(now - g_next_try) >= 0))
+    if (!mqtt_up() && !g_connecting && ((int32_t)(now - g_next_try) >= 0))
     {
         if (g_broker_set &&
             (mqtt_client_connect(gp_client, &g_broker, MQTT_BROKER_PORT, on_connect, NULL, &g_ci) == ERR_OK))
@@ -476,7 +494,7 @@ void app_net_poll(void)
     }
 
     manage_wifi(now);
-    if (g_wifi_up && ((now - g_t_rssi) >= RSSI_EVERY_MS))
+    if (wifi_up() && ((now - g_t_rssi) >= RSSI_EVERY_MS))
     {
         int32_t rssi = 0;
 
@@ -487,7 +505,7 @@ void app_net_poll(void)
         }
     }
     manage_mqtt(now);
-    if (g_mqtt_up)
+    if (mqtt_up())
     {
         flush();
     }

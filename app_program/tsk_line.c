@@ -155,7 +155,7 @@ LOCAL void bc_window_fields(evt_b_t *p_b, uint32_t n, bc_result_t res, char code
 {
     evt_u(p_b, n, 7u);
     evt_u(p_b, (uint32_t)res & 3u, 2u);
-    evt_u(p_b, (res == BC_DECODED) ? evt_char6(code) : 0u, 6u);
+    evt_u(p_b, (res == BC_DECODED) ? evt_char6(code) : 63u, 6u);   /* C6, 63 = none */
     evt_u(p_b, ((res == BC_DECODED) && b_rev) ? 1u : 0u, 1u);
     evt_u(p_b, st_bc_thr_black(), 12u);
     evt_u(p_b, st_bc_thr_white(), 12u);
@@ -238,15 +238,18 @@ LOCAL void debug_pass(bc_result_t res, char code, bool b_rev)
 
     if (g_bcm.n_levels > 1u)
     {
-        /* variant 3: count U3, count x (res E2, code U6, n U7) */
+        /* variant 3 (design D10): n_levels U3, always 6 x (res E2, code C6,
+           n U7); entries past n_levels are sent as (0, 63, 0) */
         evt_begin(&b, EVC_BC_DBG);
         evt_u(&b, 3u, 3u);
         evt_u(&b, g_bcm.n_levels, 3u);
-        for (uint32_t i = 0u; i < g_bcm.n_levels; i++)
+        for (uint32_t i = 0u; i < BCM_MAX_LEVELS; i++)
         {
-            evt_u(&b, (uint32_t)g_bcm.last_res[i] & 3u, 2u);
-            evt_u(&b, (g_bcm.last_res[i] == BC_DECODED) ? evt_char6(g_bcm.last_code[i]) : 0u, 6u);
-            evt_u(&b, g_bcm.last_n[i], 7u);
+            bool b_used = (i < g_bcm.n_levels);
+
+            evt_u(&b, b_used ? ((uint32_t)g_bcm.last_res[i] & 3u) : 0u, 2u);
+            evt_u(&b, (b_used && (g_bcm.last_res[i] == BC_DECODED)) ? evt_char6(g_bcm.last_code[i]) : 63u, 6u);
+            evt_u(&b, b_used ? g_bcm.last_n[i] : 0u, 7u);
         }
         (void)evt_post(&b);
     }
