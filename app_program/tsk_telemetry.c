@@ -26,6 +26,7 @@
 #include <tk/tkernel.h>
 
 #include "os_glue.h"
+#include "status.h"
 #include "app_net.h"
 #include "app_params.h"
 #include "hal.h"
@@ -35,6 +36,8 @@
 #include "nav_map.h"
 #include "crit.h"
 #include "wire.h"
+#include "status.h"
+#include "bitpack.h"
 
 
 #define FRAME_MS        (500u)
@@ -424,74 +427,60 @@ typedef struct
     uint32_t    buf;
 } frame_extra_t;
 
-/* round(x * scale) clamped to [lo, hi] (NaN -> nan_code) */
-LOCAL int32_t q(float x, float scale, int32_t lo, int32_t hi, int32_t nan_code)
-{
-    float   d;
-    int32_t c;
-
-    if (x != x)
-    {
-        return nan_code;
-    }
-    d = x * scale;
-    if (d >= (float)hi)
-    {
-        return hi;
-    }
-    if (d <= (float)lo)
-    {
-        return lo;
-    }
-    c = (d < 0.0f) ? -(int32_t)(0.5f - d) : (int32_t)(d + 0.5f);
-    return (c > hi) ? hi : ((c < lo) ? lo : c);
-}
-
-LOCAL uint16_t q_cm13(float cm)
-{
-    return ((cm != cm) || (cm < 0.0f)) ? (uint16_t)EVT_CM13_NONE : (uint16_t)q(cm, 10.0f, 0, 4310, 0);
-}
-
-/* Fills the Telemetry_Frame from p_s (g_status, or a fixed copy for the
-   APP_PERF benchmark) and p_x. Resolutions: wire.h. */
+/* Fills the Telemetry_Frame from a Status_Snapshot (g_status, or a fixed
+   copy for the APP_PERF benchmark) and p_x. The snapshot fields already use
+   the frame's resolutions (status.h, wire.h), so codes are copied, not
+   requantized. Each unit is read once. */
 LOCAL void frame_fill(wire_tlm_t *p_t, const robot_status_t *p_s, const frame_extra_t *p_x)
 {
-    char sd = p_s->scan_side;
+    uint32_t sys = p_s->sys;
+    uint32_t ma  = p_s->mot_a;
+    uint32_t mb  = p_s->mot_b;
+    uint32_t la  = p_s->line_a;
+    uint32_t lb  = p_s->line_b;
+    uint32_t ia  = p_s->imu_a;
+    uint32_t ib  = p_s->imu_b;
+    uint32_t ic  = p_s->imu_c;
+    uint32_t oa  = p_s->obs_a;
+    uint32_t ob  = p_s->obs_b;
+    uint32_t oc  = p_s->obs_c;
+    bool     b_thr = (BP_GET(la, 23u, 1u) != 0u);
 
     p_t->seq       = (uint16_t)(p_x->seq & 0x7FFFu);
     p_t->t_ms      = p_x->t_ms & 0xFFFFFFu;
     p_t->state     = (uint8_t)p_x->state;
-    p_t->spd[0]    = (int16_t)q(p_s->spd_l, 10.0f, -10000, 10000, 0);
-    p_t->spd[1]    = (int16_t)q(p_s->spd_r, 10.0f, -10000, 10000, 0);
-    p_t->duty[0]   = (int16_t)q(p_s->duty_l, 1000.0f, -1000, 1000, 0);
-    p_t->duty[1]   = (int16_t)q(p_s->duty_r, 1000.0f, -1000, 1000, 0);
-    p_t->enc[0]    = (p_s->enc_l > 8388607) ? 8388607 : ((p_s->enc_l < -8388607) ? -8388607 : p_s->enc_l);
-    p_t->enc[1]    = (p_s->enc_r > 8388607) ? 8388607 : ((p_s->enc_r < -8388607) ? -8388607 : p_s->enc_r);
-    p_t->dist      = (uint32_t)q(p_s->dist_mm, 10.0f, 0, 1000000, 0);
-    p_t->line_l    = (int8_t)p_s->line_l;
-    p_t->line_r    = (int8_t)p_s->line_r;
-    p_t->ir        = (uint16_t)((p_s->ir_adc > 4095u) ? 4095u : p_s->ir_adc);
+    p_t->spd[0]    = (int16_t)bp_sext(BP_GET(ma, 0u, 15u), 15u);
+    p_t->spd[1]    = (int16_t)bp_sext(BP_GET(ma, 15u, 15u), 15u);
+    p_t->duty[0]   = (int16_t)bp_sext(BP_GET(mb, 0u, 11u), 11u);
+    p_t->duty[1]   = (int16_t)bp_sext(BP_GET(mb, 11u, 11u), 11u);
+    p_t->enc[0]    = bp_sext(BP_GET(p_s->mot_c, 0u, 24u), 24u);
+    p_t->enc[1]    = bp_sext(BP_GET(p_s->mot_d, 0u, 24u), 24u);
+    p_t->dist      = BP_GET(p_s->mot_e, 0u, 20u);
+    p_t->line_l    = (int8_t)BP_GET(la, 0u, 1u);
+    p_t->line_r    = (int8_t)BP_GET(la, 1u, 1u);
+    p_t->ir        = (uint16_t)BP_GET(la, 2u, 12u);
     p_t->ir_min    = (uint16_t)((p_x->ir_min > 4095u) ? 4095u : p_x->ir_min);
     p_t->ir_max    = (uint16_t)((p_x->ir_max > 4095u) ? 4095u : p_x->ir_max);
-    p_t->thr_valid = (p_s->bc_enabled != 0u) ? 1u : 0u;
-    p_t->thr_b     = (uint16_t)((p_s->bc_thr_black > 4095u) ? 4095u : p_s->bc_thr_black);
-    p_t->thr_w     = (uint16_t)((p_s->bc_thr_white > 4095u) ? 4095u : p_s->bc_thr_white);
-    p_t->bc        = (uint8_t)evt_char6(p_s->barcode);
-    p_t->side      = (sd == 'L') ? 1u : ((sd == 'R') ? 2u : 0u);
-    p_t->pitch     = (int16_t)q(p_s->pitch_deg, 10.0f, -900, 900, 0);
-    p_t->hump_h    = (int16_t)q(p_s->hump_mm, 10.0f, -15000, 15000, 0);
-    p_t->hump_peak = (uint16_t)q(p_s->hump_peak_mm, 10.0f, 0, 15000, 0);
-    p_t->hump_max  = (uint16_t)q(p_s->hump_max_mm, 10.0f, 0, 15000, 0);
-    p_t->us        = q_cm13(p_s->obst_cm);
-    for (uint32_t i = 0u; i < 5u; i++)
-    {
-        p_t->scan[i] = q_cm13(p_s->scan_cm[i]);
-    }
-    p_t->imu_ev    = (uint8_t)(p_s->motion_event & 7u);
+    p_t->thr_valid = b_thr ? 1u : 0u;
+    p_t->thr_b     = (uint16_t)BP_GET(lb, 0u, 12u);
+    p_t->thr_w     = (uint16_t)BP_GET(lb, 12u, 12u);
+    p_t->bc        = (uint8_t)BP_GET(la, 17u, 6u);
+    p_t->side      = (uint8_t)BP_GET(oa, 13u, 2u);
+    p_t->pitch     = (int16_t)bp_sext(BP_GET(ia, 0u, 11u), 11u);
+    p_t->hump_h    = (int16_t)bp_sext(BP_GET(ia, 11u, 15u), 15u);
+    p_t->hump_peak = (uint16_t)BP_GET(ib, 0u, 14u);
+    p_t->hump_max  = (uint16_t)BP_GET(ib, 14u, 14u);
+    p_t->us        = (uint16_t)BP_GET(oa, 0u, 13u);
+    p_t->scan[0]   = (uint16_t)BP_GET(oa, 15u, 13u);
+    p_t->scan[1]   = (uint16_t)BP_GET(ob, 0u, 13u);
+    p_t->scan[2]   = (uint16_t)BP_GET(ob, 13u, 13u);
+    p_t->scan[3]   = (uint16_t)BP_GET(oc, 0u, 13u);
+    p_t->scan[4]   = (uint16_t)BP_GET(oc, 13u, 13u);
+    p_t->imu_ev    = (uint8_t)BP_GET(sys, ST_SH_MEV, ST_W_MEV);
     p_t->rssi      = (uint8_t)((p_x->rssi >= 0) ? 0 : ((p_x->rssi < -255) ? 255 : -p_x->rssi));
-    p_t->turn      = (int16_t)q(p_s->turn_rate_dps, 10.0f, -7200, 7200, 0);
-    p_t->faults    = (uint16_t)(p_s->faults & 0xFFFFu);
-    p_t->vbat      = (uint16_t)((p_s->vbat_mv > 8191u) ? 8191u : p_s->vbat_mv);
+    p_t->turn      = (int16_t)bp_sext(BP_GET(ic, 0u, 14u), 14u);
+    p_t->faults    = (uint16_t)BP_GET(sys, ST_SH_FAULTS, ST_W_FAULTS);
+    p_t->vbat      = (uint16_t)BP_GET(p_s->misc, 0u, 13u);
     p_t->buf       = (uint8_t)((p_x->buf > 127u) ? 127u : p_x->buf);
 }
 
@@ -527,7 +516,7 @@ LOCAL void frame(void)
    a scratch buffer (nothing is published), each timed on its own. */
 LOCAL void tlm_bench(void)
 {
-    static robot_status_t s_snap;
+    static robot_status_t s_snap;           /* a copy: the encoder never sees a live update */
     static uint8_t        s_scratch[WIRE_TLM_LEN];
     frame_extra_t         x;
     wire_tlm_t            t;
@@ -582,7 +571,7 @@ LOCAL void heartbeat(void)
     h.reconnects = (uint16_t)((net_reconnects() > 0xFFFFu) ? 0xFFFFu : net_reconnects());
     h.dropped    = (uint16_t)((net_frames_dropped() > 0xFFFFu) ? 0xFFFFu : net_frames_dropped());
     h.sat        = sat_count();
-    h.faults     = (uint16_t)(g_status.faults & 0xFFFFu);
+    h.faults     = (uint16_t)st_faults();
     h.param_crc  = params_crc16();
     h.buf        = (uint8_t)((net_frames_waiting() > 127u) ? 127u : net_frames_waiting());
     h.n_params   = (uint8_t)params_count();
@@ -612,7 +601,7 @@ LOCAL void status_leds(bool b_blink)
     switch (st)
     {
         case SYS_IDLE:
-            if (((g_status.faults & FAULT_IMU_DEAD) != 0u) && b_blink)
+            if (((st_faults() & FAULT_IMU_DEAD) != 0u) && b_blink)
             {
                 hal_neopixel(40u, 30u, 0u);   /* yellow blink: running without the IMU */
             }
@@ -643,12 +632,12 @@ LOCAL void battery(void)
 #if VBAT_ENABLED
     uint32_t mv = hal_vbat_mv();
 
-    g_status.vbat_mv = mv;
+    st_set_vbat(mv);
     if ((mv > 1000u) && (mv < VBAT_CRITICAL_MV))
     {
         flag_set(EVF_BATTERY_CRITICAL);
     }
-    else if ((mv > 1000u) && (mv < VBAT_LOW_MV) && ((g_status.faults & FAULT_BATTERY_LOW) == 0u))
+    else if ((mv > 1000u) && (mv < VBAT_LOW_MV) && ((st_faults() & FAULT_BATTERY_LOW) == 0u))
     {
         fault_set(FAULT_BATTERY_LOW);
         buzzer_request(BUZZ_LOW_BATTERY);
@@ -672,24 +661,24 @@ LOCAL void console_status(void)
     jb_raw(&jb, net_mqtt_up() ? "  mqtt up " : (net_wifi_up() ? "  wifi up, mqtt down " : "  wifi down "));
     jb_raw(&jb, net_broker_ip());
     jb_raw(&jb, "  dist ");
-    jb_fixed(&jb, g_status.dist_mm, 0u);
+    jb_fixed(&jb, st_dist_mm(), 0u);
     jb_raw(&jb, " mm  LR ");
-    jb_int(&jb, g_status.line_l);
+    jb_int(&jb, st_line_l() ? 1 : 0);
     jb_char(&jb, '/');
-    jb_int(&jb, g_status.line_r);
+    jb_int(&jb, st_line_r() ? 1 : 0);
     jb_raw(&jb, "  ir ");
-    jb_uint(&jb, g_status.ir_adc);
+    jb_uint(&jb, st_ir_adc());
     jb_raw(&jb, "  obst ");
-    jb_fixed(&jb, g_status.obst_cm, 1u);
+    jb_fixed(&jb, st_obst_cm(), 1u);
     jb_raw(&jb, "  pitch ");
-    jb_fixed(&jb, g_status.pitch_deg, 1u);
+    jb_fixed(&jb, st_pitch_deg(), 1u);
     {
         static const char * const NAMES[] =
         {
             "IMU_I2C", "IMU_DEAD", "ENCODER_LOSS", "MOTION_TIMEOUT", "ULTRASONIC", "LINE_LOST",
             "BYPASS_ABORT", "WATCHDOG", "BATTERY_LOW", "BATTERY_CRIT", "CONFIG", "BARCODE", "TELEMETRY"
         };
-        uint32_t f = g_status.faults;
+        uint32_t f = st_faults();
 
         jb_raw(&jb, "  faults:");
         if (f == 0u)
@@ -708,7 +697,7 @@ LOCAL void console_status(void)
     if ((sys_state() == SYS_ERROR) || (sys_state() == SYS_ESTOP))
     {
         jb_raw(&jb, "  reason: ");
-        jb_raw(&jb, wire_stop_reason_text(g_stop_code));
+        jb_raw(&jb, wire_stop_reason_text(st_stop()));
     }
     log_line(line);
     perf_report();                            /* APP_PERF: one [perf] line per probe */

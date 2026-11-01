@@ -18,6 +18,7 @@
 #include <tk/tkernel.h>
 
 #include "os_glue.h"
+#include "status.h"
 #include "motion_api.h"
 #include "app_params.h"
 #include "app_check.h"
@@ -74,11 +75,7 @@ LOCAL void start_run(void)
             (void)evt_post(&b);
         }
     }
-    g_status.hump_max_mm  = 0.0f;
-    g_status.humps        = 0u;
-    g_status.obstacles    = 0u;
-    g_status.barcodes_read = 0u;
-    g_status.barcode      = 0;
+    st_run_reset();                           /* run counters, hump max, last barcode */
     flag_clear(EVF_OBSTACLE_TRIGGER | EVF_BYPASS_COMPLETE | EVF_BYPASS_ABORT | EVF_LINE_LOST |
                EVF_LINE_FOUND | EVF_HUMP_START | EVF_HUMP_END);
     motion_speed_limit(1.0f);
@@ -92,8 +89,8 @@ LOCAL void complete_run(void)
     char    text[96];
     jbuf_t  jb;
     evt_b_t b;
-    float   dist_cm = g_status.dist_mm / 10.0f;      /* 0.01 m */
-    float   hmax    = (g_status.hump_max_mm * 10.0f) + 0.5f;
+    float   dist_cm = st_dist_mm() / 10.0f;      /* 0.01 m */
+    float   hmax    = (st_hump_max_mm() * 10.0f) + 0.5f;
 
     motion_stop(SRC_NAV);
     (void)sys_set_state(SYS_MISSION_COMPLETE, false);
@@ -102,24 +99,24 @@ LOCAL void complete_run(void)
     evt_begin(&b, EVC_MISSION_COMPLETE);
     evt_u(&b, (hal_time_ms() - g_t_start) / 1000u, 12u);
     evt_u(&b, (dist_cm > 0.0f) ? (uint32_t)(dist_cm + 0.5f) : 0u, 14u);
-    evt_u(&b, g_status.barcodes_read, 7u);
-    evt_u(&b, g_status.humps, 6u);
+    evt_u(&b, st_barcodes_read(), 7u);
+    evt_u(&b, st_humps(), 6u);
     evt_u(&b, (hmax > 15000.0f) ? 15000u : ((hmax > 0.0f) ? (uint32_t)hmax : 0u), 14u);
-    evt_u(&b, g_status.obstacles, 6u);
+    evt_u(&b, st_obstacles(), 6u);
     (void)evt_post(&b);
     jb_init(&jb, text, sizeof(text));
     jb_raw(&jb, "t ");
     jb_uint(&jb, (hal_time_ms() - g_t_start) / 1000u);
     jb_raw(&jb, "s dist ");
-    jb_fixed(&jb, g_status.dist_mm / 1000.0f, 2u);
+    jb_fixed(&jb, st_dist_mm() / 1000.0f, 2u);
     jb_raw(&jb, "m bc ");
-    jb_uint(&jb, g_status.barcodes_read);
+    jb_uint(&jb, st_barcodes_read());
     jb_raw(&jb, " humps ");
-    jb_uint(&jb, g_status.humps);
+    jb_uint(&jb, st_humps());
     jb_raw(&jb, " max ");
-    jb_fixed(&jb, g_status.hump_max_mm, 1u);
+    jb_fixed(&jb, st_hump_max_mm(), 1u);
     jb_raw(&jb, "mm obst ");
-    jb_uint(&jb, g_status.obstacles);
+    jb_uint(&jb, st_obstacles());
     log_line(text);
     buzzer_request(BUZZ_COMPLETE);
 }

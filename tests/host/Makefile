@@ -47,6 +47,9 @@ STUB_SRCS += bitpack_export.c
 # Wire_Codec (task 3.9); wire_export.c gives struct sizes for py/wire_ctypes.py.
 LIB_SRCS  += wire.c
 STUB_SRCS += wire_export.c
+# Status_Snapshot accessors (status.h) and the Event_Frame builder (evt.h).
+LIB_SRCS  += app_status.c evt.c
+STUB_SRCS += evt_stub.c
 
 LIB_OBJS  := $(addprefix $(OBJ)/app/,$(LIB_SRCS:.c=.o)) \
              $(addprefix $(OBJ)/stubs/,$(STUB_SRCS:.c=.o))

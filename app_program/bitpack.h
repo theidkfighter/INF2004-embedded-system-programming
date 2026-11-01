@@ -26,7 +26,6 @@
 #define BITPACK_H
 
 #include <stdbool.h>
-#include <stddef.h>
 #include <stdint.h>
 
 /* ---- mask / shift -------------------------------------------------------- */
@@ -159,7 +158,7 @@ static inline int32_t bp_quant(float x, const bp_qspec_t *p_q, bool *p_sat)
             out = (int32_t)code;
         }
     }
-    if (p_sat != NULL)
+    if (p_sat != (bool *)0)
     {
         *p_sat = b_sat;
     }

@@ -20,6 +20,7 @@
 #include <tk/tkernel.h>
 
 #include "os_glue.h"
+#include "status.h"
 #include "motion_api.h"
 #include "app_check.h"
 #include "app_params.h"
@@ -52,7 +53,6 @@ LOCAL uint32_t      g_t_estop;
 
 #define ALARM_MS     (3000u)          /* E-stop alarm sounds for 3 s, then the LED stays red */
 
-volatile uint8_t g_stop_code;                 /* stop_reason_t E4 (wire_ids.h) */
 
 volatile uint64_t g_estop_rx_us;          /* set by the MQTT command handler */
 volatile uint32_t g_estop_pwm_off_us;     /* read by the telemetry ack */
@@ -141,7 +141,7 @@ LOCAL void enter_estop(stop_reason_t reason)
         g_estop_rx_us      = 0u;
         g_estop_reported   = false;
     }
-    g_stop_code = (uint8_t)reason;
+    st_set_stop((uint32_t)reason);
     (void)sys_set_state(SYS_ESTOP, true);
     g_t_estop = hal_time_ms();
     (void)evt_post1(EVC_EMERGENCY_STOP, (uint32_t)reason, 4u);
@@ -152,7 +152,7 @@ LOCAL void enter_estop(stop_reason_t reason)
 LOCAL void enter_error(stop_reason_t reason)
 {
     kill();
-    g_stop_code = (uint8_t)reason;
+    st_set_stop((uint32_t)reason);
     (void)sys_set_state(SYS_ERROR, true);
     (void)evt_post1(EVC_ERROR, (uint32_t)reason, 4u);
     log_line(wire_stop_reason_text((uint32_t)reason));
@@ -166,7 +166,7 @@ LOCAL bool recheck(char *p_why, uint32_t size, uint32_t *p_bits)
 {
     jbuf_t jb;
     bool   b_ok = true;
-    float  cm = g_status.obst_cm;
+    float  cm = st_obst_cm();
 
     *p_bits = 0u;
 
@@ -177,7 +177,7 @@ LOCAL bool recheck(char *p_why, uint32_t size, uint32_t *p_bits)
         *p_bits |= 1u << 14;
         b_ok = false;
     }
-    if ((g_status.faults & FAULT_IMU_DEAD) == 0u)
+    if ((st_faults() & FAULT_IMU_DEAD) == 0u)
     {
         clear_int1();
         if (hal_imu_int1_level())
@@ -255,7 +255,7 @@ void tsk_safety(INT stacd, void *exinf)
         (void)tk_slp_tsk(TMO_FEVR);          /* every 10 ms, or at once on a hazard */
         st = sys_state();
         f  = flag_peek();
-        if (((f & EVF_COLLISION) != 0u) && ((g_status.faults & FAULT_IMU_DEAD) != 0u))
+        if (((f & EVF_COLLISION) != 0u) && ((st_faults() & FAULT_IMU_DEAD) != 0u))
         {
             flag_clear(EVF_COLLISION);            /* no IMU: INT1 is not trustworthy */
             f &= ~EVF_COLLISION;
@@ -281,7 +281,7 @@ void tsk_safety(INT stacd, void *exinf)
             {
                 enter_estop(SR_COLLISION);
                 clear_int1();
-                g_status.motion_event = (uint32_t)MEV_IMPACT;
+                st_set_motion_event(MEV_IMPACT);
             }
             else if (((f & EVF_PROXIMITY) != 0u) && driving(st))
             {
@@ -342,7 +342,7 @@ void tsk_safety(INT stacd, void *exinf)
 
         /* ---- ERROR only because of missing calibration: leave it by itself
                 once the values arrive (SET: or the retained is02/config) ---- */
-        if ((st == SYS_ERROR) && (g_status.faults == FAULT_CONFIG) && config_check(missing, sizeof(missing)))
+        if ((st == SYS_ERROR) && (st_faults() == FAULT_CONFIG) && config_check(missing, sizeof(missing)))
         {
             try_recover();
             st = sys_state();

@@ -18,6 +18,7 @@
 #include <tk/tkernel.h>
 
 #include "os_glue.h"
+#include "status.h"
 #include "motion_api.h"
 #include "speed_ctl.h"
 #include "app_params.h"
@@ -477,13 +478,7 @@ void tsk_motion(INT stacd, void *exinf)
         }
 
         /* telemetry snapshot */
-        g_status.spd_r       = g_w[0].speed;
-        g_status.spd_l       = g_w[1].speed;
-        g_status.duty_r      = g_w[0].duty;
-        g_status.duty_l      = g_w[1].duty;
-        g_status.enc_r       = enc_r;
-        g_status.enc_l       = enc_l;
-        g_status.dist_mm     = (float)odo.odo_um / 1000.0f;
-        g_status.speed_scale = g_scale;
+        st_set_motion(g_w[1].speed, g_w[0].speed, g_w[1].duty, g_w[0].duty,
+                      enc_l, enc_r, (float)odo.odo_um / 1000.0f, g_scale);
     }
 }

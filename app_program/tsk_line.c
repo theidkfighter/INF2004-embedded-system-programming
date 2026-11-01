@@ -21,6 +21,7 @@
 #include <tk/tkernel.h>
 
 #include "os_glue.h"
+#include "status.h"
 #include "motion_api.h"
 #include "line_logic.h"
 #include "barcode_logic.h"
@@ -88,9 +89,7 @@ LOCAL void barcode_arm(void)
         hal_barcode_raw(false);
         hal_barcode_config(thr_black, thr_white, b_high, b_ok);
     }
-    g_status.bc_thr_black = thr_black;
-    g_status.bc_thr_white = thr_white;
-    g_status.bc_enabled   = b_ok ? 1u : 0u;
+    st_set_bc_levels(thr_black, thr_white, b_ok);
     if (!b_ok)
     {
         (void)evt_post1(EVC_BC_DBG, 0u, 3u);   /* variant 0: "barcode sampling OFF: IR_WHITE_ADC / IR_BLACK_ADC unset or too close" */
@@ -114,8 +113,7 @@ LOCAL void report_barcode(bc_result_t res, char code, bool b_rev)
     {
         jb_char(&jb, code);
         jb_raw(&jb, b_rev ? " (read backwards)" : " (read forwards)");
-        g_status.barcode = code;
-        g_status.barcodes_read++;
+        st_barcode_read(code);
         /* BARCODE / BARCODE_UNKNOWN (digit or symbol): code U6, backwards U1 */
         evt_begin(&b, ((code >= 'A') && (code <= 'Z')) ? EVC_BARCODE : EVC_BARCODE_UNKNOWN);
         evt_u(&b, evt_char6(code), 6u);
@@ -159,8 +157,8 @@ LOCAL void bc_window_fields(evt_b_t *p_b, uint32_t n, bc_result_t res, char code
     evt_u(p_b, (uint32_t)res & 3u, 2u);
     evt_u(p_b, (res == BC_DECODED) ? evt_char6(code) : 0u, 6u);
     evt_u(p_b, ((res == BC_DECODED) && b_rev) ? 1u : 0u, 1u);
-    evt_u(p_b, g_status.bc_thr_black, 12u);
-    evt_u(p_b, g_status.bc_thr_white, 12u);
+    evt_u(p_b, st_bc_thr_black(), 12u);
+    evt_u(p_b, st_bc_thr_white(), 12u);
     evt_u(p_b, hal_barcode_overruns(), 16u);
 }
 
@@ -483,10 +481,7 @@ void tsk_line(INT stacd, void *exinf)
         odo_prev     = odo.odo_um;
         heading_prev = odo.heading_deg;
 
-        g_status.line_l     = b_l ? 1 : 0;
-        g_status.line_r     = b_r ? 1 : 0;
-        g_status.ir_adc     = hal_ir_adc();
-        g_status.line_state = (uint32_t)g_line.state;
+        st_set_line(b_l, b_r, hal_ir_adc(), (uint32_t)g_line.state);
 
         if (st != prev_state)
         {

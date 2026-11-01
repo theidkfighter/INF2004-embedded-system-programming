@@ -9,6 +9,8 @@
 #include "os_glue.h"
 #include "crit.h"
 #include "evt.h"
+#include "status.h"
+#include "bitpack.h"
 #include "hal.h"
 #include "jfmt.h"
 #include "perf.h"
@@ -334,17 +336,16 @@ bool sys_set_state(sys_state_t state, bool b_safety)
 {
     sys_state_t old;
     bool        b_ok = false;
-    PERF_BEGIN(t_cs);
 
-    (void)tk_dis_dsp();
-    old = (sys_state_t)g_status.state;
+    /* compare and set of the state field (status.h sys unit), one section */
+    crit_dsp_enter();
+    old = (sys_state_t)BP_GET(g_status.sys, ST_SH_STATE, ST_W_STATE);
     if (b_safety || ((old != SYS_ESTOP) && (old != SYS_ERROR)))
     {
-        g_status.state = (uint32_t)state;
+        g_status.sys = BP_PUT(g_status.sys, ST_SH_STATE, ST_W_STATE, (uint32_t)state);
         b_ok = true;
     }
-    PERF_END(PERF_CS_DSP, t_cs, PERF_LIMIT_CS_US);
-    (void)tk_ena_dsp();
+    crit_dsp_exit();
 
     if (b_ok && (old != state))
     {
@@ -359,27 +360,17 @@ bool sys_set_state(sys_state_t state, bool b_safety)
 
 sys_state_t sys_state(void)
 {
-    return (sys_state_t)g_status.state;
+    return st_state();
 }
 
 void fault_set(uint32_t fault_bits)
 {
-    PERF_BEGIN(t_cs);
-
-    (void)tk_dis_dsp();
-    g_status.faults |= fault_bits;
-    PERF_END(PERF_CS_DSP, t_cs, PERF_LIMIT_CS_US);
-    (void)tk_ena_dsp();
+    st_fault_set(fault_bits);
 }
 
 void fault_clear(uint32_t fault_bits)
 {
-    PERF_BEGIN(t_cs);
-
-    (void)tk_dis_dsp();
-    g_status.faults &= ~fault_bits;
-    PERF_END(PERF_CS_DSP, t_cs, PERF_LIMIT_CS_US);
-    (void)tk_ena_dsp();
+    st_fault_clear(fault_bits);
 }
 
 void odometry_get(odometry_t *p_out)

@@ -55,6 +55,7 @@
 #include <tk/tkernel.h>
 
 #include "os_glue.h"
+#include "status.h"
 #include "motion_api.h"
 #include "obstacle_logic.h"
 #include "app_params.h"
@@ -93,7 +94,7 @@ LOCAL float ping(void)
     hal_us_trigger();
     (void)tk_dly_tsk(ECHO_WAIT_MS);
     cm = hal_us_read_cm();
-    g_status.obst_cm = cm;
+    st_set_obst_cm(cm);
 
     /* critical proximity, checked on every ping (2 in a row) */
     g_prox_n = ((cm >= 0.0f) && (cm < (float)PROXIMITY_STOP_CM)) ? (g_prox_n + 1u) : 0u;
@@ -158,7 +159,7 @@ LOCAL void coarse_sweep(float *p_cm)
         servo_move(COARSE_DEG[i], prev);
         prev    = COARSE_DEG[i];
         p_cm[i] = ping_median3();
-        g_status.scan_cm[i] = p_cm[i];
+        st_set_scan(i, p_cm[i]);
     }
     servo_move(0.0f, prev);
 }
@@ -1219,7 +1220,7 @@ LOCAL void avoid(void)
                                         ((tries[0] >= 2u) ? OBST_BLOCKED_L : 0u) | ((tries[1] >= 2u) ? OBST_BLOCKED_R : 0u) |
                                         (g_legacy ? OBST_CHOOSE_LEGACY : 0u));
             g_prof.side = side;
-            g_status.scan_side = side;
+            st_set_scan_side(side);
             profile_event(&g_prof);
             (void)post_obstacle(&g_prof);
             if ((side != 0) && is_tie(half, margin, tries))
@@ -1230,7 +1231,7 @@ LOCAL void avoid(void)
                     return;
                 }
                 g_prof.side        = side;
-                g_status.scan_side = side;
+                st_set_scan_side(side);
             }
             if (side == 0)
             {
@@ -1281,7 +1282,7 @@ LOCAL void avoid(void)
         res = run_bypass(&plan, g_half_obs + margin + extra[si], margin);
         if ((res == LEG_OK) || (res == LEG_SEARCH))
         {
-            g_status.obstacles++;
+            st_obstacle_done();
             /* BYPASS_COMPLETE: U1 searching, U1 right ("passed on the left/right[; on the path, searching for the line]") */
             (void)evt_post1(EVC_BYPASS_COMPLETE, ((res == LEG_SEARCH) ? 2u : 0u) | ((plan.side > 0) ? 1u : 0u), 2u);
             flag_set(EVF_BYPASS_COMPLETE);
@@ -1327,7 +1328,7 @@ LOCAL void avoid(void)
             if ((tries[oi] == 0u) && (!g_legacy || obstacle_side_room(&g_prof, other, half, margin)))
             {
                 side               = other;
-                g_status.scan_side = other;
+                st_set_scan_side(other);
                 (void)evt_post1(EVC_BYPASS_RETRY, (other == 'R') ? 1u : 0u, 2u);   /* 0/1 "trying the left/right side (same scan)" */
                 continue;
             }
@@ -1347,7 +1348,7 @@ LOCAL void avoid(void)
                 {
                     side = (best == 0) ? 'L' : 'R';
                     extra[best] += (float)OBST_RETRY_WIDER_MM;
-                    g_status.scan_side = side;
+                    st_set_scan_side(side);
                     (void)evt_post1(EVC_BYPASS_RETRY, (side == 'R') ? 3u : 2u, 2u);   /* 2/3 "left/right side again, 100 mm wider" */
                     continue;
                 }

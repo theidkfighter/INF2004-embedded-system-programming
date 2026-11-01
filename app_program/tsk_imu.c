@@ -21,6 +21,7 @@
 #include <tk/tkernel.h>
 
 #include "os_glue.h"
+#include "status.h"
 #include "imu_logic.h"
 #include "app_params.h"
 #include "hal.h"
@@ -75,7 +76,7 @@ LOCAL void hump_event(evt_code_t code, bool b_valid, float value_mm)
     evt_begin(&b, code);
     evt_u(&b, b_valid ? 1u : 0u, 1u);
     evt_u(&b, b_valid ? mm_u14(value_mm) : 0u, 14u);
-    evt_u(&b, mm_u14(g_status.hump_max_mm), 14u);
+    evt_u(&b, mm_u14(st_hump_max_mm()), 14u);
     (void)evt_post(&b);
 }
 
@@ -93,7 +94,7 @@ void tsk_imu(INT stacd, void *exinf)
     float         lp[3] = { 0.0f, 0.0f, 1.0f };
     uint32_t      fails = 0u;
     uint32_t      recoveries = 0u;
-    bool          b_dead = ((g_status.faults & FAULT_IMU_DEAD) != 0u);
+    bool          b_dead = ((st_faults() & FAULT_IMU_DEAD) != 0u);
     uint32_t      retry_n = 0u;
     uint32_t      warm = 0u;
 
@@ -249,12 +250,7 @@ void tsk_imu(INT stacd, void *exinf)
             {
                 if (ho.b_valid)
                 {
-                    g_status.humps++;
-                    if (ho.height_mm > g_status.hump_max_mm)
-                    {
-                        g_status.hump_max_mm = ho.height_mm;
-                    }
-                    g_status.hump_peak_mm = ho.height_mm;
+                    st_hump_done(ho.height_mm);   /* humps + 1, run max (FR22), last peak */
                     hump_event(EVC_HUMP_END, true, ho.height_mm);
                 }
                 else
@@ -275,14 +271,12 @@ void tsk_imu(INT stacd, void *exinf)
         }
 
         /* Region B: motion events (turn rate from the encoders, DR A10 fallback) */
-        g_status.motion_event  = (uint32_t)mev_step(&mev, b_impact, hump.state, odo.turn_dps,
-                                                    odo.a_fwd_g, odo.v_mm_s, 20u);
-        g_status.turn_rate_dps = odo.turn_dps;
-        g_status.pitch_deg     = pitch;
-        g_status.hump_mm       = hump.h_mm;
+        st_set_motion_event(mev_step(&mev, b_impact, hump.state, odo.turn_dps,
+                                     odo.a_fwd_g, odo.v_mm_s, 20u));
+        st_set_imu(pitch, hump.h_mm, odo.turn_dps);
         if (hump.state != HUMP_FLAT)
         {
-            g_status.hump_peak_mm = hump.peak_mm;
+            st_set_hump_peak(hump.peak_mm);
         }
     }
 }
