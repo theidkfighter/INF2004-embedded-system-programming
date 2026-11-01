@@ -2,7 +2,7 @@
  * @file    wire_dump.c
  * @brief   Prints the C side of the binary protocol as JSON (spec task 3.11):
  *          Format_Version, every code table of wire_ids.h, the parameter
- *          table (D15) and every frame layout (field, offset, width, kind,
+ *          table (D15: name, store width, min, max) and every frame layout (field, offset, width, kind,
  *          resolution, sentinel). The laptop tests compare the Python and
  *          JavaScript tables with this output (INTEGRATION.md 1.4).
  *
@@ -174,7 +174,9 @@ int main(void)
     {
         printf("    {\"id\": %u, \"name\": ", (unsigned)i);
         str(params_name(i));
-        printf(", \"store_width\": %u}%s\n", (unsigned)params_store_width(i), (i + 1u < params_count()) ? "," : "");
+        /* %.9g prints every float32 limit exactly enough to round-trip */
+        printf(", \"store_width\": %u, \"min\": %.9g, \"max\": %.9g}%s\n", (unsigned)params_store_width(i),
+               (double)params_min(i), (double)params_max(i), (i + 1u < params_count()) ? "," : "");
     }
     printf("  ],\n  \"param_table_crc\": %u,\n", (unsigned)params_table_crc());
 

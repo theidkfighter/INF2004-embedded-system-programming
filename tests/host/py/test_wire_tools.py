@@ -149,3 +149,19 @@ def test_vectors_event_and_rejects(tools):
     assert d[0]["status"] == 0 and d[0]["fields"] == [777, 15, 4]
     assert d[1]["status"] == 1                                     # 'A' = text: unknown version
     assert d[2]["status"] == 3                                     # short telemetry: bad length
+
+
+def test_dump_param_limits(dump, lib, base):
+    """min / max in wire_dump equal PARAMS[] (float32) and the Baseline_Build limits."""
+    import ctypes
+    for name in ("params_min", "params_max"):
+        fn = lib[name]
+        fn.restype, fn.argtypes = ctypes.c_float, [ctypes.c_uint32]
+    pmin, pmax = lib["params_min"], lib["params_max"]
+    pmin.restype = pmax.restype = ctypes.c_float
+    pmin.argtypes = pmax.argtypes = [ctypes.c_uint32]
+    f32 = lambda v: struct.unpack("<f", struct.pack("<f", v))[0]    # noqa: E731
+    for p in dump["params"]:
+        i = p["id"]
+        assert f32(p["min"]) == pmin(i) and f32(p["max"]) == pmax(i), p["name"]
+        assert (pmin(i), pmax(i)) == (base.base_bh_param_min(i), base.base_bh_param_max(i)), p["name"]

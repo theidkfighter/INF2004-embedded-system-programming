@@ -125,6 +125,8 @@ static inline int32_t prm_int(uint32_t d)        /* any encoding as its whole va
 /* Bits of Parameter_ID id in its Parameter_Store representation (32 = F32),
    and that code (GET:PARAMS acks). */
 uint32_t params_store_width(uint32_t id);
+float    params_min(uint32_t id);               /* PARAMS[] limits (0 for an unknown ID) */
+float    params_max(uint32_t id);
 uint32_t params_store_code(uint32_t id);
 
 void  params_init(void);

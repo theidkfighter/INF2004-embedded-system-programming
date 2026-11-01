@@ -375,18 +375,18 @@ LOCAL void bypass_extend_event(uint32_t kind, float cm);
 
 LOCAL void side_follow_event(uint32_t n60, uint32_t n_seen, float near_cm, float leg_mm, float gap_mm)
 {
-    /* SIDE_FOLLOW (design D10): pings U8, seen U8, near U13 (0.1 cm),
-       limit U13 (0.1 cm), leg U11 (mm), x U11 (mm); each saturates */
+    /* SIDE_FOLLOW (design D10): pings U8, seen U8, near CM13 (0.1 cm,
+       8191 = no echo, the baseline's "near -1.0cm"), limit U13 (0.1 cm,
+       held below the 8191 code), leg U11 (mm), x U11 (mm); each saturates */
     evt_b_t b;
     float   x = (g_pose.x_mm < 0.0f) ? -g_pose.x_mm : g_pose.x_mm;
     float   lim = ((gap_mm + 150.0f) / 8.660254f) * 10.0f;
-    float   nr  = near_cm * 10.0f;
 
     evt_begin(&b, EVC_SIDE_FOLLOW);
     evt_u(&b, n60, 8u);
     evt_u(&b, n_seen, 8u);
-    evt_u(&b, (nr > 0.0f) ? (uint32_t)(nr + 0.5f) : 0u, 13u);
-    evt_u(&b, (lim > 0.0f) ? (uint32_t)(lim + 0.5f) : 0u, 13u);
+    evt_cm13(&b, near_cm);
+    evt_u(&b, (lim > 8190.0f) ? 8190u : ((lim > 0.0f) ? (uint32_t)(lim + 0.5f) : 0u), 13u);
     evt_u(&b, (leg_mm > 0.0f) ? (uint32_t)(leg_mm + 0.5f) : 0u, 11u);
     evt_u(&b, (uint32_t)(x + 0.5f), 11u);
     (void)evt_post(&b);

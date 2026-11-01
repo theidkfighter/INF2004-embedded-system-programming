@@ -10,7 +10,7 @@ relevant lines into `docs/cr1/PROGRESS_FW.md` once that folder is committed.
 | S1 item | Status | Where |
 |---|---|---|
 | `app_program/wire.c` encodes and decodes all 7 payload types | done | telemetry, heartbeat, event, ack, command, map, config; inverse encoders `wire_enc_cmd`, `wire_enc_map`, `wire_enc_config` for the tools |
-| `tests/host/tools/wire_dump.c` | done | `make -C tests/host tools && tests/host/build/wire_dump` (JSON: version, events, reasons, commands, stop and abort reasons, 55 parameters with store widths, table CRC, frame layouts) |
+| `tests/host/tools/wire_dump.c` | done | `make -C tests/host tools && tests/host/build/wire_dump` (JSON: version, events, reasons, commands, stop and abort reasons, 55 parameters with store width, min and max, table CRC, frame layouts) |
 | `tests/host/tools/wire_vectors.c` | done | line format documented at the top of the file; `make -C tests/host vectors-c` runs `tests/host/vectors/vectors.txt` when LT-04 has written it |
 | `app_program/evt.c` event builders | done (generic builder) | `evt_begin` / `evt_u` / `evt_s` / `evt_cm9` / `evt_cm13` / `evt_post`; `evt_post` refuses a wrong bit count per Event_Code |
 | Host test build repaired, `run_all.sh` passes | done | from a clean build: `rm -rf tests/host/build && bash tests/host/run_all.sh --seed 12345` → PASSED (needs `npm ci` in `tests/host/js` once); `post_evt` defined once (os_stub.c); stray `p3_full.log`, `p3_ps.txt` removed |
