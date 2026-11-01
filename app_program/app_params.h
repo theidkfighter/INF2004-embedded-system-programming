@@ -74,6 +74,12 @@ typedef struct
     float obst_margin_mm;
     float obst_depth_mm;
     float obst_leg_stop_cm;
+    float obst_reverse_max_mm;
+    float obst_legacy;
+    float obst_min_width_mm;
+    float obst_trust_miss;
+    float obst_edge_pad_mm;
+    float robot_left_half_mm;
     float ir_to_axle_mm;
 } app_params_t;
 

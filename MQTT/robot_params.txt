@@ -38,7 +38,7 @@ LINE_DO_BLACK_HIGH=0               # spec: DO reads LOW over black
 # IR_TO_AXLE_MM=60
 
 # ---- tuning (start-up values shown; change while testing) ----
-# LINE_BASE_MM_S=80
+# LINE_BASE_MM_S=80        (30..150 only = 3.00..15.00 cm/s; the dashboard speed box sets it in cm/s)
 # LINE_STEER=0.40
 # LINE_STEER_RAMP=3.0
 # BARCODE_AT_JUNCTION=1   (1 = act at the next junction, the demo rule)

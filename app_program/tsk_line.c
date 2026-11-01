@@ -448,7 +448,11 @@ LOCAL void follow(bool b_l, bool b_r, float ds_mm, float dheading)
         /* slow down in tight curves: at full steer the outer wheel would
            otherwise need 2 x base speed, which the PI loop cannot reach */
         float mag  = (out.steer < 0.0f) ? -out.steer : out.steer;
-        float base = g_params.line_base_mm_s * (1.0f - (g_params.line_curve_slow * mag));
+        float lb   = g_params.line_base_mm_s;
+        float base;
+
+        lb   = (lb > (float)LINE_BASE_SAFE_MAX_MM_S) ? (float)LINE_BASE_SAFE_MAX_MM_S : lb;   /* safety cap */
+        base = lb * (1.0f - (g_params.line_curve_slow * mag));
 
         line_wheels(base, out.steer, &left, &right);
 

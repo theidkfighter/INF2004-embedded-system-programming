@@ -40,7 +40,7 @@ static const param_def_t PARAMS[] =
     { "IR_BLACK_ADC",          &g_params.ir_black_adc,        0.0f,   4095.0f  },
     { "SPEED_KP",              &g_params.speed_kp,            0.0f,   0.1f     },
     { "SPEED_KI",              &g_params.speed_ki,            0.0f,   1.0f     },
-    { "LINE_BASE_MM_S",        &g_params.line_base_mm_s,      30.0f,  (float)SPEED_MAX_MM_S },
+    { "LINE_BASE_MM_S",        &g_params.line_base_mm_s,      (float)LINE_BASE_SAFE_MIN_MM_S, (float)LINE_BASE_SAFE_MAX_MM_S },
     { "LINE_STEER",            &g_params.line_steer,          0.0f,   1.0f     },
     { "LINE_STEER_RAMP",       &g_params.line_steer_ramp,     0.0f,   20.0f    },
     { "LINE_HOLD_STEER",       &g_params.line_hold_steer,     0.0f,   1.0f     },
@@ -66,6 +66,12 @@ static const param_def_t PARAMS[] =
     { "OBST_MARGIN_MM",        &g_params.obst_margin_mm,      0.0f,   300.0f   },
     { "OBST_DEPTH_MM",         &g_params.obst_depth_mm,       20.0f,  600.0f   },
     { "OBST_LEG_STOP_CM",      &g_params.obst_leg_stop_cm,    0.0f,   40.0f    },
+    { "OBST_REVERSE_MAX_MM",   &g_params.obst_reverse_max_mm, 0.0f,   1000.0f  },
+    { "OBST_LEGACY",           &g_params.obst_legacy,         0.0f,   1.0f     },
+    { "OBST_MIN_WIDTH_MM",     &g_params.obst_min_width_mm,   0.0f,   600.0f   },
+    { "OBST_TRUST_MISS",       &g_params.obst_trust_miss,     0.0f,   1.0f     },
+    { "OBST_EDGE_PAD_MM",      &g_params.obst_edge_pad_mm,    0.0f,   100.0f   },
+    { "ROBOT_LEFT_HALF_MM",    &g_params.robot_left_half_mm,  0.0f,   250.0f   },
     { "IR_TO_AXLE_MM",         &g_params.ir_to_axle_mm,       0.0f,   200.0f   },
 };
 
@@ -122,6 +128,12 @@ void params_init(void)
     g_params.obst_margin_mm      = (float)OBST_MARGIN_MM;
     g_params.obst_depth_mm       = (float)OBST_DEPTH_MM;
     g_params.obst_leg_stop_cm    = (float)OBST_LEG_STOP_CM;
+    g_params.obst_reverse_max_mm = (float)OBST_REVERSE_MAX_MM;
+    g_params.obst_legacy         = (float)OBST_LEGACY;
+    g_params.obst_min_width_mm   = (float)OBST_MIN_WIDTH_MM;
+    g_params.obst_trust_miss     = (float)OBST_TRUST_MISS;
+    g_params.obst_edge_pad_mm    = (float)OBST_EDGE_PAD_MM;
+    g_params.robot_left_half_mm  = (float)ROBOT_LEFT_HALF_MM;
     g_params.ir_to_axle_mm       = (float)IR_TO_AXLE_MM;
 }
 

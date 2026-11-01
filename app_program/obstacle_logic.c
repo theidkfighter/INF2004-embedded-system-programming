@@ -4,6 +4,7 @@
  *          (see obstacle_logic.h).
  */
 #include <math.h>
+#include <stddef.h>
 #include "obstacle_logic.h"
 
 #define DEG_TO_RAD      (0.01745329f)
@@ -224,26 +225,44 @@ bool obstacle_side_room(const obstacle_profile_t *p_prof, char side, float robot
     return false;
 }
 
-char obstacle_choose_side(const obstacle_profile_t *p_prof, float robot_half_mm, float margin_mm,
-                          uint32_t blocked)
+float obstacle_shift_mm(const obstacle_profile_t *p_prof, char side, float robot_half_mm, float margin_mm)
 {
-    float shift_l    = (robot_half_mm + margin_mm) - (p_prof->x_l_cm * 10.0f);
-    float shift_r    = (robot_half_mm + margin_mm) + (p_prof->x_r_cm * 10.0f);
-    bool  b_left_ok  = obstacle_side_room(p_prof, 'L', robot_half_mm, margin_mm) && ((blocked & OBST_BLOCKED_L) == 0u);
-    bool  b_right_ok = obstacle_side_room(p_prof, 'R', robot_half_mm, margin_mm) && ((blocked & OBST_BLOCKED_R) == 0u);
+    if (side == 'L')
+    {
+        return (robot_half_mm + margin_mm) - (p_prof->x_l_cm * 10.0f);
+    }
+    if (side == 'R')
+    {
+        return (robot_half_mm + margin_mm) + (p_prof->x_r_cm * 10.0f);
+    }
+    return 0.0f;
+}
+
+char obstacle_choose_side(const obstacle_profile_t *p_prof, float robot_half_mm, float margin_mm,
+                          uint32_t flags)
+{
+    float shift_l    = obstacle_shift_mm(p_prof, 'L', robot_half_mm, margin_mm);
+    float shift_r    = obstacle_shift_mm(p_prof, 'R', robot_half_mm, margin_mm);
+    bool  b_left_ok  = obstacle_side_room(p_prof, 'L', robot_half_mm, margin_mm) && ((flags & OBST_BLOCKED_L) == 0u);
+    bool  b_right_ok = obstacle_side_room(p_prof, 'R', robot_half_mm, margin_mm) && ((flags & OBST_BLOCKED_R) == 0u);
 
     if (b_left_ok && b_right_ok)
     {
-        /* both possible: more space first (28 Oct), then the smaller deviation
-           (DR 6.2 STAGE3, brief: "minimise deviation") */
-        if (p_prof->clear_left_cm > (p_prof->clear_right_cm + OBST_SIDE_TIE_CM))
+        if ((flags & OBST_CHOOSE_LEGACY) != 0u)
         {
-            return 'L';
+            /* old rule (28 Oct): more space first, then the smaller deviation */
+            if (p_prof->clear_left_cm > (p_prof->clear_right_cm + OBST_SIDE_TIE_CM))
+            {
+                return 'L';
+            }
+            if (p_prof->clear_right_cm > (p_prof->clear_left_cm + OBST_SIDE_TIE_CM))
+            {
+                return 'R';
+            }
         }
-        if (p_prof->clear_right_cm > (p_prof->clear_left_cm + OBST_SIDE_TIE_CM))
-        {
-            return 'R';
-        }
+        /* both have room: the smaller deviation (DR 6.2 STAGE3, brief:
+           "minimise deviation"), i.e. away from the obstacle's offset. A
+           "no echo" side (200 cm) is room, not more room (31 Oct run 2). */
         return (shift_l <= shift_r) ? 'L' : 'R';
     }
     if (b_left_ok)
@@ -255,6 +274,71 @@ char obstacle_choose_side(const obstacle_profile_t *p_prof, float robot_half_mm,
         return 'R';
     }
     return 0;                                /* no room: reverse and re-attempt */
+}
+
+bool obstacle_is_tie(const obstacle_profile_t *p_prof, float robot_half_mm, float margin_mm,
+                     uint32_t flags)
+{
+    float d;
+
+    if (!obstacle_side_room(p_prof, 'L', robot_half_mm, margin_mm) ||
+        !obstacle_side_room(p_prof, 'R', robot_half_mm, margin_mm) ||
+        ((flags & (OBST_BLOCKED_L | OBST_BLOCKED_R)) != 0u))
+    {
+        return false;
+    }
+    if ((flags & OBST_CHOOSE_LEGACY) != 0u)
+    {
+        d = p_prof->clear_left_cm - p_prof->clear_right_cm;
+        return (d <= OBST_SIDE_TIE_CM) && (d >= -OBST_SIDE_TIE_CM);
+    }
+    d = obstacle_shift_mm(p_prof, 'L', robot_half_mm, margin_mm) -
+        obstacle_shift_mm(p_prof, 'R', robot_half_mm, margin_mm);
+    return (d <= OBST_SHIFT_TIE_MM) && (d >= -OBST_SHIFT_TIE_MM);
+}
+
+obst_rev_t obstacle_reverse_budget(float want_mm, float used_mm, float cap_mm, bool b_shortenable,
+                                   float *p_allowed_mm)
+{
+    float      remaining;
+    float      allowed;
+    obst_rev_t res;
+
+    if (cap_mm <= 0.0f)
+    {
+        allowed = want_mm;                   /* cap off */
+        res     = OBST_REV_FULL;
+    }
+    else
+    {
+        remaining = cap_mm - used_mm;
+        remaining = (remaining < 0.0f) ? 0.0f : remaining;
+        if (want_mm <= (remaining + 0.5f))
+        {
+            allowed = want_mm;
+            res     = OBST_REV_FULL;
+        }
+        else if (!b_shortenable)
+        {
+            allowed = 0.0f;                  /* standoff: a short one could clip the near corner */
+            res     = OBST_REV_REFUSED;
+        }
+        else if (remaining < OBST_REVERSE_MIN_MM)
+        {
+            allowed = 0.0f;                  /* rescan skipped */
+            res     = OBST_REV_REFUSED;
+        }
+        else
+        {
+            allowed = remaining;
+            res     = OBST_REV_SHORTENED;
+        }
+    }
+    if (p_allowed_mm != NULL)
+    {
+        *p_allowed_mm = allowed;
+    }
+    return res;
 }
 
 float obstacle_standoff_mm(const obstacle_profile_t *p_prof, char side, float robot_half_mm, float margin_mm)
@@ -321,6 +405,32 @@ bool bypass_plan(const obstacle_profile_t *p_prof, float robot_half_mm, float ma
     return true;
 }
 
+void obstacle_apply_min_width(obstacle_profile_t *p_prof, float min_width_mm, float *p_ext_l_mm, float *p_ext_r_mm)
+{
+    float w  = min_width_mm / 10.0f;
+    float xl = p_prof->x_l_cm;
+    float xr = p_prof->x_r_cm;
+    float el = 0.0f;
+    float er = 0.0f;
+
+    if ((w > 0.0f) && ((xr - xl) < w))
+    {
+        p_prof->x_l_cm   = xr - w;
+        p_prof->x_r_cm   = xl + w;
+        p_prof->width_cm = p_prof->x_r_cm - p_prof->x_l_cm;
+        el = (xl - p_prof->x_l_cm) * 10.0f;
+        er = (p_prof->x_r_cm - xr) * 10.0f;
+    }
+    if (p_ext_l_mm != NULL)
+    {
+        *p_ext_l_mm = el;
+    }
+    if (p_ext_r_mm != NULL)
+    {
+        *p_ext_r_mm = er;
+    }
+}
+
 void obstacle_pose_advance(float *p_x, float *p_y, float h_prev_deg, float h_deg, float ds_mm)
 {
     float hm = 0.5f * (h_prev_deg + h_deg) * DEG_TO_RAD;
@@ -337,17 +447,20 @@ float obstacle_sin_deg(float deg)
 bool obstacle_side_seen(float r_cm, float gap_mm)
 {
     /* the side, gap_mm beside the car, seen at 60 deg is gap / sin 60 away;
-       allow 10 cm more (the car drifts, the side is not straight) */
-    return (r_cm >= 0.0f) && ((r_cm * 10.0f * 0.8660254f) <= (gap_mm + 100.0f));
+       allow 15 cm more (the car drifts, the side is not straight; 31 Oct: was
+       10 cm, sides were missed at 28.8 and 29.7 cm against 27.7) */
+    return (r_cm >= 0.0f) && ((r_cm * 10.0f * 0.8660254f) <= (gap_mm + 150.0f));
 }
 
 float obstacle_side_trail_mm(float gap_mm, float us_ahead_mm, float robot_half_mm, float margin_mm)
 {
-    /* last echo from the side's end with the beam's far edge at 75 deg: the
-       back corner is then gap x tan15 ahead of the sensor, us_ahead + that
-       ahead of the car's centre. The 45 deg return from the centre passes
-       a corner gap to the side and dy ahead at (gap - dy) / sqrt2, which
-       must be >= half + margin. */
+    /* measured from the FIRST 60 deg miss: the beam (45..75 deg) meets the
+       side's plane from gap x tan15 ahead of the sensor, so a miss proves
+       the back corner is less than us_ahead + gap x tan15 ahead of the
+       car's centre. The 45 deg return from the centre passes a corner gap
+       to the side and dy ahead at (gap - dy) / sqrt2, which must be
+       >= half + margin (a); the pivot then keeps the body >= margin away
+       (b, see obstacle_logic.h). */
     float d = us_ahead_mm + (gap_mm * TAN15) - gap_mm + (1.4142136f * (robot_half_mm + margin_mm));
 
     return (d < 50.0f) ? 50.0f : d;
@@ -360,10 +473,13 @@ bool obstacle_side_beside(float r90_cm, float gap_mm)
 
 float obstacle_side_trail90_mm(float gap_mm, float us_ahead_mm, float robot_half_mm, float margin_mm)
 {
-    /* sensor us_ahead x cos30 ahead of the centre after the pivot, beam +-15
-       deg reaches ~27 mm further; the 45 deg return then needs the corner
-       (gap - dy) / sqrt2 >= half + margin away */
-    float d = (us_ahead_mm * 0.8660254f) + 27.0f - gap_mm + (1.4142136f * (robot_half_mm + margin_mm));
+    /* after the 30 deg pivot the sensor is us_ahead x sin30 towards the side
+       and us_ahead x cos30 ahead of the centre; the beam's forward edge
+       (+15 deg) meets the side (gap - us_ahead x sin30) x tan15 further
+       ahead (27 mm for gap 140, us_ahead 80). The 45 deg return then needs
+       the corner (gap - dy) / sqrt2 >= half + margin away. */
+    float d = (us_ahead_mm * 0.8660254f) + ((gap_mm - (us_ahead_mm * 0.5f)) * TAN15) - gap_mm +
+              (1.4142136f * (robot_half_mm + margin_mm));
 
     return (d < 50.0f) ? 50.0f : d;
 }

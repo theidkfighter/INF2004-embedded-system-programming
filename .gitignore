@@ -28,3 +28,16 @@ config/mqtt_config.h
 # IS-02 robot: host test binary
 tests/test_logic
 tests/test_logic.exe
+
+# from kiro
+references
+robot_firmware
+.kiro
+
+# local build log, Windows elf2uf2 build, Mosquitto persistence file
+build_make/build.log
+build_make/tools/elf2uf2.exe
+is02_mosquitto.db
+# DO NOT push import leftovers
+/pico_sdk_import.cmake
+/build/

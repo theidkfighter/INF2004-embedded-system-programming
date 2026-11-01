@@ -62,11 +62,18 @@
 
 /* ---- Geometry (ruler on the assembled car) ---- */
 #define IR_TO_AXLE_MM             (60)          /* [P] IR sensor row ahead of the wheel axle */
-#define ROBOT_HALF_WIDTH_MM       (80)          /* half the widest part of the car */
+#define ROBOT_HALF_WIDTH_MM       (80)          /* half the widest part of the car (right side) */
+#define ROBOT_LEFT_HALF_MM        (90)          /* [P] centre line to the furthest point on the LEFT (the barcode reader;
+                                                   90 measured on 31 Oct). Used when the obstacle is on the car's left
+                                                   (passing right). 0 = same as ROBOT_HALF_WIDTH_MM */
 
 /* ---- Line following (DR 6.1) ---- */
 #define LINE_BASE_MM_S            (80)          /* [P] forward speed while following (was 120: too fast for the
                                                    ~115-145 mm loops with uncalibrated wheel speed control) */
+#define LINE_BASE_SAFE_MIN_MM_S   (30)          /* safety window for LINE_BASE_MM_S (SET / dashboard / is02/config):
+                                                   below 30 the wheels stall in the feed-forward deadband */
+#define LINE_BASE_SAFE_MAX_MM_S   (150)         /* ... and at most 150 mm/s = 15 cm/s, 60 % of SPEED_MAX_MM_S. tsk_line
+                                                   also clamps to this, whatever set the parameter */
 #define LINE_STEER                (0.40f)       /* [P] steering when one sensor sees black (was 0.30) */
 #define LINE_STEER_RAMP           (3.00f)       /* [P] extra steering per second it stays black (was 1.5) */
 #define LINE_HOLD_STEER           (0.30f)       /* [P] steering kept after the sensor clears (was 0.12) */
@@ -118,6 +125,10 @@
 #define BYPASS_MM_S               (60)          /* [P] speed for bypass legs (28 Oct: was 100; the leg watch sweeps the
                                                    sensor, one 0 / 30 / 0 / 60 deg cycle takes ~0.65 s = 4 cm at 60 mm/s) */
 #define SPEED_MAX_MM_S            (250)         /* NFR18 speed cap */
+#if (LINE_BASE_SAFE_MAX_MM_S > ((SPEED_MAX_MM_S * 6) / 10)) || (LINE_BASE_MM_S < LINE_BASE_SAFE_MIN_MM_S) || \
+    (LINE_BASE_MM_S > LINE_BASE_SAFE_MAX_MM_S)
+#error "keep LINE_BASE_SAFE_MIN_MM_S <= LINE_BASE_MM_S <= LINE_BASE_SAFE_MAX_MM_S <= 60 % of SPEED_MAX_MM_S"
+#endif
 #define HUMP_SPEED_PCT            (60)          /* DR A2: speed limit on a hump */
 #define ENC_LOSS_DUTY             (0.30f)       /* DR 5: duty above this ... */
 #define ENC_LOSS_MS               (200)         /* ... with no ticks for this long = encoder loss */
@@ -137,7 +148,25 @@
                                                    angle = this side is blocked: stop, back out along the legs, then
                                                    the other side or a rescan. Keep it above PROXIMITY_STOP_CM (8,
                                                    the E-stop); 0 = off */
-#define OBST_PATH_SIDE_MM         (20)          /* leg watch: corridor = car half width + this on each side */
+#define OBST_REVERSE_MAX_MM       (250)         /* [P] standoff + rescan reverses per obstacle at most this far
+                                                   (how far behind the stop point the car may end up; back-out
+                                                   and the return reverse retrace free ground and are not capped).
+                                                   A standoff that does not fit aborts, a rescan is shortened. 0 = off */
+#define OBST_LEGACY               (0)           /* [P] 1 = the main-branch behaviour: side with more clearance first, and
+                                                   look-before-turning + second trail even after the side was seen to end */
+#define OBST_EDGE_PAD_MM          (20)          /* [P] added to each measured obstacle edge: a flat face stops echoing
+                                                   past about 25 deg incidence, so the 19.9 cm container read 15-17 cm
+                                                   wide at 12-17 cm (31 Oct). 0 = off */
+#define OBST_TRUST_MISS           (1)           /* [P] 1 = in side-follow, two 60 deg pings that miss the side end the leg
+                                                   obstacle_side_trail_mm after the first miss, even if the side was
+                                                   never seen (a shallow obstacle's side is already behind the beam
+                                                   when side-follow starts): no planned-depth leg, no pivot look.
+                                                   0 = a miss counts only after a sighting (the first fix on this branch) */
+#define OBST_MIN_WIDTH_MM         (150)         /* [P] safety floor for unknown obstacles (was 200, the 19.9 cm container).
+                                                   A flat face echoes only straight ahead, so a narrower profile is
+                                                   widened to this on both sides (obstacle_apply_min_width). 0 = off */
+#define OBST_PATH_SIDE_MM         (25)          /* leg watch: corridor = car half width + this on each side (31 Oct: was
+                                                   20; a side closer than 40 mm to the body now blocks the leg) */
 #define OBST_BACKOFF_MAX_MM       (250)         /* longest reverse to get the 45 deg standoff (see obstacle_standoff_mm) */
 #define OBST_RESCAN_REVERSE_MM    (100)         /* reverse before a rescan */
 #define OBST_RETURN_PAST_MM       (80)          /* return: drive this far (sideways) past the original path before
