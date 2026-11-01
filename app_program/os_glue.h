@@ -89,7 +89,7 @@ app_msg_t *msg_recv(ID mbxid, TMO tmo);          /* NULL on timeout */
 bool       post_motion(const motion_cmd_t *p_cmd);
 bool       post_nav(nav_event_type_t type, char code);
 bool       post_obstacle(const obstacle_profile_t *p_prof);
-bool       post_event(const char *p_name, const char *p_detail);   /* is02/event */
+bool       post_evt(const evt_msg_t *p_m);                         /* is02/event (evt.h builds it) */
 
 void       flag_set(uint32_t bits);
 void       flag_clear(uint32_t bits);
@@ -105,7 +105,7 @@ bool       sys_set_state(sys_state_t state, bool b_safety);
 sys_state_t sys_state(void);
 void       fault_set(uint32_t fault_bits);       /* NFR19: reported in telemetry */
 void       fault_clear(uint32_t fault_bits);
-extern const char * volatile g_stop_reason;      /* why the last E-stop / ERROR happened */
+extern volatile uint8_t g_stop_code;             /* why the last E-stop / ERROR happened: stop_reason_t E4 */
 extern volatile uint32_t g_reacq_seq;            /* bumped by the bypass: TSK_LINE re-arms its line watch */
 
 /* Shared odometry (written by the motion task) */

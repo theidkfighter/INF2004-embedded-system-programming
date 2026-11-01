@@ -228,6 +228,60 @@ void params_set_many(const char *p_text, uint32_t *p_ok, uint32_t *p_bad,
     }
 }
 
+int32_t params_set_id(uint32_t id, float value)
+{
+    if (id >= PARAM_COUNT)
+    {
+        return -1;
+    }
+    if ((value != value) || (value > 3.0e38f) || (value < -3.0e38f))
+    {
+        return -2;
+    }
+    if ((value < PARAMS[id].min) || (value > PARAMS[id].max))
+    {
+        return -3;
+    }
+    *PARAMS[id].p_value = value;
+    return 0;
+}
+
+bool params_get_id(uint32_t id, float *p_value)
+{
+    if (id >= PARAM_COUNT)
+    {
+        return false;
+    }
+    *p_value = *PARAMS[id].p_value;
+    return true;
+}
+
+const char *params_name(uint32_t id)
+{
+    return (id < PARAM_COUNT) ? PARAMS[id].p_name : (const char *)0;
+}
+
+uint16_t params_crc16(void)
+{
+    uint32_t crc = 0xFFFFu;
+
+    for (uint32_t i = 0u; i < PARAM_COUNT; i++)
+    {
+        union { float f; uint32_t u; } v;
+
+        v.f = *PARAMS[i].p_value;
+        for (uint32_t k = 0u; k < 4u; k++)
+        {
+            crc ^= ((v.u >> (24u - (8u * k))) & 0xFFu) << 8;
+            for (uint32_t b = 0u; b < 8u; b++)
+            {
+                crc = ((crc & 0x8000u) != 0u) ? (((crc << 1) ^ 0x1021u) & 0xFFFFu) : ((crc << 1) & 0xFFFFu);
+            }
+        }
+    }
+    return (uint16_t)crc;
+}
+
 uint32_t params_count(void)
 {
     return (uint32_t)PARAM_COUNT;

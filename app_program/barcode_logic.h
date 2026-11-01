@@ -66,4 +66,10 @@ bc_result_t bc_poll(bc_ctx_t *p_bc, const bc_params_t *p_par, uint32_t pos_um,
                     char *p_code, bool *p_reversed);
 bool        bc_window_open(const bc_ctx_t *p_bc);
 
+/* Element i of the last window in 0.1 mm (BC_DBG widths). */
+static inline uint32_t bc_width_01mm(const bc_ctx_t *p_bc, uint32_t i)
+{
+    return (p_bc->w[i] + 50u) / 100u;
+}
+
 #endif /* BARCODE_LOGIC_H */

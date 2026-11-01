@@ -101,6 +101,14 @@ void    params_set_many(const char *p_text, uint32_t *p_ok, uint32_t *p_bad,
 uint32_t params_to_json(char *p_buf, uint32_t size, uint32_t first, uint32_t count);
 uint32_t params_count(void);
 
+/* Binary access by Parameter_ID (the table position, 0..params_count()-1),
+   used by the Wire_Codec frames SET, GET:PARAMS and Config_Frame.
+   params_set_id: 0 ok, -1 unknown ID, -2 not a finite number, -3 out of range. */
+int32_t     params_set_id(uint32_t id, float value);
+bool        params_get_id(uint32_t id, float *p_value);
+const char *params_name(uint32_t id);            /* NULL for an unknown ID */
+uint16_t    params_crc16(void);                  /* CRC-16/CCITT of every value (heartbeat) */
+
 /* Derived values (0 if the calibration is missing) */
 float params_mm_per_count(void);     /* 4x quadrature count */
 float params_servo_phys(float robot_deg);   /* pan angle (+ right, 0 = straight ahead) -> servo degrees, with SERVO_TRIM_DEG */

@@ -234,6 +234,39 @@ int32_t nav_map_parse(const char *p_text, char *p_err, uint32_t err_size)
     return count;
 }
 
+uint32_t nav_map_actions(uint8_t p_act[26])
+{
+    uint32_t n = 0u;
+
+    for (uint32_t i = 0u; i < 26u; i++)
+    {
+        p_act[i] = g_map[i];
+        n += (g_map[i] != (uint8_t)ACT_NONE) ? 1u : 0u;
+    }
+    return n;
+}
+
+uint32_t nav_map_set_slots(const uint8_t p_present[4], const uint8_t p_letter[4])
+{
+    static const nav_action_t SLOT[4] = { ACT_FORWARD, ACT_UTURN, ACT_LEFT, ACT_RIGHT };
+    uint8_t  tmp[26] = { 0u };
+    uint32_t n = 0u;
+
+    for (uint32_t k = 0u; k < 4u; k++)
+    {
+        if ((p_present[k] != 0u) && (p_letter[k] < 26u))
+        {
+            tmp[p_letter[k]] = (uint8_t)SLOT[k];
+        }
+    }
+    for (uint32_t i = 0u; i < 26u; i++)
+    {
+        g_map[i] = tmp[i];
+        n += (tmp[i] != 0u) ? 1u : 0u;
+    }
+    return n;
+}
+
 uint32_t nav_map_describe(char *p_buf, uint32_t size)
 {
     uint32_t len = 0u;

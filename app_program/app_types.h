@@ -102,14 +102,9 @@ typedef struct
     float   scan_cm[5];        /* coarse sweep -60..+60 deg, < 0 = no echo */
 } obstacle_profile_t;
 
-/* ---- MBX_TELEMETRY: events published on is02/event ---- */
-#define TLM_EVENT_NAME_LEN   (20u)
-#define TLM_EVENT_DETAIL_LEN (72u)
-typedef struct
-{
-    char name[TLM_EVENT_NAME_LEN];
-    char detail[TLM_EVENT_DETAIL_LEN];
-} tlm_event_t;
+/* ---- MBX_TELEMETRY: events published on is02/event ----
+ * Binary Event_Frame arguments (evt.h); TSK_TELEMETRY adds the header. */
+#include "evt.h"
 
 /* One mailbox message body (the kernel header is added in os_glue.h) */
 typedef union
@@ -117,7 +112,7 @@ typedef union
     motion_cmd_t       motion;
     nav_event_t        nav;
     obstacle_profile_t obstacle;
-    tlm_event_t        event;
+    evt_msg_t          event;
 } app_msg_body_t;
 
 /* ---- Motion events (FR24, DR 6.3 region B) ---- */

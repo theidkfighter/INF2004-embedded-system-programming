@@ -8,6 +8,7 @@
 
 #include "os_glue.h"
 #include "crit.h"
+#include "evt.h"
 #include "hal.h"
 #include "jfmt.h"
 #include "perf.h"
@@ -260,7 +261,7 @@ bool post_obstacle(const obstacle_profile_t *p_prof)
     return send(g_mbx_obstacle, p_msg);
 }
 
-bool post_event(const char *p_name, const char *p_detail)
+bool post_evt(const evt_msg_t *p_m)
 {
     app_msg_t *p_msg = msg_alloc();
 
@@ -268,9 +269,13 @@ bool post_event(const char *p_name, const char *p_detail)
     {
         return false;
     }
-    jf_copy(p_msg->body.event.name, p_name, TLM_EVENT_NAME_LEN);
-    jf_copy(p_msg->body.event.detail, p_detail, TLM_EVENT_DETAIL_LEN);
+    p_msg->body.event = *p_m;
     return send(g_mbx_tlm, p_msg);
+}
+
+uint32_t evt_now_ms(void)
+{
+    return hal_time_ms();
 }
 
 /* ------------------------------------------------------------------------ */
@@ -347,7 +352,7 @@ bool sys_set_state(sys_state_t state, bool b_safety)
 
         tm_sprintf((UB *)line, (UB *)"[state] %s -> %s", sys_state_name(old), sys_state_name(state));
         log_line(line);
-        (void)post_event("STATE", sys_state_name(state));
+        (void)evt_post1(EVC_STATE, (uint32_t)state, 3u);
     }
     return b_ok;
 }

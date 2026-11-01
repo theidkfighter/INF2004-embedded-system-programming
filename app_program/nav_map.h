@@ -42,6 +42,15 @@ const char  *nav_action_name(nav_action_t act);
    gets a short reason. */
 int32_t      nav_map_parse(const char *p_text, char *p_err, uint32_t err_size);
 
+/* The whole map: p_act[i] = nav_action_t of letter 'A' + i. Returns the count. */
+uint32_t     nav_map_actions(uint8_t p_act[26]);
+
+/* Binary MAP (Command_Frame / Map_Frame): slot k = FORWARD, UTURN, LEFT, RIGHT;
+   p_present[k] != 0 maps letter p_letter[k] (0 = 'A') to that movement.
+   Replaces the map; letters are checked by the decoder (A..Z, no repeats).
+   Returns the number of letters mapped. */
+uint32_t     nav_map_set_slots(const uint8_t p_present[4], const uint8_t p_letter[4]);
+
 /* Writes "F=FWD,K=LEFT,..." into p_buf. Returns the number of mapped letters. */
 uint32_t     nav_map_describe(char *p_buf, uint32_t size);
 

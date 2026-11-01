@@ -30,6 +30,18 @@
 LOCAL char     g_pending;              /* BARCODE_AT_JUNCTION mode */
 LOCAL uint32_t g_t_start;
 
+/* NAV: kind E2, letter U5 (0 = 'A'), action E3 */
+LOCAL void nav_event(evt_nav_kind_t kind, char letter, nav_action_t act)
+{
+    evt_b_t b;
+
+    evt_begin(&b, EVC_NAV);
+    evt_u(&b, (uint32_t)kind, 2u);
+    evt_u(&b, ((letter >= 'A') && (letter <= 'Z')) ? (uint32_t)(letter - 'A') : 0u, 5u);
+    evt_u(&b, (uint32_t)act, 3u);
+    (void)evt_post(&b);
+}
+
 LOCAL bool driving(sys_state_t st)
 {
     return (st == SYS_LINE_FOLLOWING) || (st == SYS_MANEUVER) || (st == SYS_OBSTACLE_AVOIDANCE);
@@ -43,19 +55,23 @@ LOCAL void start_run(void)
     {
         log_line("[nav] cannot start, calibration missing:");
         log_line(missing);
-        (void)post_event("START_REFUSED", "calibration missing (see console)");
+        (void)evt_post0(EVC_START_REFUSED);   /* "calibration missing (see console)" */
         buzzer_request(BUZZ_ERROR);
         return;
     }
     g_pending             = 0;
     g_t_start             = hal_time_ms();
     {
-        char m[80];
+        uint8_t act[26];
 
-        if (nav_map_describe(m, sizeof(m)) < 4u)
+        if (nav_map_actions(act) < 4u)
         {
             /* not a refusal: the map may legitimately arrive after START */
-            (void)post_event("MAP_WARNING", (m[0] != '\0') ? m : "no barcode map yet (send MAP:...)");
+            evt_b_t b;
+
+            evt_begin(&b, EVC_MAP_WARNING);
+            evt_map26(&b, act);
+            (void)evt_post(&b);
         }
     }
     g_status.hump_max_mm  = 0.0f;
@@ -73,11 +89,24 @@ LOCAL void start_run(void)
 
 LOCAL void complete_run(void)
 {
-    char   text[TLM_EVENT_DETAIL_LEN];
-    jbuf_t jb;
+    char    text[96];
+    jbuf_t  jb;
+    evt_b_t b;
+    float   dist_cm = g_status.dist_mm / 10.0f;      /* 0.01 m */
+    float   hmax    = (g_status.hump_max_mm * 10.0f) + 0.5f;
 
     motion_stop(SRC_NAV);
     (void)sys_set_state(SYS_MISSION_COMPLETE, false);
+    /* MISSION_COMPLETE (FR22): time U12 s, dist U14 0.01 m, barcodes U7,
+       humps U6, hump max U14 0.1 mm, obstacles U6 */
+    evt_begin(&b, EVC_MISSION_COMPLETE);
+    evt_u(&b, (hal_time_ms() - g_t_start) / 1000u, 12u);
+    evt_u(&b, (dist_cm > 0.0f) ? (uint32_t)(dist_cm + 0.5f) : 0u, 14u);
+    evt_u(&b, g_status.barcodes_read, 7u);
+    evt_u(&b, g_status.humps, 6u);
+    evt_u(&b, (hmax > 15000.0f) ? 15000u : ((hmax > 0.0f) ? (uint32_t)hmax : 0u), 14u);
+    evt_u(&b, g_status.obstacles, 6u);
+    (void)evt_post(&b);
     jb_init(&jb, text, sizeof(text));
     jb_raw(&jb, "t ");
     jb_uint(&jb, (hal_time_ms() - g_t_start) / 1000u);
@@ -91,7 +120,6 @@ LOCAL void complete_run(void)
     jb_fixed(&jb, g_status.hump_max_mm, 1u);
     jb_raw(&jb, "mm obst ");
     jb_uint(&jb, g_status.obstacles);
-    (void)post_event("MISSION_COMPLETE", text);       /* final summary (FR22) */
     log_line(text);
     buzzer_request(BUZZ_COMPLETE);
 }
@@ -139,14 +167,14 @@ LOCAL motion_result_t turn_on_line(float deg)
         if ((b_seen && !b_lead) || (b_seen && b_trail))
         {
             motion_stop(SRC_NAV);              /* line is between the sensors */
-            (void)post_event("TURN_SNAP", "stopped on the line");
+            (void)evt_post1(EVC_TURN_SNAP, 1u, 1u);   /* "stopped on the line" */
             return MOTION_OK;
         }
         if (motion_wait(id, 0u, 10u, &r2, &other))
         {
             /* swept SNAP_MAX_DEG without finding the line: keep the
                encoder result and let line following / search sort it out */
-            (void)post_event("TURN_SNAP", "line not seen, encoder angle kept");
+            (void)evt_post1(EVC_TURN_SNAP, 0u, 1u);   /* "line not seen, encoder angle kept" */
             return (r2 == MOTION_STOPPED) ? MOTION_STOPPED : MOTION_OK;
         }
         if ((sys_state() != SYS_MANEUVER) || ((hal_time_ms() - t0) > 5000u))
@@ -164,18 +192,12 @@ LOCAL void execute(char code, bool b_at_junction)
     nav_action_t    act = nav_map_get(code);      /* set over MQTT, never hard-coded */
     float           deg = nav_action_deg(act);
     motion_result_t res;
-    char            text[TLM_EVENT_DETAIL_LEN];
-    jbuf_t          jb;
+    evt_b_t         b;
 
-    jb_init(&jb, text, sizeof(text));
-    jb_char(&jb, code);
-    jb_raw(&jb, " -> ");
-    jb_raw(&jb, nav_action_name(act));
-    if (act == ACT_NONE)
-    {
-        jb_raw(&jb, " (not in the MQTT map): straight on");
-    }
-    (void)post_event("NAV_ACTION", text);
+    evt_begin(&b, EVC_NAV_ACTION);              /* letter U5, action E3 */
+    evt_u(&b, (uint32_t)(code - 'A'), 5u);
+    evt_u(&b, (uint32_t)act, 3u);
+    (void)evt_post(&b);
     if (deg == 0.0f)
     {
         return;                                /* FORWARD or unmapped: keep following */
@@ -198,12 +220,12 @@ LOCAL void execute(char code, bool b_at_junction)
     }
     if (res == MOTION_OK)
     {
-        (void)post_event("NAV", nav_action_name(act));
+        nav_event(NAVK_DONE, code, act);
         (void)sys_set_state(SYS_LINE_FOLLOWING, false);
     }
     else
     {
-        (void)post_event("NAV", "turn did not complete");
+        nav_event(NAVK_FAILED, code, act);
         flag_set(EVF_ERROR_REQ);
     }
 }
@@ -241,16 +263,8 @@ LOCAL void on_nav_event(const nav_event_t *p_ev)
             {
                 if ((g_params.barcode_at_junction > 0.5f) && (p_ev->type == NAV_BARCODE))
                 {
-                    char text[TLM_EVENT_DETAIL_LEN];
-                    jbuf_t jb;
-
                     g_pending = p_ev->code;
-                    jb_init(&jb, text, sizeof(text));
-                    jb_char(&jb, g_pending);
-                    jb_raw(&jb, " stored for the next junction (");
-                    jb_raw(&jb, nav_action_name(nav_map_get(g_pending)));
-                    jb_char(&jb, ')');
-                    (void)post_event("NAV", text);
+                    nav_event(NAVK_STORED, g_pending, nav_map_get(g_pending));
                 }
                 else
                 {
@@ -270,7 +284,7 @@ LOCAL void on_nav_event(const nav_event_t *p_ev)
             break;
 
         case NAV_BARCODE_FAULT:
-            (void)post_event("NAV", "barcode fault: going straight (C)");
+            nav_event(NAVK_BC_FAULT, 'A', ACT_NONE);
             break;
 
         default:

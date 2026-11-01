@@ -13,6 +13,7 @@
 #include "lwip/udp.h"
 
 #include "app_net.h"
+#include "wire.h"
 #include "hal.h"
 #include "perf.h"
 #include "mqtt_config.h"
@@ -24,20 +25,20 @@
 #define CONNECT_TIMEOUT_MS   (5000u)
 #define RSSI_EVERY_MS        (2000u)
 #define PUBLISH_PER_POLL     (4u)
-#define IN_MAX               (1024u)    /* incoming command / config payload */
+#define IN_MAX               (WIRE_CFG_LEN(WIRE_PARAMS_MAX))   /* longest payload in: a full Config_Frame, 263 bytes */
 #define DISCOVERY_FAILS      (2u)       /* failed connects before a beacon may move the broker */
 
 typedef struct
 {
-    uint16_t len;
-    char     data[NET_FRAME_MAX];
+    uint8_t len;              /* bytes used (<= NET_FRAME_MAX) */
+    uint8_t data[NET_FRAME_MAX];
 } frame_slot_t;
 
 typedef struct
 {
-    uint8_t  topic;
-    uint16_t len;
-    char     data[NET_MSG_MAX];
+    uint8_t topic;            /* net_topic_t */
+    uint8_t len;              /* bytes used (<= NET_MSG_MAX) */
+    uint8_t data[NET_MSG_MAX];
 } msg_slot_t;
 
 static frame_slot_t   g_frames[NET_FRAME_SLOTS];
@@ -71,25 +72,25 @@ static bool              g_join_pending;
 static uint32_t          g_join_backoff = 1000u;
 static uint32_t          g_t_next_join;
 static char              g_in_topic[32];
-static char              g_in[IN_MAX];
+static uint8_t           g_in[IN_MAX];
 static uint32_t          g_in_len;
 static ip_addr_t         g_broker;
 static bool              g_broker_set;
 static char              g_broker_str[16];
 static uint32_t          g_connect_fails;
 static struct udp_pcb   *gp_beacon;
-static char              g_tx_frame[NET_FRAME_MAX];
+static uint8_t           g_tx_frame[NET_FRAME_MAX];
 
 /* ------------------------------------------------------------------------ */
 /* Producers                                                                 */
 /* ------------------------------------------------------------------------ */
 
-bool net_post_frame(const char *p_json, uint32_t len)
+bool net_post_frame(const uint8_t *p_frame, uint32_t len)
 {
     uint32_t irq;
     uint32_t slot;
 
-    if (len >= NET_FRAME_MAX)
+    if ((len == 0u) || (len > NET_FRAME_MAX))
     {
         return false;
     }
@@ -101,21 +102,20 @@ bool net_post_frame(const char *p_json, uint32_t len)
         g_dropped++;
     }
     slot = g_f_head % NET_FRAME_SLOTS;
-    memcpy(g_frames[slot].data, p_json, len);
-    g_frames[slot].len = (uint16_t)len;
+    memcpy(g_frames[slot].data, p_frame, len);
+    g_frames[slot].len = (uint8_t)len;
     g_f_head++;
     PERF_END(PERF_CS_IRQ, t_cs, PERF_LIMIT_CS_US);
     restore_interrupts(irq);
     return true;
 }
 
-bool net_post(net_topic_t topic, const char *p_json)
+bool net_post(net_topic_t topic, const uint8_t *p, uint32_t len)
 {
-    uint32_t len = (uint32_t)strlen(p_json);
     uint32_t irq;
     uint32_t slot;
 
-    if ((len >= NET_MSG_MAX) || ((topic == NET_T_STATUS) && !g_mqtt_up))
+    if ((len == 0u) || (len > NET_MSG_MAX) || ((topic == NET_T_STATUS) && !g_mqtt_up))
     {
         return false;
     }
@@ -126,8 +126,8 @@ bool net_post(net_topic_t topic, const char *p_json)
         g_m_tail++;                       /* keep the newest */
     }
     slot = g_m_head % NET_MSG_SLOTS;
-    memcpy(g_msgs[slot].data, p_json, len);
-    g_msgs[slot].len   = (uint16_t)len;
+    memcpy(g_msgs[slot].data, p, len);
+    g_msgs[slot].len   = (uint8_t)len;
     g_msgs[slot].topic = (uint8_t)topic;
     g_m_head++;
     PERF_END(PERF_CS_IRQ, t_cs, PERF_LIMIT_CS_US);
@@ -149,6 +149,26 @@ uint32_t net_reconnects(void)          { return g_reconnects; }
 uint32_t net_published(void)           { return g_published; }
 uint32_t net_publish_errors(void)      { return g_pub_errors; }
 int32_t  net_last_connect_status(void) { return g_last_status; }
+bool net_broker_ip4(uint8_t p_ip[4])
+{
+    ip_addr_t a;
+
+    if (ipaddr_aton(net_broker_ip(), &a) == 0)
+    {
+        p_ip[0] = 0u; p_ip[1] = 0u; p_ip[2] = 0u; p_ip[3] = 0u;
+        return false;
+    }
+    {
+        uint32_t v = ip4_addr_get_u32(ip_2_ip4(&a));   /* network order in memory */
+
+        p_ip[0] = (uint8_t)(v & 0xFFu);
+        p_ip[1] = (uint8_t)((v >> 8) & 0xFFu);
+        p_ip[2] = (uint8_t)((v >> 16) & 0xFFu);
+        p_ip[3] = (uint8_t)((v >> 24) & 0xFFu);
+    }
+    return true;
+}
+
 const char *net_broker_ip(void)        { return (g_broker_str[0] != '\0') ? g_broker_str : MQTT_BROKER_IP; }
 
 /* ------------------------------------------------------------------------ */
@@ -188,44 +208,30 @@ static void on_in_publish(void *p_arg, const char *p_topic, u32_t tot_len)
 static void on_in_data(void *p_arg, const u8_t *p_data, u16_t len, u8_t flags)
 {
     uint64_t rx_us = hal_time_us();
-    uint32_t room = (IN_MAX - 1u) - g_in_len;
+    uint32_t room = IN_MAX - g_in_len;
     uint32_t n = (len < room) ? len : room;
 
     (void)p_arg;
-    /* a payload can arrive in several pieces: collect until the last one */
+    /* a payload can arrive in several pieces: collect until the last one.
+       Binary payloads: no terminator and no trimming. A payload longer than
+       IN_MAX is cut, and the decoder then rejects it on its length. */
     memcpy(&g_in[g_in_len], p_data, n);
     g_in_len += n;
-    g_in[g_in_len] = '\0';
     if ((flags & MQTT_DATA_FLAG_LAST) == 0u)
     {
         return;
     }
-    while ((g_in_len > 0u) && ((g_in[g_in_len - 1u] == '\r') || (g_in[g_in_len - 1u] == '\n') ||
-                               (g_in[g_in_len - 1u] == ' ')))
-    {
-        g_in_len--;
-        g_in[g_in_len] = '\0';
-    }
     if (strcmp(g_in_topic, NET_TOPIC_CMD) == 0)
     {
-        app_net_command(g_in, rx_us);
+        app_net_command(g_in, g_in_len, rx_us);
     }
     else if (strcmp(g_in_topic, NET_TOPIC_CONFIG) == 0)
     {
-        app_net_config(g_in);
+        app_net_config(g_in, g_in_len);
     }
     else if (strcmp(g_in_topic, NET_TOPIC_MAP) == 0)
     {
-        /* retained map: handled exactly like "MAP:<payload>" on is02/cmd */
-        static char s_map_cmd[100];
-
-        if (g_in_len > 0u)
-        {
-            memcpy(s_map_cmd, "MAP:", 4u);
-            strncpy(&s_map_cmd[4], g_in, sizeof(s_map_cmd) - 5u);
-            s_map_cmd[sizeof(s_map_cmd) - 1u] = '\0';
-            app_net_command(s_map_cmd, rx_us);
-        }
+        app_net_map(g_in, g_in_len);          /* empty = retained map deleted: ignored */
     }
     else
     {
@@ -433,7 +439,7 @@ static void flush(void)
         frame_slot_t *p;
         PERF_BEGIN(t_cs);
         uint32_t      irq = save_and_disable_interrupts();
-        uint16_t      len;
+        uint8_t       len;
 
         /* copy out under the lock: a producer may overwrite the oldest slot */
         p   = &g_frames[g_f_tail % NET_FRAME_SLOTS];
