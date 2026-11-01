@@ -77,7 +77,7 @@ $(shell mkdir -p $(BUILD) && (echo '$(BASELINE_COMMIT)' | cmp -s - $(BASE_STAMP)
         || echo '$(BASELINE_COMMIT)' > $(BASE_STAMP)))
 
 # ---- targets ----------------------------------------------------------------
-.PHONY: all lib base libbase clean
+.PHONY: all lib base libbase clean tools vectors-c
 all: lib
 lib: $(BUILD)/libis02.so
 base libbase: $(BUILD)/libbase.so
@@ -88,6 +88,24 @@ $(BUILD)/libbase.so: $(BASE_DEPS)
 
 $(BUILD)/libis02.so: $(LIB_OBJS)
 	$(HOST_CC) $(HOST_LDFLAGS) -o $@ $(LIB_OBJS) $(HOST_LIBS)
+
+# ---- protocol tools (spec tasks 3.11, 14.5 C half) ----------------------------
+# build/wire_dump: code tables + frame layouts as JSON (laptop table check).
+# build/wire_vectors: shared vectors through the C codec (format: tools/wire_vectors.c).
+TOOL_OBJS := $(OBJ)/app/wire.o $(OBJ)/app/app_params.o $(OBJ)/app/jfmt.o
+tools: $(BUILD)/wire_dump $(BUILD)/wire_vectors
+
+$(BUILD)/wire_dump: tools/wire_dump.c $(TOOL_OBJS)
+	$(HOST_CC) $(HOST_CFLAGS) -o $@ $< $(TOOL_OBJS) $(HOST_LIBS)
+
+$(BUILD)/wire_vectors: tools/wire_vectors.c $(TOOL_OBJS)
+	$(HOST_CC) $(HOST_CFLAGS) -o $@ $< $(TOOL_OBJS) $(HOST_LIBS)
+
+# Runs vectors/vectors.txt (when present) through the C codec.
+vectors-c: tools
+	$(BUILD)/wire_dump > $(BUILD)/wire_dump.json
+	@if [ -f vectors/vectors.txt ]; then $(BUILD)/wire_vectors < vectors/vectors.txt > $(BUILD)/vectors_c.jsonl; \
+	 echo "wrote $(BUILD)/vectors_c.jsonl"; else echo "no vectors/vectors.txt yet (LT-04 writes it)"; fi
 
 $(OBJ)/app/%.o: $(APP)/%.c $(FLAGS_STAMP)
 	@mkdir -p $(@D)

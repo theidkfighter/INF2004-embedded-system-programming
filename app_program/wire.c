@@ -871,3 +871,42 @@ int wire_dec_config(const uint8_t *p, uint32_t len, wire_cfg_fn p_apply, void *p
     }
     return rest_zero(&r) ? WIRE_OK : WIRE_BAD_VALUE;
 }
+
+/* Inverse encoders for the host tests and tools (spec task 3.10). */
+uint32_t wire_enc_map(const wire_cmd_t *p_c, uint8_t *p_out, uint32_t cap)
+{
+    bw_t w;
+
+    if (cap < WIRE_MAP_LEN)
+    {
+        return 0u;
+    }
+    bw_init(&w, p_out, WIRE_MAP_LEN);
+    put_header(&w);
+    for (uint32_t i = 0u; i < 4u; i++)
+    {
+        bw_put(&w, (p_c->map_present[i] != 0u) ? 1u : 0u, 1u);
+        bw_put(&w, (p_c->map_present[i] != 0u) ? p_c->map_letter[i] : 0u, 5u);
+    }
+    return w.b_overflow ? 0u : WIRE_MAP_LEN;
+}
+
+uint32_t wire_enc_config(uint32_t n, const uint8_t *p_ids, const uint32_t *p_bits, uint8_t *p_out, uint32_t cap)
+{
+    bw_t     w;
+    uint32_t len = WIRE_CFG_LEN(n);
+
+    if ((n > WIRE_PARAMS_MAX) || (len > cap))
+    {
+        return 0u;
+    }
+    bw_init(&w, p_out, len);
+    put_header(&w);
+    bw_put(&w, n, 6u);
+    for (uint32_t i = 0u; i < n; i++)
+    {
+        bw_put(&w, p_ids[i], 6u);
+        bw_put(&w, p_bits[i], 32u);
+    }
+    return w.b_overflow ? 0u : len;
+}

@@ -232,5 +232,8 @@ int      wire_dec_map(const uint8_t *p, uint32_t len, wire_cmd_t *p_c);       /*
 /* Config_Frame: calls p_apply(param_id, value_bits) for each pair in order. */
 typedef void (*wire_cfg_fn)(uint32_t param_id, uint32_t value_bits, void *p_ctx);
 int      wire_dec_config(const uint8_t *p, uint32_t len, wire_cfg_fn p_apply, void *p_ctx);
+/* Inverse encoders (host tests and tools): Map_Frame, Config_Frame. */
+uint32_t wire_enc_map(const wire_cmd_t *p_c, uint8_t *p_out, uint32_t cap);
+uint32_t wire_enc_config(uint32_t n, const uint8_t *p_ids, const uint32_t *p_bits, uint8_t *p_out, uint32_t cap);
 
 #endif /* WIRE_H */
