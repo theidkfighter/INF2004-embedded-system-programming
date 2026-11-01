@@ -68,15 +68,11 @@ def test_laptop_frames(tools, code, n, seed):
 @settings(max_examples=100, deadline=None)
 @given(code=st.integers(0, 44), seed=st.integers(0, 2 ** 32 - 1))
 def test_events(lib, code, seed):
-    import sys
-    from pathlib import Path
-    sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "MQTT"))
-    import is02_wire as lw
-    from test_laptop_codec import _rand_event_fields
+    import wire_spec
     from wire_ctypes import bind_wire, enc_event, make_evt
     bind_wire(lib)
-    fields = _rand_event_fields(code, random.Random(seed))
+    fields = wire_spec.rand_event_fields(code, random.Random(seed))
     bits = sum(w for _, w in fields)
     data = enc_event(lib, seed & 0xFFFFFF, make_evt(code, fields))
     _check(data, 34 + bits, (34 + bits + 7) // 8)
-    assert lw.decode("is02/event", data)["event"] == lw.EVENTS[code][0]
+    assert (int.from_bytes(data, "big") >> (len(data) * 8 - 34)) & 0x3F == code   # Event_Code E6 at bits 28..33

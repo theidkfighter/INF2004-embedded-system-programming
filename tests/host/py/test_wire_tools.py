@@ -1,29 +1,36 @@
 """The protocol host tools (spec tasks 3.11 and 14.5 C half).
 
-- build/wire_dump prints the C tables and frame layouts as JSON; the tables
-  equal the Python Laptop_Codec's, and the telemetry / heartbeat layouts
-  equal design D8 / D9 (test_spec_conformance.D8, D9).
+- build/wire_dump prints the C tables and frame layouts as JSON; counts,
+  texts and store widths follow the design tables, and the telemetry /
+  heartbeat layouts equal design D8 / D9 (test_spec_conformance.D8, D9).
 - build/wire_vectors encodes and decodes vector lines; encode -> decode
-  gives the input back, and the Python codec reads the same bytes.
+  gives the input back, and the bytes carry the fields at the D8 / D9 / D11
+  offsets.
 """
 
 import json
 import random
 import struct
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
 
-from test_spec_conformance import D8, D9, bits_at
+import wire_spec
+from test_spec_conformance import D15, D8, D9, bits_at
 
 HOST = Path(__file__).resolve().parents[1]
-ROOT = HOST.parents[1]
-sys.path.insert(0, str(ROOT / "MQTT"))
-import is02_wire as lw  # noqa: E402
-
 BUILD = HOST / "build"
+
+# design D2 stop reasons and D10 abort reasons (the Baseline_Build texts)
+STOP_TEXTS = ["", "remote E-stop (MQTT)", "BTN2 stop", "collision (IMU)", "obstacle closer than 8 cm",
+              "watchdog: a control task stopped running", "calibration missing",
+              "IMU fault (3 failed I2C recoveries)", "battery critical", "fault reported (see faults in telemetry)"]
+ABORT_TEXTS = ["bypass leg failed (timeout, E-stop or proximity)", "realign failed",
+               "reverse onto the original path failed", "reverse limit reached",
+               "reverse failed (E-stop, proximity or timeout)", "profile failed (no echo in the fine scan)",
+               "no room on either side", "no bypass plan", "backing out failed (E-stop, proximity or timeout)",
+               "blocked on both sides", "too many attempts"]
 
 
 @pytest.fixture(scope="module")
@@ -44,19 +51,20 @@ def run_vectors(tools, lines):
     return [json.loads(x) for x in out.splitlines()]
 
 
-def test_dump_tables_match_python(dump):
+def test_dump_tables_match_design(dump):
+    """Counts and texts from design D2, D10, D11, D12, D15 (the laptop
+    track's table test compares its codecs with this same JSON)."""
     assert dump["format_version"] == 1
-    assert [(e["name"], e["arg_bits"] if not e["variable"] else None) for e in dump["events"]] == \
-        [(n, b) for n, b in lw.EVENTS]
-    # 26 = rejected Parameter_ID names (built at run time); the rest are fixed texts
-    texts = [r["text"] for r in dump["reasons"]]
-    assert texts[:26] + texts[27:] == lw.REASONS[:26] + lw.REASONS[27:]
-    assert [p["name"] for p in dump["params"]] == lw.PARAM_NAMES
-    assert {p["id"]: p["store_width"] for p in dump["params"] if p["store_width"] != 32} == \
-        {k: v[0] for k, v in lw.PARAM_STORE.items()}
-    assert dump["param_table_crc"] == lw.PARAM_TABLE_CRC
-    assert [s["text"] for s in dump["stop_reasons"]] == lw.STOP_TEXTS
-    assert [a["text"] for a in dump["abort_reasons"]] == lw.ABORT_TEXTS
+    assert len(dump["events"]) == 45 and [e["code"] for e in dump["events"]] == list(range(45))
+    assert len(dump["reasons"]) == 28 and dump["reasons"][16]["text"] == "nack: unknown format version"
+    assert [c["code"] for c in dump["commands"]][:11] == list(range(11))
+    assert [(c["cmd_len"]) for c in dump["commands"][:11]] == [1, 1, 1, 1, 2, 4, 1, 1, 3, 6, 1]
+    names = [p["name"] for p in dump["params"]]
+    assert len(names) == 55 and dump["param_table_crc"] == wire_spec.table_crc(names)
+    assert {names[p["id"]]: p["store_width"] for p in dump["params"] if p["store_width"] != 32} == \
+        {n: w for n, (_sh, w, _e) in D15.items()}
+    assert [s["text"] for s in dump["stop_reasons"]] == STOP_TEXTS
+    assert [a["text"] for a in dump["abort_reasons"]] == ABORT_TEXTS
 
 
 def test_dump_layouts_match_design(dump):
@@ -89,7 +97,7 @@ def _rand_hb(rng):
            [rng.randint(0, 63), rng.randint(0, 65535)] + [rng.randint(0, 255) for _ in range(4)]
 
 
-def test_vectors_round_trip_and_python_agrees(tools):
+def test_vectors_round_trip(tools):
     rng = random.Random(2004)
     enc = []
     for _ in range(200):
@@ -122,13 +130,12 @@ def test_vectors_round_trip_and_python_agrees(tools):
         assert d["status"] == 0 and d["fields"] == f, (k, f, d)
         data = bytes.fromhex(r["hex"])
         if k == "telemetry":
-            assert lw.decode("is02/telemetry", data)["seq"] == f[0]
+            assert bits_at(data, 4, 15) == f[0]
             assert bits_at(data, 369, 2) == f[29] and bits_at(data, 417, 8) == f[34]
         elif k == "heartbeat":
-            h = lw.decode("is02/status", data)
-            assert (h["seq"], h["n_params"], h["param_crc"]) == (f[0], f[10], f[11])
+            assert (bits_at(data, 4, 14), bits_at(data, 141, 6), bits_at(data, 147, 16)) == (f[0], f[10], f[11])
         elif k == "ack":
-            assert lw.decode("is02/ack", data)["cmd"] == f"PING:{f[3]}"
+            assert (bits_at(data, 28, 4), bits_at(data, 32, 5), bits_at(data, 37, 16)) == (8, 4, f[3])
 
 
 def test_vectors_event_and_rejects(tools):
@@ -136,7 +143,8 @@ def test_vectors_event_and_rejects(tools):
                               "event 5 0 3 40",                    # STATE 2
                               "event 5 0 4 40"])                   # wrong bit count -> refused
     assert res[0]["hex"] and res[1]["hex"] and res[2]["hex"] == ""
-    assert lw.decode("is02/event", bytes.fromhex(res[0]["hex"]))["detail"] == "remote E-stop (MQTT)"
+    ev = bytes.fromhex(res[0]["hex"])
+    assert (bits_at(ev, 4, 24), bits_at(ev, 28, 6), bits_at(ev, 34, 4)) == (777, 15, 1)
     d = run_vectors(tools, [f"decode event {res[0]['hex']}", "decode cmd 41", "decode telemetry 10"])
     assert d[0]["status"] == 0 and d[0]["fields"] == [777, 15, 4]
     assert d[1]["status"] == 1                                     # 'A' = text: unknown version

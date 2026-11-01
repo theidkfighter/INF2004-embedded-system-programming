@@ -12,16 +12,11 @@
 
 import ctypes
 import struct
-import sys
-from pathlib import Path
 
 import pytest
 
+import wire_spec
 from wire_ctypes import WireHb, WireTlm, bind_wire, enc_heartbeat, enc_telemetry
-
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT / "MQTT"))
-import is02_wire as lw  # noqa: E402
 
 # D8: (offset, width, field name in WireTlm[, index])
 D8 = [(4, 15, "seq"), (19, 24, "t_ms"), (43, 3, "state"), (46, 15, "spd", 0), (61, 15, "spd", 1),
@@ -127,7 +122,8 @@ def test_heartbeat_offsets_match_d9(wl):
 
 
 def test_map_body_slot_order_d13():
-    data = lw.encode_map("A=FWD,B=LEFT,C=RIGHT,D=UTURN")
+    # C encoder; fields: forward, left, right, U-turn (present, letter) = A, B, C, D
+    data = bytes.fromhex(wire_spec.run_vectors(["map 1 0 1 1 1 2 1 3"])[0]["hex"])
     assert [bits_at(data, 4 + 6 * k, 6) for k in range(4)] == [32 | 0, 32 | 1, 32 | 2, 32 | 3]
     assert bits_at(data, 28, 4) == 0
 
@@ -175,15 +171,16 @@ def _range(enc):
 
 def test_table_crc_and_names(ps):
     assert ps.params_count() == 55
-    assert [ps.params_name(i).decode() for i in range(55)] == lw.PARAM_NAMES
-    assert ps.params_table_crc() == lw.PARAM_TABLE_CRC
+    names = [ps.params_name(i).decode() for i in range(55)]
+    assert names == wire_spec.param_names() and set(D15) <= set(names)
+    assert ps.params_table_crc() == wire_spec.table_crc(names)
 
 
 @pytest.mark.parametrize("name", sorted(D15))
 def test_packed_positions_and_round_trip(ps, name):
-    pid = lw.PARAM_ID[name]
+    pid = wire_spec.param_names().index(name)
     sh, w, enc = D15[name]
-    assert ps.params_store_width(pid) == w == lw.param_store_width(pid)
+    assert ps.params_store_width(pid) == w
     for value in _range(enc):
         before = _bits(ps)
         assert ps.params_set_id(pid, float(value)) == 0
@@ -193,7 +190,6 @@ def test_packed_positions_and_round_trip(ps, name):
         assert (after & ~(((1 << w) - 1) << sh)) == (before & ~(((1 << w) - 1) << sh))   # others kept
         assert after >> 24 == 0
         assert ps.params_store_code(pid) == _code(enc, value)
-        assert lw.param_from_store(pid, _code(enc, value)) == float(value)
     keep = _get(ps, pid)
     for bad in (0.5, -0.25, float(min(_range(enc)) - 1), float(max(_range(enc)) + 1)):
         assert ps.params_set_id(pid, bad) == -3, bad
@@ -203,7 +199,7 @@ def test_packed_positions_and_round_trip(ps, name):
 
 
 def test_float_params_store_as_f32(ps):
-    pid = lw.PARAM_ID["LINE_STEER"]
+    pid = wire_spec.param_names().index("LINE_STEER")
     assert ps.params_store_width(pid) == 32
     assert ps.params_set_id(pid, 0.35) == 0
     assert ps.params_store_code(pid) == struct.unpack(">I", struct.pack(">f", 0.35))[0]
@@ -214,4 +210,4 @@ def test_defaults_equal_baseline(ps, base):
     base.base_params_init()
     ps.params_init()
     for i in range(55):
-        assert _get(ps, i) == base.base_bh_param_get(i), lw.PARAM_NAMES[i]
+        assert _get(ps, i) == base.base_bh_param_get(i), wire_spec.param_names()[i]

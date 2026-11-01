@@ -16,8 +16,6 @@ import os
 import sys
 import time
 
-import is02_wire as lw     # Laptop_Codec: binary Config_Frame / Ack_Frame
-
 try:
     import paho.mqtt.client as mqtt
 except ImportError as e:
@@ -42,11 +40,10 @@ def main():
     ap.add_argument("--file", default=os.path.join(here, "robot_params.txt"))
     ap.add_argument("--clear", action="store_true", help="delete the retained configuration")
     ap.add_argument("--wait", type=float, default=8.0, help="seconds to wait for the robot's ack")
-    ap.add_argument("--legacy-json", action="store_true", help="send text lines (Baseline_Build robot)")
     args = ap.parse_args()
 
     if args.clear:
-        payload = b""
+        payload = ""
     else:
         lines = []
         with open(args.file, encoding="utf-8") as f:
@@ -56,18 +53,16 @@ def main():
                     if "=" not in line:
                         sys.exit(f"bad line in {args.file}: {raw.strip()}")
                     lines.append(line)
+        payload = "\n".join(lines)
         print(f"{len(lines)} values from {args.file}:")
         for line in lines:
             print("   " + line)
-        try:
-            payload = lw.config_payload("\n".join(lines), args.legacy_json)
-        except lw.WireError as e:
-            sys.exit(f"not sent: {e}")
-        print(f"Config_Frame: {len(payload)} bytes")
+        if len(payload) > 1000:
+            sys.exit("too long for the robot (1000 characters max): remove some tuning lines")
 
     acks = []
     c = make_client()
-    c.on_message = lambda cl, ud, msg: acks.append(lw.to_text(msg.topic, msg.payload))
+    c.on_message = lambda cl, ud, msg: acks.append(msg.payload.decode(errors="replace"))
     c.connect(args.broker, args.port, keepalive=30)
     c.subscribe("is02/ack")
     c.loop_start()

@@ -9,8 +9,10 @@ Week 13 evidence is due about 3 weeks after 2 Nov 2026.
 > **Update (later the same day):** the firmware was aligned to the team spec
 > `docs/cr1/spec/design.md` D1, D8 to D15, and the S1 host tools were added.
 > The current task-by-task status is in `docs/CR1_FW_STATUS.md`; read it
-> first. The laptop codec of the team's laptop track (`MQTT/is02_codec.py` /
-> `.js`) replaces `MQTT/is02_wire.py` once it lands. The branch is pushed as
+> first. `MQTT/` now belongs to the laptop track (`cr1/laptop`, codecs
+> `MQTT/is02_codec.py` / `.js`): this branch restored it to `542368f` and
+> removed `MQTT/is02_wire.py` and `test_laptop_codec.py`, so every mention of
+> them below is history only. The branch is pushed as
 > `Wei-En` (side branch; `main` and `Poh-Loon` untouched).
 
 ## 0. Hard rules (read first)

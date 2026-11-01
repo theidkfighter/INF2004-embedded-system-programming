@@ -13,13 +13,19 @@ relevant lines into `docs/cr1/PROGRESS_FW.md` once that folder is committed.
 | `tests/host/tools/wire_dump.c` | done | `make -C tests/host tools && tests/host/build/wire_dump` (JSON: version, events, reasons, commands, stop and abort reasons, 55 parameters with store widths, table CRC, frame layouts) |
 | `tests/host/tools/wire_vectors.c` | done | line format documented at the top of the file; `make -C tests/host vectors-c` runs `tests/host/vectors/vectors.txt` when LT-04 has written it |
 | `app_program/evt.c` event builders | done (generic builder) | `evt_begin` / `evt_u` / `evt_s` / `evt_cm9` / `evt_cm13` / `evt_post`; `evt_post` refuses a wrong bit count per Event_Code |
-| Host test build repaired, `run_all.sh` passes | done | `bash tests/host/run_all.sh` → PASSED (needs `npm ci` in `tests/host/js` once); stray `p3_full.log`, `p3_ps.txt` removed |
+| Host test build repaired, `run_all.sh` passes | done | from a clean build: `rm -rf tests/host/build && bash tests/host/run_all.sh --seed 12345` → PASSED (needs `npm ci` in `tests/host/js` once); `post_evt` defined once (os_stub.c); stray `p3_full.log`, `p3_ps.txt` removed |
 
 Conformance checks: `tests/host/py/test_spec_conformance.py` reads the
 telemetry and heartbeat bits at the D8 / D9 offsets, checks the D13 map slot
 order and the D15 Parameter_Store positions, and compares all 55 parameter
 defaults with the Baseline_Build library. `test_wire_tools.py` checks the
-`wire_dump` tables against the Python codec and the layouts against D8 / D9.
+`wire_dump` tables against the design tables and the layouts against D8 / D9.
+The firmware tests use only the C side (`tests/host/py/wire_spec.py` reads
+`wire_dump`); they do not depend on any laptop codec.
+
+**`MQTT/` is the laptop track's.** This branch leaves it exactly as on
+`542368f` (an earlier Python codec `MQTT/is02_wire.py` and its test were
+removed); the laptop codecs come from `cr1/laptop`.
 
 ## Spec tasks done on this branch
 

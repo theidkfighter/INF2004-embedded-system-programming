@@ -7,20 +7,16 @@ builder (evt.c) tests.
 - clamping, NaN and the "no echo" sentinel;
 - saturating run counters and the run reset;
 - fields sharing a unit never disturb each other;
-- evt_post() refuses a wrong bit count and posts a frame the Python
-  Laptop_Codec decodes to the Baseline_Build text.
+- evt_post() refuses a wrong bit count and posts a frame the C decoder
+  reads back with the same code and argument bits.
 """
 
 import ctypes
 import math
-import sys
-from pathlib import Path
 
 import pytest
 
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT / "MQTT"))
-import is02_wire as lw  # noqa: E402
+import wire_spec  # noqa: E402
 
 F, U, I, B = ctypes.c_float, ctypes.c_uint32, ctypes.c_int32, ctypes.c_bool
 
@@ -177,17 +173,28 @@ def _last_frame(lib):
     return bytes(out[:n])
 
 
+def _decoded(lib, data):
+    """(t_ms, code, arg bits, arg bytes) through the C decoder wire_dec_event."""
+    from wire_ctypes import WireEvt
+    ev, t = WireEvt(), U()
+    lib.wire_dec_event.restype = ctypes.c_int
+    lib.wire_dec_event.argtypes = [ctypes.c_char_p, U, ctypes.POINTER(U), ctypes.POINTER(WireEvt)]
+    assert lib.wire_dec_event(data, len(data), ctypes.byref(t), ctypes.byref(ev)) == 0
+    return t.value, ev.code, ev.nbits, bytes(ev.args[:(ev.nbits + 7) // 8])
+
+
 def test_evt_post_checks_bit_count(st):
     lib = _evt_lib(st)
     lib.evt_stub_reset(777)
-    assert not lib.evt_post1(lw.EVENT_CODE["STATE"], 2, 4)       # STATE has 3 bits
+    code = wire_spec.event_code
+    assert not lib.evt_post1(code("STATE"), 2, 4)                 # STATE has 3 bits
     assert lib.evt_stub_posted() == 0
-    assert lib.evt_post1(lw.EVENT_CODE["EMERGENCY_STOP"], 1, 4)
-    d = lw.decode("is02/event", _last_frame(lib))
-    assert d == {"t": 777, "event": "EMERGENCY_STOP", "detail": "remote E-stop (MQTT)"}
-    assert lib.evt_post0(lw.EVENT_CODE["LINE_LOST"])
-    assert lw.decode("is02/event", _last_frame(lib))["detail"] == "search found nothing"
-    assert not lib.evt_post0(lw.EVENT_CODE["STATE"])              # 0 bits for a 3-bit event
+    assert lib.evt_post1(code("EMERGENCY_STOP"), 1, 4)
+    d = _decoded(lib, _last_frame(lib))
+    assert d == (777, code("EMERGENCY_STOP"), 4, bytes([0x10]))      # stop reason 1 = remote E-stop
+    assert lib.evt_post0(code("LINE_LOST"))
+    assert _decoded(lib, _last_frame(lib)) == (777, code("LINE_LOST"), 0, b"")
+    assert not lib.evt_post0(code("STATE"))                       # 0 bits for a 3-bit event
 
 
 def test_nan_values_never_crash(st):

@@ -36,8 +36,6 @@ import sys
 import threading
 import time
 
-import is02_wire as lw     # Laptop_Codec: binary frames <-> the old JSON/text
-
 try:
     import paho.mqtt.client as mqtt
 except ImportError:
@@ -78,7 +76,7 @@ def stamp():
 
 
 def show(topic, payload, show_tlm):
-    text = lw.to_text(topic, payload)
+    text = payload.decode(errors="replace")
     if topic == T_TLM:
         if not show_tlm:
             return
@@ -119,15 +117,13 @@ def cmd_monitor(args):
         pass
 
 
-def send_and_wait_ack(args, topic, payload, retain=False, want_prefix=None, timeout=4.0, shown=None):
-    """Publish and print the robot's ack(s) for up to `timeout` seconds.
-    payload: bytes (binary frame, or text for --legacy-json); shown: what to print."""
+def send_and_wait_ack(args, topic, payload, retain=False, want_prefix=None, timeout=4.0):
+    """Publish and print the robot's ack(s) for up to `timeout` seconds."""
     got = threading.Event()
 
     def on_msg(client, userdata, msg):
-        text = lw.to_text(msg.topic, msg.payload)
-        # '"cmd":""' = the robot could not parse the frame (wrong format version or length)
-        if msg.topic == T_ACK and (want_prefix is None or want_prefix in text or '"cmd":""' in text):
+        text = msg.payload.decode(errors="replace")
+        if msg.topic == T_ACK and (want_prefix is None or want_prefix in text):
             print(f"{stamp()} ACK  {text}")
             got.set()
         elif msg.topic == T_EVENT:
@@ -136,7 +132,7 @@ def send_and_wait_ack(args, topic, payload, retain=False, want_prefix=None, time
     c = make_client(args, on_msg, subscribe=(T_ACK, T_EVENT))
     time.sleep(0.3)                             # let the subscriptions settle
     c.publish(topic, payload, qos=1, retain=retain).wait_for_publish(3)
-    print(f"{stamp()} SENT {topic}{' (retained)' if retain else ''}: {shown or payload!r} ({len(payload)} bytes)")
+    print(f"{stamp()} SENT {topic}{' (retained)' if retain else ''}: {payload!r}")
     if not got.wait(timeout):
         print("no ack from the robot (is it on the hotspot and connected? check `monitor`)")
     time.sleep(0.5)                             # GET:PARAMS answers in several parts
@@ -150,46 +146,29 @@ def cmd_map(args):
         c = make_client(args)
         c.publish(T_MAP, b"", qos=1, retain=True).wait_for_publish(3)
         c.loop_stop()
-        send_and_wait_ack(args, T_CMD, lw.cmd_payload("MAP:CLEAR", args.legacy_json), want_prefix="MAP",
-                          shown="MAP:CLEAR")
+        send_and_wait_ack(args, T_CMD, "MAP:CLEAR", want_prefix="MAP")
         return
     if not args.pairs:
         sys.exit("give the map, e.g.  map F=FWD K=LEFT R=RIGHT U=UTURN   (or 4 letters: FWD UTURN LEFT RIGHT)")
-    text = ",".join(args.pairs).upper()
-    try:
-        payload = lw.map_payload(text, args.legacy_json)
-    except lw.WireError as e:
-        sys.exit(f"map not sent: {e}")
+    payload = ",".join(args.pairs).upper()
     # retained on is02/map: delivered now AND again at every reconnect
-    send_and_wait_ack(args, T_MAP, payload, retain=True, want_prefix="MAP", shown=text)
+    send_and_wait_ack(args, T_MAP, payload, retain=True, want_prefix="MAP")
 
 
 def cmd_cmd(args):
     text = " ".join(args.text)
-    try:
-        payload = lw.cmd_payload(text, args.legacy_json)
-    except lw.WireError as e:
-        sys.exit(f"command not sent: {e}")
-    send_and_wait_ack(args, T_CMD, payload, want_prefix=text.split(":")[0][:8].upper(), shown=text)
+    send_and_wait_ack(args, T_CMD, text, want_prefix=text.split(":")[0][:8])
 
 
 def cmd_set(args):
     for item in args.pairs:
-        try:
-            payload = lw.cmd_payload("SET:" + item, args.legacy_json)
-        except (lw.WireError, ValueError) as e:
-            sys.exit(f"SET:{item} not sent: {e}")
-        send_and_wait_ack(args, T_CMD, payload, want_prefix="SET:", timeout=3, shown="SET:" + item)
+        send_and_wait_ack(args, T_CMD, "SET:" + item, want_prefix="SET:", timeout=3)
 
 
 def cmd_config(args):
     with open(args.file, encoding="utf-8") as f:
         text = f.read().strip()
-    try:
-        payload = lw.config_payload(text, args.legacy_json)
-    except lw.WireError as e:
-        sys.exit(f"config not sent: {e}")
-    send_and_wait_ack(args, T_CONFIG, payload, retain=True, want_prefix="CONFIG", shown=args.file)
+    send_and_wait_ack(args, T_CONFIG, text, retain=True, want_prefix="CONFIG")
 
 
 def cmd_beacon(args):
@@ -207,13 +186,10 @@ def cmd_beacon(args):
 def cmd_log(args):
     f = open(args.file, "w", newline="", encoding="utf-8")
     w = csv.writer(f)
-    # new format (tools/evidence/msg_sizes.py reads both): length and hex of the
-    # payload as sent, plus the decoded JSON for reading
-    w.writerow(["pc_time", "topic", "len", "hex", "decoded_json"])
+    w.writerow(["pc_time", "topic", "payload"])
 
     def on_msg(client, userdata, msg):
-        w.writerow([f"{time.time():.3f}", msg.topic, len(msg.payload), msg.payload.hex(),
-                    lw.to_text(msg.topic, msg.payload)])
+        w.writerow([f"{time.time():.3f}", msg.topic, msg.payload.decode(errors="replace")])
         f.flush()
         if msg.topic in (T_EVENT, T_ACK):
             show(msg.topic, msg.payload, False)
@@ -231,9 +207,6 @@ def main():
     p = argparse.ArgumentParser(description="IS-02 laptop MQTT tool")
     p.add_argument("--broker", default="localhost", help="broker address (default localhost)")
     p.add_argument("--port", type=int, default=1883)
-    p.add_argument("--legacy-json", action="store_true",
-                   help="send text commands/map/config (Baseline_Build robot); received payloads "
-                        "are decoded either way")
     sub = p.add_subparsers(dest="what", required=True)
 
     s = sub.add_parser("monitor"); s.add_argument("--tlm", action="store_true"); s.set_defaults(fn=cmd_monitor)

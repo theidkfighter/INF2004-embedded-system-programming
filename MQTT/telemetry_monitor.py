@@ -26,8 +26,6 @@ import sys
 import threading
 import time
 
-import is02_wire as lw     # Laptop_Codec: binary frames <-> the old JSON/text
-
 try:
     import paho.mqtt.client as mqtt
 except ImportError as e:
@@ -130,7 +128,7 @@ class Monitor:
 
     def on_message(self, client, userdata, msg):
         now = time.time()
-        text = lw.to_text(msg.topic, msg.payload)   # binary frame -> Baseline_Build JSON
+        text = msg.payload.decode("utf-8", errors="replace")
         with self.lock:
             if msg.topic == T_TELEM:
                 self.telemetry(now, text)
@@ -250,22 +248,14 @@ class Monitor:
         if not self.connected:
             self.out("!! not connected to the broker")
             return
-        # the binary ack echoes "SET:NAME" (not "=value") and "MAP" (not the pairs)
-        key = cmd.split("=")[0] if cmd.upper().startswith("SET:") else (
-            "MAP" if cmd.upper().startswith("MAP:") and cmd.upper() != "MAP:CLEAR" else cmd)
-        try:
-            payload = lw.cmd_payload(cmd, self.args.legacy_json)
-        except (lw.WireError, ValueError) as e:
-            self.out(f"!! command not sent: {e}")
-            return
         with self.lock:
             if self.robot_online():
-                self.pending[key] = time.time()
+                self.pending[cmd] = time.time()
                 self.sent += 1
             else:
                 self.sent_offline += 1
                 self.out("   (robot looks offline - no heartbeat in 3 s; this command is not counted)")
-        self.client.publish(T_CMD, payload, qos=1)
+        self.client.publish(T_CMD, cmd, qos=1)
         self.log(time.time(), T_CMD, cmd)
         self.out(f"SENT   {cmd}")
 
@@ -377,8 +367,6 @@ def main():
     ap = argparse.ArgumentParser(description="IS-02 telemetry monitor")
     ap.add_argument("--broker", default="localhost", help="MQTT broker IP (the laptop's IP on the hotspot)")
     ap.add_argument("--port", type=int, default=1883)
-    ap.add_argument("--legacy-json", action="store_true",
-                    help="send text commands (Baseline_Build robot); received payloads are decoded either way")
     ap.add_argument("--out", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs"),
                     help="folder for the CSV and log files")
     ap.add_argument("--ping-every", type=float, default=5.0, help="send PING every N seconds (0 = off)")
