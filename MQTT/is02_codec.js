@@ -12,6 +12,9 @@
  *     IS02.encodeMap(pairs)          -> Uint8Array   the Map_Frame
  *     IS02.encodeConfig(lines)       -> Uint8Array   the Config_Frame
  *
+ *     IS02.readPayload(topic, payload, {log}) -> {decoded, text}   for the tools: JSON, text or binary
+ *     IS02.ptabMismatch(status)      -> warning or null    from a decoded heartbeat
+ *
  * The kinds are telemetry, heartbeat, event, ack, command, map and config.
  * Record and object field names are the Python ones (spd_l, n_rej, ...).
  *
@@ -1309,6 +1312,8 @@
         ["is02/config", ["config", presentConfig]]
     ]);
     var RETAINED_TOPICS = ["is02/map", "is02/config"];
+    // Topics the tools fill with baseline text while legacy mode is on (flag R7)
+    var TEXT_TOPICS = ["is02/cmd", "is02/map", "is02/config"];
 
     /* The Baseline_Build JSON shape of a payload, or null if it was dropped.
      *
@@ -1349,6 +1354,41 @@
             return null;
         }
         return entry[1](rec, emit);
+    }
+
+    /* What the tools do with a received payload, in both modes: {decoded, text}.
+     *
+     * "{" is baseline JSON, anything else binary (flag R7). On TEXT_TOPICS and on a
+     * topic with no decoder, a payload without our Format_Version is text, and
+     * decoded is null. text is the payload as received, or the decoded JSON of a
+     * binary frame, or null if the frame was dropped.
+     */
+    function readPayload(topic, payload, options) {
+        var data = toBytes(payload);
+        var received = new TextDecoder("utf-8").decode(data);
+        if (!TOPICS.has(topic) || (TEXT_TOPICS.indexOf(topic) >= 0 &&
+                (data.length === 0 || data[0] >> 4 !== FORMAT_VERSION))) {
+            return { decoded: null, text: received };
+        }
+        var log = options && options.log;
+        var decoded = decode(topic, data, { legacyJson: true, log: log });
+        if (data[0] === 0x7B) {
+            return { decoded: decoded, text: received };
+        }
+        return { decoded: decoded, text: decoded === null ? null : JSON.stringify(decoded) };
+    }
+
+    /* The warning for a decoded heartbeat whose parameter table differs from PARAMS, else null.
+     * A baseline JSON heartbeat has no "ptab", so it gives null.
+     */
+    function ptabMismatch(status) {
+        var ptab = status.ptab;
+        if (ptab === undefined || (ptab.count === PARAM_COUNT && ptab.crc === PARAM_CRC)) {
+            return null;
+        }
+        var hex = function (crc) { return "0x" + crc.toString(16).toUpperCase().padStart(4, "0"); };
+        return "parameter table mismatch: robot " + ptab.count + " / " + hex(ptab.crc) +
+            ", tool " + PARAM_COUNT + " / " + hex(PARAM_CRC);
     }
 
     // ---------------- user input -> frames ----------------
@@ -1632,6 +1672,8 @@
         jbFixed: jbFixed,
         mapBody: mapBody,
         decode: decode,
+        readPayload: readPayload,
+        ptabMismatch: ptabMismatch,
         encodeCommandText: encodeCommandText,
         encodeMap: encodeMap,
         encodeConfig: encodeConfig

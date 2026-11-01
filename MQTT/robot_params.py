@@ -9,11 +9,17 @@ robot connects, so the robot gets its calibration without recompiling.
 
 If the robot is online it answers on is02/ack (cmd "CONFIG") with how many
 values it applied and the ones it rejected.
+
+Every line is checked against the parameter table first: one bad line prints
+its line number and NAME and nothing is sent. The file goes out as baseline
+text while --legacy-json is on (the default) and as a Config_Frame with
+--no-legacy-json, which only a robot from FW-09 on understands. Nothing is sent
+while the robot's heartbeat shows a different parameter table.
 """
 import argparse
-import json
 import os
 import sys
+import threading
 import time
 
 try:
@@ -23,6 +29,10 @@ except ImportError as e:
              f"Install it into the same Python with:\n"
              f"    \"{sys.executable}\" -m pip install paho-mqtt\n"
              f"(import error: {e})")
+
+import is02_codec as codec
+
+HEARTBEAT_WAIT = 1.5                    # s; the heartbeat is 1 Hz
 
 
 def make_client():
@@ -40,42 +50,62 @@ def main():
     ap.add_argument("--file", default=os.path.join(here, "robot_params.txt"))
     ap.add_argument("--clear", action="store_true", help="delete the retained configuration")
     ap.add_argument("--wait", type=float, default=8.0, help="seconds to wait for the robot's ack")
+    ap.add_argument("--legacy-json", dest="legacy_json", action="store_true", default=True,
+                    help="send the file as baseline text (the default)")
+    ap.add_argument("--no-legacy-json", dest="legacy_json", action="store_false",
+                    help="send a Config_Frame (robot from FW-09 on)")
     args = ap.parse_args()
 
     if args.clear:
         payload = ""
     else:
-        lines = []
         with open(args.file, encoding="utf-8") as f:
-            for raw in f:
-                line = raw.split("#", 1)[0].strip()
-                if line:
-                    if "=" not in line:
-                        sys.exit(f"bad line in {args.file}: {raw.strip()}")
-                    lines.append(line)
+            raw_lines = f.read().splitlines()
+        try:
+            frame = codec.encode_config(raw_lines)
+        except codec.CodecError as e:
+            sys.exit(f"bad lines in {args.file}, nothing sent:\n{e}")
+        lines = [line for line in (raw.split("#", 1)[0].strip() for raw in raw_lines) if line]
         payload = "\n".join(lines)
         print(f"{len(lines)} values from {args.file}:")
         for line in lines:
             print("   " + line)
-        if len(payload) > 1000:
+        if not args.legacy_json:
+            payload = frame
+        elif len(payload) > 1000:
             sys.exit("too long for the robot (1000 characters max): remove some tuning lines")
 
     acks = []
+    heartbeat = threading.Event()
+    mismatch = []
+
+    def on_message(cl, ud, msg):
+        decoded = codec.decode(msg.topic, msg.payload, legacy_json=True, log=print)
+        if decoded is None:
+            return
+        if msg.topic == "is02/ack":
+            acks.append(decoded)
+        else:
+            mismatch[:] = [codec.ptab_mismatch(decoded)]
+            heartbeat.set()
+
     c = make_client()
-    c.on_message = lambda cl, ud, msg: acks.append(msg.payload.decode(errors="replace"))
+    c.on_message = on_message
     c.connect(args.broker, args.port, keepalive=30)
     c.subscribe("is02/ack")
+    c.subscribe("is02/status")
     c.loop_start()
+    if not args.clear:
+        heartbeat.wait(HEARTBEAT_WAIT)          # no heartbeat: offline, it gets the values when it connects
+        if mismatch and mismatch[0]:
+            c.loop_stop()
+            sys.exit(f"not sent: {mismatch[0]}")
     c.publish("is02/config", payload, qos=1, retain=True).wait_for_publish()
     print("retained configuration " + ("cleared" if args.clear else "stored on the broker"))
     if not args.clear:
         t_end = time.time() + args.wait
         while time.time() < t_end:
-            for a in acks:
-                try:
-                    j = json.loads(a)
-                except ValueError:
-                    continue
+            for j in acks:
                 if j.get("cmd") == "CONFIG":
                     print(f"robot: applied {j.get('applied')}, rejected {j.get('rejected')}"
                           + ("" if j.get("result") == "ok" else f"  -> {j.get('result')}"))

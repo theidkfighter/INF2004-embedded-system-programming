@@ -755,3 +755,30 @@ test("require() and the browser global both give the codec", () => {
     vm.runInContext(require("node:fs").readFileSync(path.join(__dirname, "..", "..", "..", "MQTT", "is02_codec.js"), "utf8"), sandbox);
     assert.equal(typeof sandbox.IS02.decode, "function");
 });
+
+test("readPayload tells JSON, text and binary apart in both modes", () => {
+    const text = (s) => new TextEncoder().encode(s);
+    assert.deepEqual(codec.readPayload("is02/ack", text('{"cmd": "PING:1"}')),
+        { decoded: { cmd: "PING:1" }, text: '{"cmd": "PING:1"}' });
+    assert.deepEqual(codec.readPayload("is02/cmd", text("PING:1")), { decoded: null, text: "PING:1" });
+    assert.deepEqual(codec.readPayload("is02/map", text("X=FWD,K=LEFT")), { decoded: null, text: "X=FWD,K=LEFT" });
+    assert.deepEqual(codec.readPayload("is02/config", new Uint8Array(0)), { decoded: null, text: "" });
+    const map = codec.readPayload("is02/map", codec.encodeMap("X=FWD,K=LEFT,Q=RIGHT,M=UTURN"));
+    assert.deepEqual(map.decoded, { map: "K=LEFT,M=UTURN,Q=RIGHT,X=FWD", n: 4 });
+    assert.deepEqual(JSON.parse(map.text), map.decoded);
+    const lines = [];
+    const log = (line) => lines.push(line);
+    assert.deepEqual(codec.readPayload("is02/map", new Uint8Array([0x10]), { log }), { decoded: null, text: null });
+    assert.deepEqual(codec.readPayload("is02/telemetry", text("hello"), { log }), { decoded: null, text: null });
+    assert.deepEqual(codec.readPayload("is02/telemetry", text("{bad"), { log }), { decoded: null, text: "{bad" });
+    assert.equal(lines.length, 3);
+    assert.ok(lines[1].includes("version 6"));
+});
+
+test("ptabMismatch names both tables, and a JSON heartbeat says nothing", () => {
+    assert.equal(codec.ptabMismatch({}), null);
+    assert.equal(codec.ptabMismatch({ ptab: { count: codec.PARAM_COUNT, crc: codec.PARAM_CRC } }), null);
+    const hex = codec.PARAM_CRC.toString(16).toUpperCase().padStart(4, "0");
+    assert.equal(codec.ptabMismatch({ ptab: { count: 3, crc: 0xBEEF } }),
+        `parameter table mismatch: robot 3 / 0xBEEF, tool ${codec.PARAM_COUNT} / 0x${hex}`);
+});

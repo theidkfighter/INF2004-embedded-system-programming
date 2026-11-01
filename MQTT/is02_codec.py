@@ -11,6 +11,9 @@ Two layers, the same as MQTT/is02_codec.js:
     encode_map(pairs)            -> bytes      the Map_Frame
     encode_config(lines)         -> bytes      the Config_Frame
 
+    read_payload(topic, payload) -> (decoded, text)    for the tools: JSON, text or binary
+    ptab_mismatch(status)        -> warning or None    from a decoded heartbeat
+
 The kinds are telemetry, heartbeat, event, ack, command, map and config.
 
 The code tables and frame lengths are copies of app_program/wire_ids.h, and
@@ -1082,6 +1085,8 @@ TOPICS = {
     "is02/config": ("config", present_config),
 }
 RETAINED_TOPICS = ("is02/map", "is02/config")
+# Topics the tools fill with baseline text while legacy mode is on (flag R7)
+TEXT_TOPICS = ("is02/cmd", "is02/map", "is02/config")
 
 
 def decode(topic, payload, legacy_json=False, log=None):
@@ -1113,6 +1118,36 @@ def decode(topic, payload, legacy_json=False, log=None):
         emit(f"{topic}: dropped, version {version}, length {len(data)}: {e}")
         return None
     return present(rec, emit)
+
+
+def read_payload(topic, payload, log=None):
+    """What the tools do with a received payload, in both modes: (decoded, text).
+
+    "{" is baseline JSON, anything else binary (flag R7). On TEXT_TOPICS and on a
+    topic with no decoder, a payload without our Format_Version is text, and
+    decoded is None. text is the payload as received, or the decoded JSON of a
+    binary frame, or None if the frame was dropped.
+    """
+    data = payload.encode("utf-8") if isinstance(payload, str) else bytes(payload)
+    received = data.decode("utf-8", errors="replace")
+    if topic not in TOPICS or (topic in TEXT_TOPICS and (not data or data[0] >> 4 != FORMAT_VERSION)):
+        return None, received
+    decoded = decode(topic, data, legacy_json=True, log=log)
+    if data[:1] == b"{":
+        return decoded, received
+    return decoded, None if decoded is None else json.dumps(decoded, separators=(",", ":"))
+
+
+def ptab_mismatch(status):
+    """The warning for a decoded heartbeat whose parameter table differs from PARAMS, else None.
+
+    A baseline JSON heartbeat has no "ptab", so it gives None.
+    """
+    ptab = status.get("ptab")
+    if ptab is None or (ptab["count"], ptab["crc"]) == (PARAM_COUNT, PARAM_CRC):
+        return None
+    return (f"parameter table mismatch: robot {ptab['count']} / 0x{ptab['crc']:04X}, "
+            f"tool {PARAM_COUNT} / 0x{PARAM_CRC:04X}")
 
 
 # ---------------- user input -> frames ----------------

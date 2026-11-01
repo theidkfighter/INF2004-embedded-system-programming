@@ -24,13 +24,17 @@ Commands (run from a terminal; --broker defaults to localhost):
                                           robot finds this laptop even if its IP changed
   python is02_tool.py log run1.csv       record every message to a CSV file
 
+Received payloads are read as JSON or binary automatically. cmd, set, map and
+config send baseline text while --legacy-json is on (the default) and binary
+frames with --no-legacy-json before the command word, which only a robot from
+FW-09 on understands.
+
 (Windows: run it with "py is02_tool.py ...". The "#!/usr/bin/env python3"
 first line was removed: with it, the py launcher picks the first python3 on
 PATH, which on some laptops is an MSYS2 Python without paho-mqtt.)
 """
 import argparse
 import csv
-import json
 import socket
 import sys
 import threading
@@ -41,9 +45,12 @@ try:
 except ImportError:
     sys.exit("paho-mqtt is missing: run  pip install paho-mqtt")
 
+import is02_codec as codec
+
 T_TLM, T_STATUS, T_EVENT, T_ACK = "is02/telemetry", "is02/status", "is02/event", "is02/ack"
 T_CMD, T_CONFIG, T_MAP = "is02/cmd", "is02/config", "is02/map"
 BEACON_PORT = 47002
+HEARTBEAT_WAIT = 1.5                            # s; the heartbeat is 1 Hz
 
 
 def make_client(args, on_message=None, subscribe=()):
@@ -75,18 +82,23 @@ def stamp():
     return time.strftime("%H:%M:%S")
 
 
+def warn(line):
+    print(f"{stamp()} !!   {line}")
+
+
 def show(topic, payload, show_tlm):
-    text = payload.decode(errors="replace")
+    f, text = codec.read_payload(topic, payload, log=warn)
+    if text is None:
+        return                                  # dropped by the codec, already printed
     if topic == T_TLM:
         if not show_tlm:
             return
-        try:
-            f = json.loads(text)
+        if f is not None:
             line = f.get("line", {})
             print(f"{stamp()} TLM  {f.get('state',''):<18} spd {f.get('spd')} duty {f.get('duty')} "
                   f"line L{line.get('l')} R{line.get('r')} ir {line.get('ir')} "
                   f"bc {f.get('bc')!r} obst {f.get('obst',{}).get('cm')}cm faults {f.get('faults')}")
-        except ValueError:
+        else:
             print(f"{stamp()} TLM  {text}")
     elif topic == T_EVENT:
         print(f"{stamp()} EVT  {text}")
@@ -117,20 +129,47 @@ def cmd_monitor(args):
         pass
 
 
-def send_and_wait_ack(args, topic, payload, retain=False, want_prefix=None, timeout=4.0):
-    """Publish and print the robot's ack(s) for up to `timeout` seconds."""
+def encode_text(args, text):
+    """The payload for a baseline command text: the text itself in legacy mode, else its Command_Frame."""
+    if args.legacy_json:
+        return text
+    try:
+        return codec.encode_command_text(text)
+    except codec.CodecError as e:
+        sys.exit(str(e))
+
+
+def send_and_wait_ack(args, topic, payload, retain=False, want_prefix=None, timeout=4.0, check_ptab=False):
+    """Publish and print the robot's ack(s) for up to `timeout` seconds.
+
+    With check_ptab, wait for a heartbeat first and publish nothing if its
+    parameter table differs. No heartbeat: the robot is offline, publish anyway.
+    """
     got = threading.Event()
+    heartbeat = threading.Event()
+    mismatch = []
 
     def on_msg(client, userdata, msg):
-        text = msg.payload.decode(errors="replace")
-        if msg.topic == T_ACK and (want_prefix is None or want_prefix in text):
+        decoded, text = codec.read_payload(msg.topic, msg.payload, log=warn)
+        if text is None:
+            return                              # dropped by the codec, already printed
+        if msg.topic == T_ACK and (want_prefix is None or want_prefix in str((decoded or {}).get("cmd", text))):
             print(f"{stamp()} ACK  {text}")
             got.set()
         elif msg.topic == T_EVENT:
             print(f"{stamp()} EVT  {text}")
+        elif msg.topic == T_STATUS:
+            mismatch[:] = [codec.ptab_mismatch(decoded or {})]
+            heartbeat.set()
 
-    c = make_client(args, on_msg, subscribe=(T_ACK, T_EVENT))
+    c = make_client(args, on_msg, subscribe=(T_ACK, T_EVENT, T_STATUS) if check_ptab else (T_ACK, T_EVENT))
     time.sleep(0.3)                             # let the subscriptions settle
+    if check_ptab:
+        heartbeat.wait(HEARTBEAT_WAIT)
+        if mismatch and mismatch[0]:
+            c.loop_stop()
+            c.disconnect()
+            sys.exit(f"not published: {mismatch[0]}")
     c.publish(topic, payload, qos=1, retain=retain).wait_for_publish(3)
     print(f"{stamp()} SENT {topic}{' (retained)' if retain else ''}: {payload!r}")
     if not got.wait(timeout):
@@ -146,29 +185,46 @@ def cmd_map(args):
         c = make_client(args)
         c.publish(T_MAP, b"", qos=1, retain=True).wait_for_publish(3)
         c.loop_stop()
-        send_and_wait_ack(args, T_CMD, "MAP:CLEAR", want_prefix="MAP")
+        send_and_wait_ack(args, T_CMD, encode_text(args, "MAP:CLEAR"), want_prefix="MAP")
         return
     if not args.pairs:
         sys.exit("give the map, e.g.  map F=FWD K=LEFT R=RIGHT U=UTURN   (or 4 letters: FWD UTURN LEFT RIGHT)")
     payload = ",".join(args.pairs).upper()
+    if not args.legacy_json:
+        try:
+            payload = codec.encode_map(payload)
+        except codec.CodecError as e:
+            sys.exit(str(e))
     # retained on is02/map: delivered now AND again at every reconnect
     send_and_wait_ack(args, T_MAP, payload, retain=True, want_prefix="MAP")
 
 
 def cmd_cmd(args):
     text = " ".join(args.text)
-    send_and_wait_ack(args, T_CMD, text, want_prefix=text.split(":")[0][:8])
+    send_and_wait_ack(args, T_CMD, encode_text(args, text), want_prefix=text.split(":")[0][:8])
 
 
 def cmd_set(args):
-    for item in args.pairs:
-        send_and_wait_ack(args, T_CMD, "SET:" + item, want_prefix="SET:", timeout=3)
+    payloads = []
+    for item in args.pairs:                     # all checked first: a bad one sends nothing
+        try:
+            frame = codec.encode_command_text("SET:" + item)
+        except codec.CodecError as e:
+            sys.exit(str(e))
+        payloads.append("SET:" + item if args.legacy_json else frame)
+    for payload in payloads:
+        send_and_wait_ack(args, T_CMD, payload, want_prefix="SET:", timeout=3)
 
 
 def cmd_config(args):
     with open(args.file, encoding="utf-8") as f:
-        text = f.read().strip()
-    send_and_wait_ack(args, T_CONFIG, text, retain=True, want_prefix="CONFIG")
+        text = f.read()
+    try:
+        frame = codec.encode_config(text)
+    except codec.CodecError as e:
+        sys.exit(str(e))
+    send_and_wait_ack(args, T_CONFIG, text.strip() if args.legacy_json else frame, retain=True,
+                      want_prefix="CONFIG", check_ptab=True)
 
 
 def cmd_beacon(args):
@@ -186,12 +242,13 @@ def cmd_beacon(args):
 def cmd_log(args):
     f = open(args.file, "w", newline="", encoding="utf-8")
     w = csv.writer(f)
-    w.writerow(["pc_time", "topic", "payload"])
+    w.writerow(["pc_time", "topic", "len", "hex", "decoded_json"])
 
     def on_msg(client, userdata, msg):
-        w.writerow([f"{time.time():.3f}", msg.topic, msg.payload.decode(errors="replace")])
+        _, text = codec.read_payload(msg.topic, msg.payload, log=warn)
+        w.writerow([f"{time.time():.3f}", msg.topic, len(msg.payload), msg.payload.hex(), text or ""])
         f.flush()
-        if msg.topic in (T_EVENT, T_ACK):
+        if msg.topic in (T_EVENT, T_ACK) and text is not None:
             show(msg.topic, msg.payload, False)
 
     make_client(args, on_msg, subscribe=("is02/#",))
@@ -207,6 +264,10 @@ def main():
     p = argparse.ArgumentParser(description="IS-02 laptop MQTT tool")
     p.add_argument("--broker", default="localhost", help="broker address (default localhost)")
     p.add_argument("--port", type=int, default=1883)
+    p.add_argument("--legacy-json", dest="legacy_json", action="store_true", default=True,
+                   help="send commands, map and config as baseline text (the default)")
+    p.add_argument("--no-legacy-json", dest="legacy_json", action="store_false",
+                   help="send binary frames (robot from FW-09 on)")
     sub = p.add_subparsers(dest="what", required=True)
 
     s = sub.add_parser("monitor"); s.add_argument("--tlm", action="store_true"); s.set_defaults(fn=cmd_monitor)

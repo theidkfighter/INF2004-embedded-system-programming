@@ -14,12 +14,15 @@ Keys (type the letter, then Enter):
     p  PING (round-trip time)      s  show the checks so far      q  quit (prints the summary)
 
 Needs: pip install paho-mqtt
+
+Received payloads are read as JSON or binary automatically. Commands go out as
+baseline text while --legacy-json is on (the default) and as binary frames with
+--no-legacy-json, which only a robot from FW-09 on understands.
 """
 
 import argparse
 import csv
 import datetime as dt
-import json
 import os
 import socket
 import sys
@@ -33,6 +36,8 @@ except ImportError as e:
              f"Install it into the same Python with:\n"
              f"    \"{sys.executable}\" -m pip install paho-mqtt\n"
              f"(import error: {e})")
+
+import is02_codec as codec
 
 T_TELEM = "is02/telemetry"
 T_STATUS = "is02/status"
@@ -58,6 +63,10 @@ REQUIRED = {
 }
 KEYS = {"e": "ESTOP", "r": "RESUME", "a": "BARCODE:A", "b": "BARCODE:B", "c": "BARCODE:C", "d": "BARCODE:D"}
 
+SEQ_MOD = 1 << 15                       # telemetry seq field
+SEQ_FORWARD_MAX = 16383                 # a larger modular difference is a restart
+TIME_MOD = 1 << 24                      # telemetry t field
+
 CSV_COLS = ["rx_time", "seq", "t_ms", "state", "spd_l", "spd_r", "duty_l", "duty_r", "enc_l", "enc_r",
             "dist_mm", "line_l", "line_r", "ir", "barcode", "pitch_deg", "hump_mm", "hump_peak_mm", "obst_cm",
             "scan_m60", "scan_m30", "scan_0", "scan_p30", "scan_p60", "scan_side", "rssi", "buf"]
@@ -78,7 +87,7 @@ class Monitor:
 
         # telemetry checks
         self.frames = 0
-        self.bad_json = 0
+        self.rejected = 0                   # payloads the codec dropped
         self.missing_fields = {}            # field -> count of frames without it
         self.last_seq = None
         self.gaps = 0                       # missing frames
@@ -87,12 +96,14 @@ class Monitor:
         self.first_t = None
         self.last_t = None
         self.rate_frames = 0
+        self.rate_ms = 0                    # robot time since first_t
         self.max_buf = 0
         # heartbeat
         self.hb = 0
         self.hb_last_rx = None
         self.hb_max_gap = 0.0
         self.hb_gaps = []                   # (start, seconds) for gaps > 3 s
+        self.ptab_warning = None            # shown until a heartbeat matches
         # commands
         self.pending = {}                   # cmd -> send time
         self.sent = 0                       # sent while the robot was online
@@ -128,14 +139,19 @@ class Monitor:
 
     def on_message(self, client, userdata, msg):
         now = time.time()
-        text = msg.payload.decode("utf-8", errors="replace")
+        decoded, text = codec.read_payload(msg.topic, msg.payload, log=lambda line: self.out(f"!! {line}"))
         with self.lock:
             if msg.topic == T_TELEM:
-                self.telemetry(now, text)
+                if decoded is None:
+                    self.rejected += 1
+                else:
+                    self.telemetry(now, decoded)
+            elif text is None:
+                return                          # dropped by the codec, already printed
             elif msg.topic == T_STATUS:
-                self.status(now, text)
+                self.status(now, decoded or {}, text)
             elif msg.topic == T_ACK:
-                self.ack(now, text)
+                self.ack(now, decoded, text)
             elif msg.topic == T_EVENT:
                 self.log(now, msg.topic, text)
                 self.out(f"EVENT  {text}")
@@ -145,13 +161,7 @@ class Monitor:
                 self.log(now, msg.topic, text)
 
     # ---------------- handlers ----------------
-    def telemetry(self, now, text):
-        try:
-            f = json.loads(text)
-        except ValueError:
-            self.bad_json += 1
-            self.out(f"!! telemetry is not valid JSON: {text[:80]}")
-            return
+    def telemetry(self, now, f):
         self.frames += 1
         for k in REQUIRED:
             if k not in f:
@@ -161,19 +171,23 @@ class Monitor:
         t_ms = f.get("t")
         if isinstance(seq, int):
             if self.last_seq is not None:
-                if seq == self.last_seq:
+                diff = (seq - self.last_seq) % SEQ_MOD
+                if diff == 0:
                     self.dups += 1
-                elif seq < self.last_seq:
+                elif diff > SEQ_FORWARD_MAX:
                     self.restarts += 1          # robot was reset: start counting again
                     self.first_t, self.rate_frames = None, 0
-                elif seq > self.last_seq + 1:
-                    self.gaps += seq - self.last_seq - 1
-                    self.out(f"!! {seq - self.last_seq - 1} frame(s) missing before seq {seq}")
+                elif diff > 1:
+                    self.gaps += diff - 1
+                    self.out(f"!! {diff - 1} frame(s) missing before seq {seq}")
             self.last_seq = seq
         if isinstance(t_ms, (int, float)):
             if self.first_t is None:
                 self.first_t = t_ms
                 self.rate_frames = 0
+                self.rate_ms = 0
+            else:
+                self.rate_ms += (t_ms - self.last_t) % TIME_MOD
             self.last_t = t_ms
             self.rate_frames += 1
         buf = f.get("buf", 0)
@@ -201,8 +215,13 @@ class Monitor:
                      f"bc {f.get('bc') or '-'}  pitch {fmt(hump.get('pitch'))}  "
                      f"obst {fmt(obst.get('cm'))}  rssi {fmt(f.get('rssi'))}  buf {buf}")
 
-    def status(self, now, text):
+    def status(self, now, f, text):
         self.log(now, T_STATUS, text)
+        if "ptab" in f:
+            warning = codec.ptab_mismatch(f)
+            if warning != self.ptab_warning:
+                self.out(f"!! {warning}" if warning else "parameter table matches again")
+            self.ptab_warning = warning
         if self.hb_last_rx is not None:
             gap = now - self.hb_last_rx
             self.hb_max_gap = max(self.hb_max_gap, gap)
@@ -212,14 +231,12 @@ class Monitor:
         self.hb_last_rx = now
         self.hb += 1
 
-    def ack(self, now, text):
+    def ack(self, now, a, text):
         self.log(now, T_ACK, text)
-        try:
-            a = json.loads(text)
-        except ValueError:
+        if a is None:
             self.out(f"ACK (not JSON): {text}")
             return
-        cmd = a.get("cmd", "")
+        cmd = a.get("cmd", "")                  # the command text: code plus ping number or letter
         sent = self.pending.pop(cmd, None)
         if sent is None:
             self.out(f"ACK    {text}")
@@ -248,6 +265,11 @@ class Monitor:
         if not self.connected:
             self.out("!! not connected to the broker")
             return
+        try:
+            payload = cmd if self.args.legacy_json else codec.encode_command_text(cmd)
+        except codec.CodecError as e:
+            self.out(f"!! not sent: {e}")
+            return
         with self.lock:
             if self.robot_online():
                 self.pending[cmd] = time.time()
@@ -255,7 +277,7 @@ class Monitor:
             else:
                 self.sent_offline += 1
                 self.out("   (robot looks offline - no heartbeat in 3 s; this command is not counted)")
-        self.client.publish(T_CMD, cmd, qos=1)
+        self.client.publish(T_CMD, payload, qos=1)
         self.log(time.time(), T_CMD, cmd)
         self.out(f"SENT   {cmd}")
 
@@ -273,15 +295,17 @@ class Monitor:
         if self.frames == 0:
             res(False, "L1 telemetry received", f"no frames on {T_TELEM} - is the robot connected to this broker?")
             return lines
-        if self.first_t is not None and self.last_t is not None and self.rate_frames > 1 and self.last_t > self.first_t:
-            hz = (self.rate_frames - 1) / ((self.last_t - self.first_t) / 1000.0)
+        if self.ptab_warning:
+            lines.append(f"[WARN] {self.ptab_warning}")
+        if self.first_t is not None and self.rate_frames > 1 and self.rate_ms > 0:
+            hz = (self.rate_frames - 1) / (self.rate_ms / 1000.0)
             res(1.8 <= hz <= 2.2, "L1 telemetry rate", f"{hz:.2f} Hz over {self.rate_frames} frames (robot clock; target 2 Hz)")
         else:
             res(False, "L1 telemetry rate", "not enough frames to measure")
         missing = ", ".join(f"{k} ({n})" for k, n in self.missing_fields.items())
-        res(not self.missing_fields and self.bad_json == 0, "L2 message structure",
-            f"{self.frames} frames, all {len(REQUIRED)} fields present" if not self.missing_fields and self.bad_json == 0
-            else f"missing: {missing or '-'}; invalid JSON: {self.bad_json}")
+        res(not self.missing_fields and self.rejected == 0, "L2 message structure",
+            f"{self.frames} frames, all {len(REQUIRED)} fields present" if not self.missing_fields and self.rejected == 0
+            else f"missing: {missing or '-'}; rejected by the codec: {self.rejected}")
         res(self.gaps == 0, "L3 no missing frames",
             f"{self.gaps} missing, {self.dups} duplicated, {self.restarts} robot restart(s); "
             f"largest offline buffer seen {self.max_buf} frames")
@@ -375,6 +399,10 @@ def main():
     ap.add_argument("--no-keyboard", action="store_true", help="no keyboard commands (for scripts)")
     ap.add_argument("--no-beacon", action="store_true",
                     help="don't broadcast the broker beacon (the robot uses it to find a moved broker)")
+    ap.add_argument("--legacy-json", dest="legacy_json", action="store_true", default=True,
+                    help="send commands as baseline text (the default)")
+    ap.add_argument("--no-legacy-json", dest="legacy_json", action="store_false",
+                    help="send commands as binary frames (robot from FW-09 on)")
     args = ap.parse_args()
 
     mon = Monitor(args)

@@ -6,8 +6,9 @@ Status values: `todo`, `present-unverified`, `done` (gate passed, with a commit)
 
 ## Current state (1 Nov 2026)
 
-LT-01 and LT-02 are coded on `cr1/laptop`, but **their gate can't pass yet**: `run_all.sh` stops at the host library build, because `tests/host/Makefile` still lists the reverted `wire.c`. That was already so on `542368f`. FW-01a repairs it. So 14.1 to 14.4 stay `present-unverified` until `run_all.sh` passes with FW-01a merged. Don't merge `cr1/laptop` into `Poh-Loon` before that.
-- `MQTT/is02_codec.py` and `MQTT/is02_codec.js` are new. The five tools aren't switched to them yet (LT-03), so they still use JSON.
+LT-01, LT-02 and LT-03 are coded on `cr1/laptop`, but **their gate can't pass yet**: `run_all.sh` stops at the host library build, because `tests/host/Makefile` still lists the reverted `wire.c`. That was already so on `542368f`. FW-01a repairs it. So 14.1 to 14.4, 14.6 to 14.9 and 14.18 stay `present-unverified` until `run_all.sh` passes with FW-01a merged. Don't merge `cr1/laptop` into `Poh-Loon` before that. **That merge is sync point S3.**
+- The five tools now use `MQTT/is02_codec.py` and `MQTT/is02_codec.js`. Received payloads are auto-detected. Commands, map and config stay baseline text by default (`--legacy-json`, dashboard box ticked).
+- Checkpoint 15 needs a robot (`car-open`).
 - `tests/host/js/package.json` already depends on `fast-check`.
 
 ## Ledger
@@ -18,12 +19,12 @@ LT-01 and LT-02 are coded on `cr1/laptop`, but **their gate can't pass yet**: `r
 | LT-01 | 14.2 Python presentation layer | present-unverified | `CR1 LT-01` on `cr1/laptop` | flags R4, R7 open: spec followed as written; `run_all.sh` blocked until FW-01a |
 | LT-02 | 14.3 JavaScript field layer (`MQTT/is02_codec.js`) | present-unverified | `CR1 LT-02` on `cr1/laptop` | `codec_basic.test.js` passes; `run_all.sh` blocked until FW-01a |
 | LT-02 | 14.4 JavaScript presentation layer | present-unverified | `CR1 LT-02` on `cr1/laptop` | same choices as the LT-01 design readings; `run_all.sh` blocked until FW-01a |
-| LT-03 | 14.6 telemetry_monitor.py | todo | | |
-| LT-03 | 14.7 is02_tool.py, robot_params.py, robot_map.py | todo | | |
-| LT-03 | 14.8 dashboard.html | todo | | keep the line-speed box |
-| LT-03 | 14.9 MQTT/README.md | todo | | |
-| LT-03 | 14.18 tool unit tests | todo | | |
-| LT-03 | checkpoint 15 (tools vs current JSON robot) | todo | | **needs the car** (or a broker + recorded payloads); merge = sync point **S3** |
+| LT-03 | 14.6 telemetry_monitor.py | present-unverified | `CR1 LT-03` on `cr1/laptop` | `test_tools.py` passes; 6,135 JSON messages through old and new monitor: CSV identical; `run_all.sh` blocked until FW-01a |
+| LT-03 | 14.7 is02_tool.py, robot_params.py, robot_map.py | present-unverified | `CR1 LT-03` on `cr1/laptop` | `test_tools.py` passes; run as real processes with paho-mqtt against a throwaway broker; `run_all.sh` blocked until FW-01a |
+| LT-03 | 14.8 dashboard.html | present-unverified | `CR1 LT-03` on `cr1/laptop` | line-speed box and its 3.00–15.00 check unchanged; checked in headless Chrome from `file://`; `run_all.sh` blocked until FW-01a |
+| LT-03 | 14.9 MQTT/README.md | present-unverified | `CR1 LT-03` on `cr1/laptop` | `run_all.sh` blocked until FW-01a |
+| LT-03 | 14.18 tool unit tests | present-unverified | `CR1 LT-03` on `cr1/laptop` | `test_tools.py`: 96 passed; `run_all.sh` blocked until FW-01a |
+| LT-03 | checkpoint 15 (tools vs current JSON robot) | car-open | | **needs the car**; merge = sync point **S3** |
 | LT-04 | 14.5 (Python half) `py/make_vectors.py`, `vectors/vectors.json` | waiting | | needs **S1** |
 | LT-04 | 14.10 Property 24 (parameter table version) | waiting | | needs **S2** (`params_table_crc`) |
 | LT-04 | 14.11 Property 25 | waiting | | needs **S1** |
@@ -41,11 +42,36 @@ LT-01 and LT-02 are coded on `cr1/laptop`, but **their gate can't pass yet**: `r
 
 | Check | From | Done | Result |
 |---|---|---|---|
+| Checkpoint 15: dashboard, `telemetry_monitor.py`, `is02_tool.py cmd PING:1`, `robot_map.py`, `robot_params.py` in the default legacy mode against the current JSON firmware. Everything as before, including dashboard ESTOP and the line-speed box | LT-03 | no | car-open |
 
 ## Session log
 
 Newest first. One entry per session: date, guide, tool (Claude chat / Kiro + model), commit, gate results (host totals), open issues, what the user must check.
 
+- **2026-11-01, LT-03 (Claude Code, local clone, Opus 5.5).** Commit `CR1 LT-03: tools use the Laptop_Codec (legacy JSON default)` on `cr1/laptop`, on top of `CR1 LT-02`.
+  - **Gate: not passed.**
+    - `bash tests/host/run_all.sh --seed 12345` was **not run**: it still fails before any test at the host library build (`wire.c` in `tests/host/Makefile`). No firmware-track file was touched. FW-01a repairs it.
+    - Run directly instead, all passed: `py -m pytest tests\host\py\test_codec_basic.py tests\host\py\test_tools.py -q` (472 passed: 376 + 96); `node --test tests/host/js/codec_basic.test.js` (163 passed: 161 + 2, with the Node from LT-02); `node -e "require('./MQTT/is02_codec.js')"` (exit 0); `py -m py_compile MQTT/*.py` (exit 0).
+    - **Host totals** aren't available until `run_all.sh` works. 14.6 to 14.9 and 14.18 stay `present-unverified`.
+    - `test_tools.py` brings its own fake `paho.mqtt.client`, so it needs no paho-mqtt in the host-test venv.
+  - **One-off checks, not committed:**
+    - **Dashboard:** headless Chrome through Playwright 1.50.1 (the copy in `%LOCALAPPDATA%\ms-playwright-go`, with the installed Chrome; nothing installed), `MQTT/dashboard.html` from `file://`, 0 failed checks. **No console error or warning with a broker.** With no broker the only console error is Chrome's own refused WebSocket, as on the baseline. The broker was a mock on the page's WebSocket, so the real `MiniMqtt` path ran. One JSON telemetry message (the README sample with the extra firmware fields; **no real recording exists in the repo**) and the same values as a codec frame gave the same 23 panel values. Also covered: text and binary retained map and config, bad frames dropped with the display unchanged, the banner, fault chips, the buttons in both modes, the speed box limits (3.00, 15.00 sent; 2.99, 15.01 refused), the box ticked again after a reload.
+    - **Monitor, old against new:** `70a14fc` and this commit on the same 6,135 random JSON messages (ints, `8.0`, nulls, missing fields, gaps, restarts): CSV byte-identical (752,648 bytes), console lines identical. The summary differs only in the L2 wording below.
+    - **Real processes:** `is02_tool.py` (`cmd`, `set`, `map`), `robot_map.py`, `robot_params.py` and `telemetry_monitor.py` with paho-mqtt 2.1.0 against a throwaway Python broker and a scripted robot, in both modes. Text went out in legacy mode, binary with `--no-legacy-json`, and the acks were read in both. Not a substitute for checkpoint 15.
+  - **Where the guide was unclear, and how it was read:**
+    - **Receiving (R7):** every tool calls the codec with legacy JSON on in both modes. The flag only changes what is sent.
+    - **Text on `is02/cmd`, `is02/map`, `is02/config`:** the broker can hold baseline text, which `decode` alone would drop as a bad version. On these topics a payload without Format_Version 1 is shown as text.
+    - **Two helpers added to both codecs:** `read_payload` / `readPayload` for the two points above, and `ptab_mismatch` / `ptabMismatch`, instead of copies in each tool. Nothing else in the codecs changed. `test_tools.py` and `codec_basic.test.js` cover them.
+    - **Validation in legacy mode:** `set`, `is02_tool.py config` and `robot_params.py` check NAME and value in both modes (Req 17.9; the guide doesn't limit it to binary). Valid input is sent as the same baseline text. So **a bad `set` or config line now stops at the laptop, where it used to reach the robot and get a nack**. `cmd` and `map` aren't checked in legacy mode: `PING:D...` and two letters for one movement (R4) are legal text.
+    - **Config refused on mismatch:** in both modes, also in `robot_params.py` (the guide names only `is02_tool.py`, but Req 14.8 covers every tool). A one-shot tool has no "last heartbeat", so it waits up to 1.5 s for one; with none it publishes as before, which adds 1.5 s while the robot is offline. A JSON heartbeat has no `ptab`, so it neither raises nor clears a warning.
+    - **L2:** counts rejected telemetry payloads only, as the baseline did. The summary line now says "rejected by the codec: N" where it said "invalid JSON: N". The pass rule is unchanged.
+    - **Sequence on JSON:** the 15-bit rule applies to JSON too, as C15 says. A restart from above 16,383 frames (about 2.3 h of telemetry) now counts as a gap, not a restart.
+    - **Dashboard pings:** legacy keeps `PING:D<base36>` exactly. Binary uses 49152 and up, clear of the monitor's 1, 2, 3...
+    - **Dashboard speed after a binary SET:** the binary ack has no value, so the dashboard remembers what it sent. The box and its check are unchanged.
+    - **Legacy box:** deliberately not remembered (`autocomplete="off"`, no `localStorage`). A stale "off" would turn ESTOP into a frame an old robot ignores.
+    - **Dashboard sequence check:** left as it was, C15 doesn't list it. In binary it logs a false "robot restarted" once when the 15-bit `seq` wraps, after about 4.5 h.
+  - **Flags:** none applied, all open. R7 is followed as the guide and the user's instructions say. R1: spec fault names added (`WIFI_LOSS`, `MQTT_LOSS`, `US_NO_ECHO`).
+  - **Must do:** get FW-01a merged, merge `Poh-Loon` into `cr1/laptop`, run the gate, and only then mark 14.1 to 14.9 and 14.18 `done` and merge. Run checkpoint 15 on the robot. At that merge, add to `PROGRESS_FW.md` "Car checks waiting": "S3 met: FW-08 builds may be flashed". It isn't written yet, because S3 isn't met until the merge.
 - **2026-11-01, LT-02 (Claude Code, local clone, Sonnet 5.5).** Commit `CR1 LT-02: JavaScript Laptop_Codec` on `cr1/laptop`, on top of `CR1 LT-01`.
   - **Gate: not passed.**
     - `bash tests/host/run_all.sh --seed 12345` was **not run**: it fails before any test, at the host library build (`wire.c` in `tests/host/Makefile`), as logged for LT-01. `tests/host/Makefile` is FW-owned and wasn't touched. FW-01a repairs it.
