@@ -632,7 +632,7 @@ LOCAL leg_res_t leg_side_follow(float min_mm, float gap_mm, float trail_mm, floa
     float     seen_at = -1.0f;              /* leg distance where the side was last seen */
     float     miss_at = -1.0f;              /* ... and where the first 60 deg ping after that missed it */
     uint32_t  clear_n = 0u;
-    bool      b_trust = !g_legacy && (g_params.obst_trust_miss >= 0.5f);   /* OBST_TRUST_MISS */
+    bool      b_trust = !g_legacy && prm_flag(PRM_OBST_TRUST_MISS);   /* OBST_TRUST_MISS */
     uint32_t  n60 = 0u;                   /* diagnostics: 60 deg pings, */
     uint32_t  n_seen = 0u;                /* ... how many hit the side, */
     float     near_cm = -1.0f;            /* ... the nearest echo */
@@ -1172,7 +1172,7 @@ LOCAL void avoid(void)
     char          side = 0;
 
     /* a SET during an avoidance takes effect at the next obstacle */
-    g_legacy       = (g_params.obst_legacy >= 0.5f);
+    g_legacy       = prm_flag(PRM_OBST_LEGACY);
     g_rev_cap      = g_params.obst_reverse_max_mm;
     g_backed_mm    = 0.0f;
     g_rev_total_mm = 0.0f;

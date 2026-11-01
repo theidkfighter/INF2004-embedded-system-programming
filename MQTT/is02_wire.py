@@ -58,6 +58,33 @@ PARAM_NAMES = [
 PARAM_ID = {n: i for i, n in enumerate(PARAM_NAMES)}
 
 
+# Parameter_Store representation (design D15): packed discrete parameters
+# {Parameter_ID: (width, encoding)}; every other ID is F32. GET:PARAMS acks
+# carry each value in this representation.
+PE_FLAG, PE_TRI, PE_AXIS, PE_LEVELS = 1, 2, 3, 4
+PARAM_STORE = {0: (2, PE_TRI), 1: (1, PE_FLAG), 2: (1, PE_FLAG), 3: (2, PE_TRI), 4: (2, PE_TRI),
+               7: (2, PE_TRI), 8: (1, PE_FLAG), 10: (2, PE_AXIS), 11: (2, PE_TRI), 33: (1, PE_FLAG),
+               34: (1, PE_FLAG), 36: (1, PE_FLAG), 39: (3, PE_LEVELS), 41: (1, PE_FLAG),
+               49: (1, PE_FLAG), 51: (1, PE_FLAG)}
+
+
+def param_store_width(pid):
+    return PARAM_STORE[pid][0] if pid in PARAM_STORE else 32
+
+
+def param_from_store(pid, code):
+    if pid not in PARAM_STORE:
+        return _f32(code)
+    enc = PARAM_STORE[pid][1]
+    if enc == PE_TRI:
+        return float(code - 4 if code >= 2 else code)
+    if enc == PE_AXIS:
+        return float(code - 1)
+    if enc == PE_LEVELS:
+        return float(code + 1)
+    return float(code)
+
+
 def crc16_ccitt_false(data, crc=0xFFFF):
     for b in data:
         crc ^= b << 8
@@ -514,7 +541,7 @@ def decode_ack(data):
         params = {}
         for _ in range(count):
             pid = r.u(6)
-            v = _f32(r.u(32))
+            v = param_from_store(pid, r.u(param_store_width(pid)))
             params[PARAM_NAMES[pid] if pid < len(PARAM_NAMES) else str(pid)] = round(v, 4)
         a["part"], a["params"] = part, params
     elif echo == "CONFIG":

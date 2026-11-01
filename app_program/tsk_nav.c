@@ -124,7 +124,7 @@ LOCAL void complete_run(void)
 
 LOCAL bool ir_black(bool b_level)
 {
-    return b_level == (g_params.line_do_black_high > 0.5f);
+    return b_level == (prm_tri(PRM_LINE_DO_BLACK_HIGH) > 0);
 }
 
 /* TURN_SNAP: the encoder turn stops SNAP_EARLY_DEG short, then the car keeps
@@ -209,7 +209,7 @@ LOCAL void execute(char code, bool b_at_junction)
     }
     if ((res == MOTION_OK) && (sys_state() == SYS_MANEUVER))
     {
-        res = ((g_params.turn_snap > 0.5f) && b_at_junction) ? turn_on_line(deg)
+        res = (prm_flag(PRM_TURN_SNAP) && b_at_junction) ? turn_on_line(deg)
                                                                : motion_turn(deg, g_params.turn_mm_s);
     }
     if (sys_state() != SYS_MANEUVER)
@@ -259,7 +259,7 @@ LOCAL void on_nav_event(const nav_event_t *p_ev)
         case NAV_REMOTE_BARCODE:
             if (st == SYS_LINE_FOLLOWING)
             {
-                if ((g_params.barcode_at_junction > 0.5f) && (p_ev->type == NAV_BARCODE))
+                if (prm_flag(PRM_BARCODE_AT_JUNCTION) && (p_ev->type == NAV_BARCODE))
                 {
                     g_pending = p_ev->code;
                     nav_event(NAVK_STORED, g_pending, nav_map_get(g_pending));

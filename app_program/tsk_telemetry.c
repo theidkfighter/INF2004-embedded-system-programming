@@ -153,7 +153,7 @@ void app_net_config(const uint8_t *p, uint32_t len)
 /* Pushes the parameters the drivers keep their own copy of. */
 void params_apply(void)
 {
-    hal_enc_set_reversed(g_params.enc_r_reversed > 0.5f, g_params.enc_l_reversed > 0.5f);
+    hal_enc_set_reversed(prm_flag(PRM_ENC_R_REVERSED), prm_flag(PRM_ENC_L_REVERSED));
     hal_servo_range((uint32_t)g_params.servo_min_us, (uint32_t)g_params.servo_max_us);
 }
 
@@ -225,7 +225,8 @@ LOCAL void get_params(void)
 {
     uint32_t total = params_count();
 
-    /* parts of WIRE_GETP_PER_PART (12): part U3 1..5, every value as F32 */
+    /* parts of WIRE_GETP_PER_PART (12): part U3 1..5, each value in its
+       Parameter_Store representation (D11/D15: F32, or the 1..3-bit code) */
     for (uint32_t first = 0u; first < total; first += WIRE_GETP_PER_PART)
     {
         wire_ack_t a;
@@ -234,13 +235,11 @@ LOCAL void get_params(void)
         a.a.getp.part = (uint8_t)((first / WIRE_GETP_PER_PART) + 1u);
         for (uint32_t i = first; (i < total) && (i < (first + WIRE_GETP_PER_PART)); i++)
         {
-            union { float f; uint32_t u; } v;
             wire_pval_t *p_v = &a.a.getp.v[a.a.getp.count];
 
-            (void)params_get_id(i, &v.f);
             p_v->id   = (uint8_t)i;
-            p_v->w    = 32u;
-            p_v->code = v.u;
+            p_v->w    = (uint8_t)params_store_width(i);
+            p_v->code = params_store_code(i);
             a.a.getp.count++;
         }
         ack_send(&a);

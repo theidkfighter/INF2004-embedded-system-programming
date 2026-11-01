@@ -51,7 +51,7 @@ LOCAL float        g_path_frac;
 
 LOCAL bool is_black(bool b_level)
 {
-    return b_level == (g_params.line_do_black_high > 0.5f);
+    return b_level == (prm_tri(PRM_LINE_DO_BLACK_HIGH) > 0);
 }
 
 LOCAL void barcode_arm(void)
@@ -70,14 +70,14 @@ LOCAL void barcode_arm(void)
     g_bc_par.stray_gap_um = 30000u;
     g_bc_par.max_gap_um   = 60000u;
     bc_reset(&g_bc);
-    g_det_on = b_ok && (g_params.barcode_detect > 0.5f);
+    g_det_on = b_ok && prm_flag(PRM_BARCODE_DETECT);
     if (g_det_on)
     {
         /* bc_detect.c on distance bins (BARCODE_DETECT = 1) */
         float dh = g_params.barcode_det_hys * ((b > w) ? (b - w) : (w - b));
 
         bcm_init(&g_bcm, (uint32_t)w, (uint32_t)b, g_params.barcode_det_hys,
-                 (uint32_t)(g_params.barcode_levels + 0.5f));
+                 (uint32_t)prm_int(PRM_BARCODE_LEVELS));
         bcm_set_adapt_swing(&g_bcm, g_params.barcode_adapt_swing);
         thr_black = (uint32_t)(b_high ? (mid + dh) : (mid - dh));
         thr_white = (uint32_t)(b_high ? (mid - dh) : (mid + dh));
@@ -167,7 +167,7 @@ LOCAL void debug_window(bc_result_t res, char code, bool b_rev)
     evt_b_t  b;
     uint32_t n = g_bc.last_n;
 
-    if ((g_params.barcode_debug < 0.5f) || (n < 3u))
+    if (!prm_flag(PRM_BARCODE_DEBUG) || (n < 3u))
     {
         return;
     }
@@ -224,7 +224,7 @@ LOCAL void debug_pass(bc_result_t res, char code, bool b_rev)
         }
     }
     n = g_bcm.last_n[k];
-    if ((g_params.barcode_debug < 0.5f) || (n < 3u))
+    if (!prm_flag(PRM_BARCODE_DEBUG) || (n < 3u))
     {
         return;
     }

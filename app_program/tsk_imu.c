@@ -205,13 +205,13 @@ void tsk_imu(INT stacd, void *exinf)
             hump_reset(&hump);
         }
 
-        if ((g_params.imu_forward_axis < 0.5f) ||
-            ((g_params.imu_forward_sign < 0.5f) && (g_params.imu_forward_sign > -0.5f)))
+        if ((prm_int(PRM_IMU_FORWARD_AXIS) < 1) ||
+            (prm_tri(PRM_IMU_FORWARD_SIGN) == 0))
         {
             continue;                        /* no pitch until test_imu U5 is copied in */
         }
-        raw = imu_pitch_deg(ax, ay, az, (g_params.imu_forward_axis > 1.5f) ? 2 : 1,
-                            (g_params.imu_forward_sign < 0.0f) ? -1 : 1, odo.a_fwd_g);
+        raw = imu_pitch_deg(ax, ay, az, (prm_int(PRM_IMU_FORWARD_AXIS) > 1) ? 2 : 1,
+                            (prm_tri(PRM_IMU_FORWARD_SIGN) < 0) ? -1 : 1, odo.a_fwd_g);
 
         /* mounting offset: re-learnt while idle and still */
         if ((st == SYS_IDLE) && ((odo.v_mm_s < 5.0f) && (odo.v_mm_s > -5.0f)))
