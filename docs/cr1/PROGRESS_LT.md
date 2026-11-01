@@ -6,8 +6,8 @@ Status values: `todo`, `present-unverified`, `done` (gate passed, with a commit)
 
 ## Current state (1 Nov 2026)
 
-LT-01 is coded on `cr1/laptop`, but **its gate can't pass yet**: `run_all.sh` stops at the host library build, because `tests/host/Makefile` still lists the reverted `wire.c`. That was already so on `542368f`. FW-01a repairs it. So 14.1 and 14.2 stay `present-unverified` until `run_all.sh` passes with FW-01a merged. Don't merge `cr1/laptop` into `Poh-Loon` before that.
-- `MQTT/is02_codec.py` is new. The five tools aren't switched to it yet (LT-03), so they still use JSON.
+LT-01 and LT-02 are coded on `cr1/laptop`, but **their gate can't pass yet**: `run_all.sh` stops at the host library build, because `tests/host/Makefile` still lists the reverted `wire.c`. That was already so on `542368f`. FW-01a repairs it. So 14.1 to 14.4 stay `present-unverified` until `run_all.sh` passes with FW-01a merged. Don't merge `cr1/laptop` into `Poh-Loon` before that.
+- `MQTT/is02_codec.py` and `MQTT/is02_codec.js` are new. The five tools aren't switched to them yet (LT-03), so they still use JSON.
 - `tests/host/js/package.json` already depends on `fast-check`.
 
 ## Ledger
@@ -16,8 +16,8 @@ LT-01 is coded on `cr1/laptop`, but **its gate can't pass yet**: `run_all.sh` st
 |---|---|---|---|---|
 | LT-01 | 14.1 Python field layer (`MQTT/is02_codec.py`) | present-unverified | `CR1 LT-01` on `cr1/laptop` | `test_codec_basic.py` passes; `run_all.sh` blocked until FW-01a |
 | LT-01 | 14.2 Python presentation layer | present-unverified | `CR1 LT-01` on `cr1/laptop` | flags R4, R7 open: spec followed as written; `run_all.sh` blocked until FW-01a |
-| LT-02 | 14.3 JavaScript field layer (`MQTT/is02_codec.js`) | todo | | |
-| LT-02 | 14.4 JavaScript presentation layer | todo | | |
+| LT-02 | 14.3 JavaScript field layer (`MQTT/is02_codec.js`) | present-unverified | `CR1 LT-02` on `cr1/laptop` | `codec_basic.test.js` passes; `run_all.sh` blocked until FW-01a |
+| LT-02 | 14.4 JavaScript presentation layer | present-unverified | `CR1 LT-02` on `cr1/laptop` | same choices as the LT-01 design readings; `run_all.sh` blocked until FW-01a |
 | LT-03 | 14.6 telemetry_monitor.py | todo | | |
 | LT-03 | 14.7 is02_tool.py, robot_params.py, robot_map.py | todo | | |
 | LT-03 | 14.8 dashboard.html | todo | | keep the line-speed box |
@@ -46,6 +46,23 @@ LT-01 is coded on `cr1/laptop`, but **its gate can't pass yet**: `run_all.sh` st
 
 Newest first. One entry per session: date, guide, tool (Claude chat / Kiro + model), commit, gate results (host totals), open issues, what the user must check.
 
+- **2026-11-01, LT-02 (Claude Code, local clone, Sonnet 5.5).** Commit `CR1 LT-02: JavaScript Laptop_Codec` on `cr1/laptop`, on top of `CR1 LT-01`.
+  - **Gate: not passed.**
+    - `bash tests/host/run_all.sh --seed 12345` was **not run**: it fails before any test, at the host library build (`wire.c` in `tests/host/Makefile`), as logged for LT-01. `tests/host/Makefile` is FW-owned and wasn't touched. FW-01a repairs it.
+    - Run directly instead, all passed: `py -m pytest tests\host\py\test_codec_basic.py -q` (376 passed); `node --test tests/host/js/codec_basic.test.js` (161 passed); `node -e "require('./MQTT/is02_codec.js')"` (exit 0); `py -m py_compile MQTT/*.py` (exit 0).
+    - **Host totals** aren't available until `run_all.sh` works. 14.3 and 14.4 stay `present-unverified` until it passes with FW-01a merged.
+  - **Node:** this laptop has no Node on PATH. The commands above ran with the `node.exe` (v22.13.1) that the Playwright Go package ships in `%LOCALAPPDATA%\ms-playwright-go\1.50.1\`. Nothing was installed. WSL has no Node either. `npm ci` in `tests/host/js/` wasn't run: `codec_basic.test.js` needs only `node:test`, not `fast-check`.
+  - **One-off parity check, not committed:** 31,239 comparisons of `is02_codec.js` against `is02_codec.py`, 0 mismatches. It used 4,800 random valid records of every kind (all 45 events, all ack and command codes, with edge values) for bytes both ways and for `decodeFields`; 6,000 random and truncated payloads for `decode` (the object and every log line, with and without legacy JSON); 4,064 command texts, 4,068 map inputs and 1,507 config inputs for the bytes or the exact error text (including `CodecError.errors`).
+  - **Design:** a UMD file with no packages. `<script src="is02_codec.js">` gives the global `IS02`; `require()` gives the same object. The record and object field names are the Python ones (`spd_l`, `n_rej`, ...), so decoded objects are equal. The one test `require()`s the file and also runs it in a `vm` context with only `self`, to check the browser path.
+  - **Same readings as LT-01:** all the design readings of the LT-01 entry are kept, and the parity check covers them (the `args` dict, IMU chip codes, `SIDE_FOLLOW` −1 as 8191, the `BC_DBG` variants, unknown codes as numbers, acks that depend on the command code only, 4-decimal `GET:PARAMS` values through `jbFixed`, the map text rules, the numbers grammar, `encodeConfig`).
+  - **Differences from Python that can't be removed:**
+    - Argument shapes are JavaScript ones: `decode(topic, payload, {legacyJson, log})` takes an options object, with `log` defaulting to `console.warn`. `encode*` return a `Uint8Array`. `decode` takes a `Uint8Array`, a Node `Buffer`, an `ArrayBuffer`, an array or a string (UTF-8).
+    - Python `1.0` and JavaScript `1` are one Number. `JSON.stringify` of a decoded object prints `1`, where Python prints `1.0`. Compare parsed values, not text (LT-04).
+    - Invalid-JSON log lines end with each engine's own error text. (`rssi` is computed as `0 - x` so that 0 never becomes `-0`; that one matches Python.)
+    - `\d` in the numbers grammar is ASCII-only in JavaScript. Python's also accepts other Unicode digits.
+  - **Flags:** none applied, all open (R1, R4, R7 as in LT-01).
+  - **For LT-03:** the dashboard calls `IS02.decode(topic, bytes, {legacyJson: true})` with the bytes from the MQTT client (`message.payloadBytes` in Paho). Everything in the LT-01 "For LT-03" list holds for the JS side too.
+  - **Must do first (as for LT-01):** get FW-01a merged, merge `Poh-Loon` into `cr1/laptop`, run the gate, and only then mark 14.1 to 14.4 `done` and merge. No car check for this step.
 - **2026-11-01, LT-01 (Claude Code, local clone, Opus 5.5).** Commit `CR1 LT-01: Python Laptop_Codec` on `cr1/laptop`, from `Poh-Loon` `542368f`.
   - **Gate: not passed.**
     - `bash tests/host/run_all.sh --seed 12345` fails before any test runs: `No rule to make target 'build/obj/app/wire.o'`. It fails the same way on the untouched `542368f`. FW-01a repairs it (`PROGRESS_FW.md`, "Current state"). The README's "LT-01 needs nothing first" missed this, so the first laptop step that can pass the gate is the one after FW-01a is merged.
