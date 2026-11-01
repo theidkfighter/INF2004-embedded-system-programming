@@ -1,4 +1,4 @@
-Debug
+﻿Debug
 Release
 
 # Build artifacts
@@ -29,6 +29,7 @@ config/mqtt_config.h
 tests/test_logic
 tests/test_logic.exe
 
+# from kiro
 references
 robot_firmware
 .kiro
@@ -37,3 +38,6 @@ robot_firmware
 build_make/build.log
 build_make/tools/elf2uf2.exe
 is02_mosquitto.db
+# DO NOT push import leftovers
+/pico_sdk_import.cmake
+/build/
