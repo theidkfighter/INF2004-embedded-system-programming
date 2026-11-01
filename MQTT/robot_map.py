@@ -19,6 +19,8 @@ import re
 import sys
 import time
 
+import is02_wire as lw     # Laptop_Codec: binary Map_Frame / Command_Frame / Ack_Frame
+
 try:
     import paho.mqtt.client as mqtt
 except ImportError as e:
@@ -75,6 +77,7 @@ def main():
     ap.add_argument("--show", action="store_true", help="ask the robot which mapping it is using")
     ap.add_argument("--clear", action="store_true", help="delete the retained map and empty the robot's map")
     ap.add_argument("--wait", type=float, default=8.0, help="seconds to wait for the robot's ack")
+    ap.add_argument("--legacy-json", action="store_true", help="send text (Baseline_Build robot)")
     args = ap.parse_args()
 
     if not (args.pairs or args.show or args.clear):
@@ -83,23 +86,24 @@ def main():
 
     acks = []
     c = make_client()
-    c.on_message = lambda cl, ud, msg: acks.append(msg.payload.decode(errors="replace"))
+    c.on_message = lambda cl, ud, msg: acks.append(lw.to_text(msg.topic, msg.payload))
     c.connect(args.broker, args.port, keepalive=30)
     c.subscribe("is02/ack")
     c.loop_start()
     time.sleep(0.3)
 
     if args.clear:
-        c.publish("is02/map", "", qos=1, retain=True).wait_for_publish()
+        c.publish("is02/map", b"", qos=1, retain=True).wait_for_publish()
         print("retained map removed from the broker")
-        c.publish("is02/cmd", "MAP:CLEAR", qos=1).wait_for_publish()
+        c.publish("is02/cmd", lw.cmd_payload("MAP:CLEAR", args.legacy_json), qos=1).wait_for_publish()
         want = "MAP:CLEAR"
     elif payload is not None:
-        c.publish("is02/map", payload, qos=1, retain=True).wait_for_publish()
+        c.publish("is02/map", lw.map_payload(payload, args.legacy_json), qos=1, retain=True).wait_for_publish()
         print("map stored on the broker: " + payload)
-        want = "MAP:" + payload               # the robot acks the retained map as "MAP:<payload>"
+        # the binary robot acks a map as "MAP"; the Baseline_Build one as "MAP:<payload>"
+        want = ("MAP:" + payload) if args.legacy_json else "MAP"
     else:
-        c.publish("is02/cmd", "GET:MAP", qos=1).wait_for_publish()
+        c.publish("is02/cmd", lw.cmd_payload("GET:MAP", args.legacy_json), qos=1).wait_for_publish()
         want = "GET:MAP"
 
     t_end = time.time() + args.wait
