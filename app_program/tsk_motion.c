@@ -18,6 +18,8 @@
 #include <tk/tkernel.h>
 
 #include "os_glue.h"
+#include "status.h"
+#include "msg_codec.h"
 #include "motion_api.h"
 #include "speed_ctl.h"
 #include "app_params.h"
@@ -351,7 +353,9 @@ LOCAL void run_primitive(int32_t enc_r, int32_t enc_l, float mmpc, uint32_t now)
 void tsk_motion(INT stacd, void *exinf)
 {
     speed_params_t sp;
-    odometry_t     odo = { 0 };
+    odometry_t     odo = { 0 };              /* full precision here; odometry_put() packs a copy */
+    float          dist_r = 0.0f;            /* wheel distances, signed, this task only */
+    float          dist_l = 0.0f;
     int32_t        prev_r = hal_enc_count(HAL_WHEEL_RIGHT);
     int32_t        prev_l = hal_enc_count(HAL_WHEEL_LEFT);
     uint64_t       t_prev = hal_time_us();
@@ -398,10 +402,9 @@ void tsk_motion(INT stacd, void *exinf)
         prev_l = enc_l;
 
         /* 1. odometry */
-        odo.enc_r      = enc_r;
-        odo.enc_l      = enc_l;
-        odo.dist_r_mm += (float)d_r * mmpc;
-        odo.dist_l_mm += (float)d_l * mmpc;
+        dist_r      += (float)d_r * mmpc;
+        dist_l      += (float)d_l * mmpc;
+        odo.dist_mm  = 0.5f * (dist_r + dist_l);
         if (g_params.track_width_mm > 0.0f)
         {
             float dh = (((float)(d_l - d_r) * mmpc) / g_params.track_width_mm) * RAD_TO_DEG;
@@ -419,7 +422,10 @@ void tsk_motion(INT stacd, void *exinf)
         /* 2. commands */
         while ((p_msg = msg_recv(g_mbx_motion, TMO_POL)) != NULL)
         {
-            handle_cmd(&p_msg->body.motion, enc_r, enc_l, now);
+            motion_cmd_t c;
+
+            msg_motion_unpack(&p_msg->body.motion, &c);
+            handle_cmd(&c, enc_r, enc_l, now);
             msg_free(p_msg);
         }
 
@@ -477,13 +483,7 @@ void tsk_motion(INT stacd, void *exinf)
         }
 
         /* telemetry snapshot */
-        g_status.spd_r       = g_w[0].speed;
-        g_status.spd_l       = g_w[1].speed;
-        g_status.duty_r      = g_w[0].duty;
-        g_status.duty_l      = g_w[1].duty;
-        g_status.enc_r       = enc_r;
-        g_status.enc_l       = enc_l;
-        g_status.dist_mm     = (float)odo.odo_um / 1000.0f;
-        g_status.speed_scale = g_scale;
+        st_set_motion(g_w[1].speed, g_w[0].speed, g_w[1].duty, g_w[0].duty,
+                      enc_l, enc_r, (float)odo.odo_um / 1000.0f, g_scale);
     }
 }

@@ -89,7 +89,7 @@ app_msg_t *msg_recv(ID mbxid, TMO tmo);          /* NULL on timeout */
 bool       post_motion(const motion_cmd_t *p_cmd);
 bool       post_nav(nav_event_type_t type, char code);
 bool       post_obstacle(const obstacle_profile_t *p_prof);
-bool       post_event(const char *p_name, const char *p_detail);   /* is02/event */
+bool       post_evt(const evt_msg_t *p_m);                         /* is02/event (evt.h builds it) */
 
 void       flag_set(uint32_t bits);
 void       flag_clear(uint32_t bits);
@@ -105,20 +105,24 @@ bool       sys_set_state(sys_state_t state, bool b_safety);
 sys_state_t sys_state(void);
 void       fault_set(uint32_t fault_bits);       /* NFR19: reported in telemetry */
 void       fault_clear(uint32_t fault_bits);
-extern const char * volatile g_stop_reason;      /* why the last E-stop / ERROR happened */
+/* why the last E-stop / ERROR happened: st_stop() (status.h), stop_reason_t */
 extern volatile uint32_t g_reacq_seq;            /* bumped by the bypass: TSK_LINE re-arms its line watch */
 
-/* Shared odometry (written by the motion task) */
+/* Shared odometry (written by the motion task). The callers use this float
+   form; the shared copy in os_glue.c is a packed 5-word record (D3.4):
+     odo_um U32 (um, monotonic, wraps), dist S28 (0.01 mm, +-1 km),
+     heading S25 (0.01 deg, +-100,000 deg), v S18 (0.01 mm/s, +-1000),
+     a_fwd S17 (1e-4 g, +-4 g), turn S18 (0.01 deg/s, +-720)  = 138 bits.
+   odometry_get() returns the dequantized values; a reader that differences
+   two reads (heading, distance) sees no drift, because both values come
+   from the same exact accumulators in the motion task. */
 typedef struct
 {
-    int32_t enc_r;
-    int32_t enc_l;
-    float   dist_r_mm;          /* signed, forward + */
-    float   dist_l_mm;
-    float   heading_deg;        /* from the encoders, + = clockwise */
-    float   v_mm_s;             /* mean of both wheels */
-    float   a_fwd_g;            /* forward acceleration from the encoder speed */
-    float   turn_dps;
+    float    dist_mm;           /* mean of both wheels, signed, forward + */
+    float    heading_deg;       /* from the encoders, + = clockwise */
+    float    v_mm_s;            /* mean of both wheels */
+    float    a_fwd_g;           /* forward acceleration from the encoder speed */
+    float    turn_dps;
     uint32_t odo_um;            /* travelled distance, monotonic, micrometres */
 } odometry_t;
 void       odometry_get(odometry_t *p_out);

@@ -21,24 +21,44 @@ static void need(jbuf_t *p_jb, bool b_ok, const char *p_name, uint32_t *p_missin
     }
 }
 
+uint32_t config_missing_bits(void)
+{
+    uint32_t b = 0u;
+
+    b |= (prm_tri(PRM_MOTOR_MAPPING_CONFIRMED) > 0) ? 0u : (1u << 0);
+    b |= (prm_tri(PRM_ENC_DIRECTION_CONFIRMED) > 0) ? 0u : (1u << 1);
+    b |= (g_params.enc_a_edges_per_rev > 0.0f) ? 0u : (1u << 2);
+    b |= (g_params.wheel_diameter_mm > 0.0f) ? 0u : (1u << 3);
+    b |= (g_params.track_width_mm > 0.0f) ? 0u : (1u << 4);
+    b |= (g_params.ff_deadband_pct >= 0.0f) ? 0u : (1u << 5);
+    b |= (g_params.ff_mm_s_per_pct > 0.0f) ? 0u : (1u << 6);
+    b |= (prm_tri(PRM_LINE_DO_BLACK_HIGH) >= 0) ? 0u : (1u << 7);
+    b |= (g_params.ir_white_adc >= 0.0f) ? 0u : (1u << 8);
+    b |= (g_params.ir_black_adc >= 0.0f) ? 0u : (1u << 9);
+    b |= (prm_tri(PRM_SERVO_CALIBRATED) > 0) ? 0u : (1u << 10);
+    b |= (prm_int(PRM_IMU_FORWARD_AXIS) > 0) ? 0u : (1u << 11);
+    b |= (prm_tri(PRM_IMU_FORWARD_SIGN) != 0) ? 0u : (1u << 12);
+    return b;
+}
+
 bool config_check(char *p_text, uint32_t size)
 {
     jbuf_t   jb;
     uint32_t missing = 0u;
 
     jb_init(&jb, p_text, size);
-    need(&jb, g_params.motor_mapping_confirmed > 0.5f, "MOTOR_MAPPING_CONFIRMED", &missing);
-    need(&jb, g_params.enc_direction_confirmed > 0.5f, "ENC_DIRECTION_CONFIRMED", &missing);
+    need(&jb, prm_tri(PRM_MOTOR_MAPPING_CONFIRMED) > 0, "MOTOR_MAPPING_CONFIRMED", &missing);
+    need(&jb, prm_tri(PRM_ENC_DIRECTION_CONFIRMED) > 0, "ENC_DIRECTION_CONFIRMED", &missing);
     need(&jb, g_params.enc_a_edges_per_rev > 0.0f, "ENC_A_EDGES_PER_REV", &missing);
     need(&jb, g_params.wheel_diameter_mm > 0.0f, "WHEEL_DIAMETER_MM", &missing);
     need(&jb, g_params.track_width_mm > 0.0f, "TRACK_WIDTH_MM", &missing);
     need(&jb, g_params.ff_deadband_pct >= 0.0f, "SPEED_FF_DEADBAND_PCT", &missing);
     need(&jb, g_params.ff_mm_s_per_pct > 0.0f, "SPEED_FF_MM_S_PER_PCT", &missing);
-    need(&jb, g_params.line_do_black_high >= 0.0f, "LINE_DO_BLACK_HIGH", &missing);
+    need(&jb, prm_tri(PRM_LINE_DO_BLACK_HIGH) >= 0, "LINE_DO_BLACK_HIGH", &missing);
     need(&jb, g_params.ir_white_adc >= 0.0f, "IR_WHITE_ADC", &missing);
     need(&jb, g_params.ir_black_adc >= 0.0f, "IR_BLACK_ADC", &missing);
-    need(&jb, g_params.servo_calibrated > 0.5f, "SERVO_CALIBRATED", &missing);
-    need(&jb, (g_params.imu_forward_axis > 0.5f), "IMU_FORWARD_AXIS", &missing);
-    need(&jb, (g_params.imu_forward_sign > 0.5f) || (g_params.imu_forward_sign < -0.5f), "IMU_FORWARD_SIGN", &missing);
+    need(&jb, prm_tri(PRM_SERVO_CALIBRATED) > 0, "SERVO_CALIBRATED", &missing);
+    need(&jb, (prm_int(PRM_IMU_FORWARD_AXIS) > 0), "IMU_FORWARD_AXIS", &missing);
+    need(&jb, prm_tri(PRM_IMU_FORWARD_SIGN) != 0, "IMU_FORWARD_SIGN", &missing);
     return missing == 0u;
 }

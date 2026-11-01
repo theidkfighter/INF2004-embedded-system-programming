@@ -44,34 +44,66 @@ static const int8_t QUAD[16] =
 };
 
 /* ---- ultrasonic ---- */
-static volatile uint64_t g_echo_rise_us;
-static volatile uint32_t g_echo_us;
-static volatile bool     g_echo_done;
+/* Change Requirement 1: the echo state is one word written by the GPIO ISR
+   and read by TSK_OBSTACLE (single 32-bit store/load, so no Critical_Section):
+     bit 31 done, bit 30 rise seen, bits 14..0 echo width U15 (us, 32767 =
+     longer; anything above 25000 us is "no echo" anyway).
+   The rise time keeps only the low 32 bits of the 1 MHz timer: an echo is at
+   most a few tens of ms, so the modulo-2^32 difference is exact. */
+#define ECHO_DONE        (1u << 31)
+#define ECHO_RISE        (1u << 30)
+#define ECHO_US_MASK     (0x7FFFu)
+static volatile uint32_t g_echo_rise_us;
+static volatile uint32_t g_echo;
 
 /* ---- IMU INT1 ---- */
 static void (*volatile gp_int1_cb)(void) = NULL;
 
 /* ---- barcode sampling ---- */
-static volatile uint32_t g_adc_last;
-static volatile uint32_t g_adc_min = 0xFFFFu;   /* range since hal_ir_adc_range() */
-static volatile uint32_t g_adc_max;
+static volatile uint16_t g_adc_last;           /* 12-bit ADC: U12 in a halfword */
+static volatile uint16_t g_adc_min = 0xFFFFu;   /* range since hal_ir_adc_range() */
+static volatile uint16_t g_adc_max;
 static volatile bool     g_bc_enabled;
 static volatile bool     g_bc_black_high = true;
-static volatile uint32_t g_bc_thr_black = 3000u;   /* crossing this way -> black */
-static volatile uint32_t g_bc_thr_white = 1000u;   /* crossing this way -> white */
+static volatile uint16_t g_bc_thr_black = 3000u;   /* crossing this way -> black (U12) */
+static volatile uint16_t g_bc_thr_white = 1000u;   /* crossing this way -> white (U12) */
 static bool              g_bc_black;
-static hal_bc_edge_t     g_bc_ring[BC_RING];
+/* edge slot (one word, one store by the ISR): bit 31 black, bits 30..0 the
+   odometer's low 31 bits; hal_barcode_pop() restores bit 31 from the live
+   odometer (exact while the edge is less than 2^31 counts old). The time of
+   the edge was never read, so it is no longer stored. */
+#define BC_EDGE_BLACK    (1u << 31)
+#define BC_ODO_MASK      (0x7FFFFFFFu)
+static uint32_t          g_bc_ring[BC_RING];
 static volatile uint32_t g_bc_head;                /* written by the ISR */
 static volatile uint32_t g_bc_tail;                /* written by the reader */
 static volatile uint32_t g_bc_overruns;
 #define RAW_RING         (256u)         /* power of 2: 256 ms of samples */
 static volatile bool     g_raw_enabled;
-static int32_t           g_raw_er[RAW_RING];
-static int32_t           g_raw_el[RAW_RING];
-static uint16_t          g_raw_adc[RAW_RING];
+/* raw sample slot (one word, one store by the ISR, was 10 bytes in three
+   arrays): ADC U12 @0, right count low 9 bits @12, left count low 9 bits
+   @21 (direction flags applied), gap U1 @30 (samples were dropped just
+   before this one because the ring was full), bit 31 unused. The reader
+   rebuilds the full counts from the modulo-512 difference to the previous
+   sample: a wheel moves a few counts per 1 ms sample, far inside +-255.
+   After a gap that difference is not trustworthy, so the reader counts no
+   movement for that one sample (the pass is already spoiled by the lost
+   samples, and hal_barcode_overruns() reports it). */
+#define RAW_ADC_MASK     (0xFFFu)
+#define RAW_ER_SHIFT     (12u)
+#define RAW_EL_SHIFT     (21u)
+#define RAW_CNT_BITS     (9u)
+#define RAW_CNT_MASK     ((1u << RAW_CNT_BITS) - 1u)
+#define RAW_GAP          (1u << 30)
+static uint32_t          g_raw[RAW_RING];
+static int32_t           g_raw_full_r;             /* reader side: rebuilt counts */
+static int32_t           g_raw_full_l;
+static uint32_t          g_raw_ref_r;              /* reader side: low bits of the last sample */
+static uint32_t          g_raw_ref_l;
+static bool              g_raw_gap;                /* ISR side: a sample was dropped */
 static volatile uint32_t g_raw_head;               /* written by the ISR */
 static volatile uint32_t g_raw_tail;               /* written by the reader */
-static volatile uint32_t g_vbat_mv;
+static volatile uint16_t g_vbat_mv;               /* U13 mV in a halfword */
 static uint32_t          g_alarm_target;
 static uint32_t          g_sample_n;
 
@@ -157,16 +189,22 @@ void hal_gpio_isr(uint32_t intno)
     }
     if (pin_events(ints, PIN_US_ECHO) != 0u)
     {
-        uint64_t now = hal_time_us();
+        uint32_t now  = (uint32_t)hal_time_us();
+        uint32_t echo = g_echo;
 
         if (gpio_get(PIN_US_ECHO))
         {
-            g_echo_rise_us = now;
+            if ((echo & ECHO_DONE) == 0u)
+            {
+                g_echo_rise_us = now;
+                g_echo         = ECHO_RISE;
+            }
         }
-        else if ((g_echo_rise_us != 0u) && !g_echo_done)
+        else if (((echo & ECHO_RISE) != 0u) && ((echo & ECHO_DONE) == 0u))
         {
-            g_echo_us   = (uint32_t)(now - g_echo_rise_us);
-            g_echo_done = true;
+            uint32_t us = now - g_echo_rise_us;
+
+            g_echo = ECHO_DONE | ECHO_RISE | ((us > ECHO_US_MASK) ? ECHO_US_MASK : us);
         }
         else
         {
@@ -212,21 +250,22 @@ uint32_t hal_enc_errors(void)
 
 void hal_us_arm(void)
 {
-    g_echo_done    = false;
-    g_echo_rise_us = 0u;
+    g_echo = 0u;
 }
 
 float hal_us_read_cm(void)
 {
-    if (!g_echo_done)
+    uint32_t echo = g_echo;
+
+    if ((echo & ECHO_DONE) == 0u)
     {
         return -1.0f;                         /* no echo (nothing within ~4 m) */
     }
-    if (g_echo_us > 25000u)
+    if ((echo & ECHO_US_MASK) > 25000u)
     {
         return -1.0f;
     }
-    return (float)g_echo_us / 58.0f;
+    return (float)(echo & ECHO_US_MASK) / 58.0f;
 }
 
 /* ---- barcode sampling (1 kHz) ---- */
@@ -234,8 +273,8 @@ float hal_us_read_cm(void)
 void hal_barcode_config(uint32_t thr_black, uint32_t thr_white, bool b_black_high, bool b_enable)
 {
     g_bc_enabled    = false;
-    g_bc_thr_black  = thr_black;
-    g_bc_thr_white  = thr_white;
+    g_bc_thr_black  = (uint16_t)((thr_black > 4095u) ? 4095u : thr_black);
+    g_bc_thr_white  = (uint16_t)((thr_white > 4095u) ? 4095u : thr_white);
     g_bc_black_high = b_black_high;
     g_bc_black      = false;
     g_bc_tail       = g_bc_head;
@@ -260,14 +299,14 @@ void hal_timer_isr(uint32_t intno)
 
     adc_select_input(ADC_CH_IR);
     v = adc_read();
-    g_adc_last = v;
+    g_adc_last = (uint16_t)v;
     if (v < g_adc_min)
     {
-        g_adc_min = v;
+        g_adc_min = (uint16_t)v;
     }
     if (v > g_adc_max)
     {
-        g_adc_max = v;
+        g_adc_max = (uint16_t)v;
     }
 
     if (g_raw_enabled)
@@ -276,13 +315,19 @@ void hal_timer_isr(uint32_t intno)
 
         if ((head - g_raw_tail) < RAW_RING)
         {
-            g_raw_er[head & (RAW_RING - 1u)]  = g_enc_rev[HAL_WHEEL_RIGHT] ? -g_enc[HAL_WHEEL_RIGHT] : g_enc[HAL_WHEEL_RIGHT];
-            g_raw_el[head & (RAW_RING - 1u)]  = g_enc_rev[HAL_WHEEL_LEFT] ? -g_enc[HAL_WHEEL_LEFT] : g_enc[HAL_WHEEL_LEFT];
-            g_raw_adc[head & (RAW_RING - 1u)] = (uint16_t)v;
+            uint32_t er = (uint32_t)(g_enc_rev[HAL_WHEEL_RIGHT] ? -g_enc[HAL_WHEEL_RIGHT] : g_enc[HAL_WHEEL_RIGHT]);
+            uint32_t el = (uint32_t)(g_enc_rev[HAL_WHEEL_LEFT] ? -g_enc[HAL_WHEEL_LEFT] : g_enc[HAL_WHEEL_LEFT]);
+
+            g_raw[head & (RAW_RING - 1u)] = (v & RAW_ADC_MASK)
+                                          | ((er & RAW_CNT_MASK) << RAW_ER_SHIFT)
+                                          | ((el & RAW_CNT_MASK) << RAW_EL_SHIFT)
+                                          | (g_raw_gap ? RAW_GAP : 0u);
+            g_raw_gap = false;
             g_raw_head = head + 1u;
         }
         else
         {
+            g_raw_gap = true;
             g_bc_overruns++;
         }
     }
@@ -305,9 +350,7 @@ void hal_timer_isr(uint32_t intno)
             g_bc_black = b_black;
             if ((head - g_bc_tail) < BC_RING)
             {
-                g_bc_ring[head & (BC_RING - 1u)].odo     = g_odo;
-                g_bc_ring[head & (BC_RING - 1u)].t_ms    = (uint32_t)(hal_time_us() / 1000u);
-                g_bc_ring[head & (BC_RING - 1u)].b_black = b_black;
+                g_bc_ring[head & (BC_RING - 1u)] = (g_odo & BC_ODO_MASK) | (b_black ? BC_EDGE_BLACK : 0u);
                 g_bc_head = head + 1u;
             }
             else
@@ -323,7 +366,7 @@ void hal_timer_isr(uint32_t intno)
     {
         adc_select_input(ADC_CH_VBAT);
         /* VADC2 = VBAT / 2; 3.3 V full scale on 12 bits */
-        g_vbat_mv = ((uint32_t)adc_read() * 3300u * 2u) / 4095u;
+        g_vbat_mv = (uint16_t)(((uint32_t)adc_read() * 3300u * 2u) / 4095u);
         adc_select_input(ADC_CH_IR);
     }
 #endif
@@ -338,8 +381,14 @@ bool hal_barcode_pop(hal_bc_edge_t *p_edge)
     {
         return false;
     }
-    *p_edge   = g_bc_ring[tail & (BC_RING - 1u)];
-    g_bc_tail = tail + 1u;
+    {
+        uint32_t slot = g_bc_ring[tail & (BC_RING - 1u)];
+        uint32_t now  = g_odo;
+
+        g_bc_tail       = tail + 1u;
+        p_edge->odo     = now - ((now - slot) & BC_ODO_MASK);
+        p_edge->b_black = ((slot & BC_EDGE_BLACK) != 0u);
+    }
     return true;
 }
 
@@ -347,11 +396,25 @@ void hal_barcode_raw(bool b_enable)
 {
     g_raw_enabled = false;
     g_raw_tail    = g_raw_head;
+    /* reader base = the counts now; the first sample's difference is small */
+    g_raw_full_r  = g_enc_rev[HAL_WHEEL_RIGHT] ? -g_enc[HAL_WHEEL_RIGHT] : g_enc[HAL_WHEEL_RIGHT];
+    g_raw_full_l  = g_enc_rev[HAL_WHEEL_LEFT] ? -g_enc[HAL_WHEEL_LEFT] : g_enc[HAL_WHEEL_LEFT];
+    g_raw_ref_r   = (uint32_t)g_raw_full_r & RAW_CNT_MASK;
+    g_raw_ref_l   = (uint32_t)g_raw_full_l & RAW_CNT_MASK;
+    g_raw_gap     = false;
     if (b_enable)
     {
         g_bc_enabled = false;                     /* no threshold edges in raw mode */
     }
     g_raw_enabled = b_enable;
+}
+
+/* signed modulo-512 step from the previous full count to a stored low part */
+static int32_t raw_delta(uint32_t low, uint32_t prev)
+{
+    uint32_t d = (low - prev) & RAW_CNT_MASK;
+
+    return ((d >> (RAW_CNT_BITS - 1u)) != 0u) ? ((int32_t)d - (int32_t)(1u << RAW_CNT_BITS)) : (int32_t)d;
 }
 
 bool hal_barcode_pop_sample(int32_t *p_enc_r, int32_t *p_enc_l, uint32_t *p_adc)
@@ -362,10 +425,24 @@ bool hal_barcode_pop_sample(int32_t *p_enc_r, int32_t *p_enc_l, uint32_t *p_adc)
     {
         return false;
     }
-    *p_enc_r = g_raw_er[tail & (RAW_RING - 1u)];
-    *p_enc_l = g_raw_el[tail & (RAW_RING - 1u)];
-    *p_adc = g_raw_adc[tail & (RAW_RING - 1u)];
-    g_raw_tail = tail + 1u;
+    {
+        uint32_t slot = g_raw[tail & (RAW_RING - 1u)];
+
+        g_raw_tail    = tail + 1u;
+        uint32_t lo_r = (slot >> RAW_ER_SHIFT) & RAW_CNT_MASK;
+        uint32_t lo_l = (slot >> RAW_EL_SHIFT) & RAW_CNT_MASK;
+
+        if ((slot & RAW_GAP) == 0u)               /* after a gap: no movement, new reference */
+        {
+            g_raw_full_r += raw_delta(lo_r, g_raw_ref_r);
+            g_raw_full_l += raw_delta(lo_l, g_raw_ref_l);
+        }
+        g_raw_ref_r = lo_r;
+        g_raw_ref_l = lo_l;
+        *p_enc_r = g_raw_full_r;
+        *p_enc_l = g_raw_full_l;
+        *p_adc   = slot & RAW_ADC_MASK;
+    }
     return true;
 }
 

@@ -13,17 +13,18 @@
 #define CODE39_H
 
 #include <stdbool.h>
-#include <stddef.h>
 #include <stdint.h>
 
 /* Returns the character for a 9-element window (bar first), or 0 if invalid. */
-char code39_char(const uint32_t *p_w9);
+char code39_char(const uint16_t *p_w9);
 
-/* Finds "*...*" in the segment list. p_is_bar[i] says whether element i is a
-   bar. On success writes the text between the stars to p_out, sets
-   *p_reversed (true = read right-to-left) and returns true. */
-bool code39_decode(const uint32_t *p_w, const bool *p_is_bar, uint32_t n,
-                   char *p_out, size_t out_len, bool *p_reversed);
+/* Finds "*...*" in the segment list (widths in um, U16). Elements alternate
+   bar / space; b_first_bar says whether element 0 is a bar (Change
+   Requirement 1: one bit instead of a flag per element). On success writes
+   the text between the stars to p_out, sets *p_reversed (true = read
+   right-to-left) and returns true. */
+bool code39_decode(const uint16_t *p_w, bool b_first_bar, uint32_t n,
+                   char *p_out, uint32_t out_len, bool *p_reversed);
 
 /* 6-bit Code 39 index (Requirement 5.3), in the Data_Representation_Table
    order: '0'..'9' = 0..9, 'A'..'Z' = 10..35, '-' = 36, '.' = 37, ' ' = 38,

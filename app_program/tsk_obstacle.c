@@ -55,6 +55,7 @@
 #include <tk/tkernel.h>
 
 #include "os_glue.h"
+#include "status.h"
 #include "motion_api.h"
 #include "obstacle_logic.h"
 #include "app_params.h"
@@ -93,7 +94,18 @@ LOCAL float ping(void)
     hal_us_trigger();
     (void)tk_dly_tsk(ECHO_WAIT_MS);
     cm = hal_us_read_cm();
-    g_status.obst_cm = cm;
+    if ((cm < 0.0f) != fault_has(FAULT_US_NO_ECHO))   /* D1: no-echo bit follows the last ping */
+    {
+        if (cm < 0.0f)
+        {
+            fault_set(FAULT_US_NO_ECHO);
+        }
+        else
+        {
+            fault_clear(FAULT_US_NO_ECHO);
+        }
+    }
+    st_set_obst_cm(cm);
 
     /* critical proximity, checked on every ping (2 in a row) */
     g_prox_n = ((cm >= 0.0f) && (cm < (float)PROXIMITY_STOP_CM)) ? (g_prox_n + 1u) : 0u;
@@ -158,7 +170,7 @@ LOCAL void coarse_sweep(float *p_cm)
         servo_move(COARSE_DEG[i], prev);
         prev    = COARSE_DEG[i];
         p_cm[i] = ping_median3();
-        g_status.scan_cm[i] = p_cm[i];
+        st_set_scan(i, p_cm[i]);
     }
     servo_move(0.0f, prev);
 }
@@ -258,20 +270,22 @@ LOCAL void fine_scan(const float *p_coarse)
    ("<first angle>deg+2: cm cm ...", -1 = no echo) */
 LOCAL void fine_scan_events(void)
 {
-    for (uint32_t i0 = 0u; i0 < g_fine.n; i0 += 11u)
+    /* FINE_SCAN: first angle S7 (deg), count U4 (1..11), count x CM9
+       (laptop: "<first>deg+2: cm cm ...", -1 = no echo) */
+    for (uint32_t i0 = 0u; i0 < g_fine.n; i0 += WIRE_FINE_SCAN_MAX)
     {
-        char   text[TLM_EVENT_DETAIL_LEN];
-        jbuf_t jb;
+        evt_b_t  b;
+        uint32_t k = ((g_fine.n - i0) > WIRE_FINE_SCAN_MAX) ? WIRE_FINE_SCAN_MAX : (g_fine.n - i0);
+        float    a = g_fine.deg[i0];
 
-        jb_init(&jb, text, sizeof(text));
-        jb_fixed(&jb, g_fine.deg[i0], 0u);
-        jb_raw(&jb, "deg+2:");
-        for (uint32_t i = i0; (i < g_fine.n) && (i < (i0 + 11u)); i++)
+        evt_begin(&b, EVC_FINE_SCAN);
+        evt_s(&b, (a < 0.0f) ? -(int32_t)(0.5f - a) : (int32_t)(a + 0.5f), 7u);
+        evt_u(&b, k, 4u);
+        for (uint32_t i = i0; i < (i0 + k); i++)
         {
-            jb_raw(&jb, " ");
-            jb_fixed(&jb, g_fine.cm[i], 0u);
+            evt_cm9(&b, g_fine.cm[i]);
         }
-        (void)post_event("FINE_SCAN", text);
+        (void)evt_post(&b);
     }
 }
 
@@ -336,7 +350,7 @@ LOCAL void side_view(obstacle_profile_t *p_q)
     p_q->clear_left_cm  -= e_cm;
     p_q->clear_right_cm -= e_cm;
 }
-LOCAL const char *g_why;                /* why run_bypass() failed */
+LOCAL abort_reason_t g_why;             /* why run_bypass() failed */
 
 /* Dead reckoning from the encoders, relative to where the bypass started
    (on the line, heading along it): x + = right of the original path,
@@ -352,46 +366,42 @@ typedef struct
 
 LOCAL pose_t g_pose;
 
-LOCAL void event2(const char *p_name, const char *p_a, float x, const char *p_b);
 
 /* Diagnostics (31 Oct, no effect on the motion): what side-follow measured
    at 60 deg (pings, how many hit the side, the nearest echo against the
    "seen" limit, leg length, lateral distance from the original path) and
    what the pivot look saw. */
+LOCAL void bypass_extend_event(uint32_t kind, float cm);
+
 LOCAL void side_follow_event(uint32_t n60, uint32_t n_seen, float near_cm, float leg_mm, float gap_mm)
 {
-    char   text[TLM_EVENT_DETAIL_LEN];
-    jbuf_t jb;
-    float  x = (g_pose.x_mm < 0.0f) ? -g_pose.x_mm : g_pose.x_mm;
+    /* SIDE_FOLLOW (design D10): pings U8, seen U8, near U13 (0.1 cm),
+       limit U13 (0.1 cm), leg U11 (mm), x U11 (mm); each saturates */
+    evt_b_t b;
+    float   x = (g_pose.x_mm < 0.0f) ? -g_pose.x_mm : g_pose.x_mm;
+    float   lim = ((gap_mm + 150.0f) / 8.660254f) * 10.0f;
+    float   nr  = near_cm * 10.0f;
 
-    jb_init(&jb, text, sizeof(text));
-    jb_raw(&jb, "60deg pings ");
-    jb_uint(&jb, n60);
-    jb_raw(&jb, " seen ");
-    jb_uint(&jb, n_seen);
-    jb_raw(&jb, " near ");
-    jb_fixed(&jb, near_cm, 1u);
-    jb_raw(&jb, "cm (<=");
-    jb_fixed(&jb, (gap_mm + 150.0f) / 8.660254f, 1u);
-    jb_raw(&jb, ") leg ");
-    jb_fixed(&jb, leg_mm, 0u);
-    jb_raw(&jb, " x ");
-    jb_fixed(&jb, x, 0u);
-    (void)post_event("SIDE_FOLLOW", text);
+    evt_begin(&b, EVC_SIDE_FOLLOW);
+    evt_u(&b, n60, 8u);
+    evt_u(&b, n_seen, 8u);
+    evt_u(&b, (nr > 0.0f) ? (uint32_t)(nr + 0.5f) : 0u, 13u);
+    evt_u(&b, (lim > 0.0f) ? (uint32_t)(lim + 0.5f) : 0u, 13u);
+    evt_u(&b, (leg_mm > 0.0f) ? (uint32_t)(leg_mm + 0.5f) : 0u, 11u);
+    evt_u(&b, (uint32_t)(x + 0.5f), 11u);
+    (void)evt_post(&b);
 }
 
 LOCAL void side_look_event(float d90, float d60, bool b_gone)
 {
-    char   text[TLM_EVENT_DETAIL_LEN];
-    jbuf_t jb;
+    /* SIDE_LOOK: d90 CM13, d60 CM13, gone U1 */
+    evt_b_t b;
 
-    jb_init(&jb, text, sizeof(text));
-    jb_raw(&jb, "pivot look 90deg ");
-    jb_fixed(&jb, d90, 1u);
-    jb_raw(&jb, " cm, 60deg ");
-    jb_fixed(&jb, d60, 1u);
-    jb_raw(&jb, b_gone ? " cm: side gone" : " cm: side still there");
-    (void)post_event("SIDE_LOOK", text);
+    evt_begin(&b, EVC_SIDE_LOOK);
+    evt_cm13(&b, d90);
+    evt_cm13(&b, d60);
+    evt_u(&b, b_gone ? 1u : 0u, 1u);
+    (void)evt_post(&b);
 }
 
 LOCAL void pose_reset(void)
@@ -403,7 +413,7 @@ LOCAL void pose_reset(void)
     g_pose.y_mm   = 0.0f;
     g_pose.h_deg  = 0.0f;
     g_pose.h0_deg = o.heading_deg;
-    g_pose.d_prev = 0.5f * (o.dist_r_mm + o.dist_l_mm);
+    g_pose.d_prev = o.dist_mm;
 }
 
 LOCAL void pose_update(void)
@@ -413,7 +423,7 @@ LOCAL void pose_update(void)
     float      h;
 
     odometry_get(&o);
-    d = 0.5f * (o.dist_r_mm + o.dist_l_mm);
+    d = o.dist_mm;
     h = o.heading_deg - g_pose.h0_deg;
     obstacle_pose_advance(&g_pose.x_mm, &g_pose.y_mm, g_pose.h_deg, h, d - g_pose.d_prev);
     g_pose.h_deg  = h;
@@ -425,7 +435,7 @@ LOCAL float odo_fwd_mm(void)
     odometry_t o;
 
     odometry_get(&o);
-    return 0.5f * (o.dist_r_mm + o.dist_l_mm);
+    return o.dist_mm;
 }
 
 /* Runs one primitive; pings ahead while it moves (forward legs only).
@@ -622,7 +632,7 @@ LOCAL leg_res_t leg_side_follow(float min_mm, float gap_mm, float trail_mm, floa
     float     seen_at = -1.0f;              /* leg distance where the side was last seen */
     float     miss_at = -1.0f;              /* ... and where the first 60 deg ping after that missed it */
     uint32_t  clear_n = 0u;
-    bool      b_trust = !g_legacy && (g_params.obst_trust_miss >= 0.5f);   /* OBST_TRUST_MISS */
+    bool      b_trust = !g_legacy && prm_flag(PRM_OBST_TRUST_MISS);   /* OBST_TRUST_MISS */
     uint32_t  n60 = 0u;                   /* diagnostics: 60 deg pings, */
     uint32_t  n_seen = 0u;                /* ... how many hit the side, */
     float     near_cm = -1.0f;            /* ... the nearest echo */
@@ -782,7 +792,7 @@ LOCAL leg_res_t look_before_turn(float ws, float gap_mm, float margin_mm)
             g_block_deg = 999.0f;                   /* the side did not end */
             return LEG_BLOCKED;
         }
-        event2("BYPASS_EXTEND", "obstacle still beside the car (", (d90 >= 0.0f) ? d90 : d60, " cm): 100 mm further");
+        bypass_extend_event(0u, (d90 >= 0.0f) ? d90 : d60);   /* "obstacle still beside the car (X cm): 100 mm further" */
         r = leg_move((float)OBST_SIDE_STEP_MM, ws, 0u, &hit);
         if (r != LEG_OK)
         {
@@ -808,7 +818,7 @@ LOCAL leg_res_t run_bypass(const bypass_plan_t *p_plan, float gap_mm, float marg
     bool      b_ended = false;
 
     g_n_legs = 0u;
-    g_why    = "bypass leg failed (timeout, E-stop or proximity)";
+    g_why    = ABR_LEG_FAILED;
     pose_reset();
     if (((r = leg_turn(p_plan->turn1_deg)) != LEG_OK) ||
         ((r = leg_move(p_plan->d1_mm, ws, 0u, &hit)) != LEG_OK) ||
@@ -831,7 +841,7 @@ LOCAL leg_res_t run_bypass(const bypass_plan_t *p_plan, float gap_mm, float marg
             float out = (deg < 1.0f) ? (float)OBST_RETRY_WIDER_MM : ((gap_mm - lat) + (float)OBST_SIDESTEP_EXTRA_MM);
 
             out = (out < (float)OBST_SIDESTEP_MIN_MM) ? (float)OBST_SIDESTEP_MIN_MM : out;
-            event2("BYPASS_SIDESTEP", "too close beside the obstacle: back, then ", out, " mm further out");
+            (void)evt_post1(EVC_BYPASS_SIDESTEP, (out > 0.0f) ? (uint32_t)(out + 0.5f) : 0u, 10u);   /* "too close beside the obstacle: back, then X mm further out" */
             if (!undo_legs(g_n_legs - 1u))
             {
                 return LEG_FAILED;
@@ -879,7 +889,7 @@ LOCAL leg_res_t run_bypass(const bypass_plan_t *p_plan, float gap_mm, float marg
         r = leg_move(dist, ws, EVF_LINE_FOUND, &hit);
         if ((r == LEG_BLOCKED) && !g_legacy && (n_ret < OBST_SIDESTEP_MAX))
         {
-            event2("BYPASS_EXTEND", "return blocked (", g_block_cm, " cm): back to the turn, 100 mm further");
+            bypass_extend_event(1u, g_block_cm);   /* "return blocked (X cm): back to the turn, 100 mm further" */
             if (!undo_legs(n0))
             {
                 return LEG_FAILED;
@@ -902,7 +912,7 @@ LOCAL leg_res_t run_bypass(const bypass_plan_t *p_plan, float gap_mm, float marg
         if ((step(motion_start_move(g_params.ir_to_axle_mm, g_params.bypass_mm_s, SRC_OBSTACLE), false, 0.0f, 0u, &hit) != LEG_OK) ||
             (step(motion_start_turn(-g_pose.h_deg, g_params.turn_mm_s, SRC_OBSTACLE), false, 0.0f, 0u, &hit) != LEG_OK))
         {
-            g_why = "realign failed";
+            g_why = ABR_REALIGN;
             return LEG_FAILED;
         }
         return LEG_OK;
@@ -913,7 +923,7 @@ LOCAL leg_res_t run_bypass(const bypass_plan_t *p_plan, float gap_mm, float marg
     {
         float past = toward * g_pose.x_mm;              /* > 0: beyond the path */
 
-        (void)post_event("BYPASS_RETURN", "line not seen crossing the original path: back to it, then search");
+        (void)evt_post0(EVC_BYPASS_RETURN);   /* "line not seen crossing the original path: back to it, then search" */
         flag_clear(EVF_LINE_FOUND);
         if (past > 5.0f)
         {
@@ -923,59 +933,61 @@ LOCAL leg_res_t run_bypass(const bypass_plan_t *p_plan, float gap_mm, float marg
             rev_count(s0);                              /* in full, not budgeted, but counted */
             if (rr != LEG_OK)
             {
-                g_why = "reverse onto the original path failed";
+                g_why = ABR_REVERSE_PATH;
                 return LEG_FAILED;
             }
         }
         if (step(motion_start_turn(-g_pose.h_deg, g_params.turn_mm_s, SRC_OBSTACLE), false, 0.0f, 0u, &hit) != LEG_OK)
         {
-            g_why = "realign failed";
+            g_why = ABR_REALIGN;
             return LEG_FAILED;
         }
     }
     return LEG_SEARCH;
 }
 
-LOCAL void profile_event(const obstacle_profile_t *p)
+/* OBSTACLE_PROFILE: r CM9, width U9 (cm), offset S9 (cm), clear left S11 (cm),
+   clear right S11 (cm), side E2 (0 none, 1 L, 2 R) */
+LOCAL int32_t round_cm(float x)
 {
-    char   text[TLM_EVENT_DETAIL_LEN];
-    jbuf_t jb;
-
-    jb_init(&jb, text, sizeof(text));
-    jb_raw(&jb, "r ");
-    jb_fixed(&jb, p->r_min_cm, 0u);
-    jb_raw(&jb, "cm w ");
-    jb_fixed(&jb, p->width_cm, 0u);
-    jb_raw(&jb, "cm off ");
-    jb_fixed(&jb, p->offset_cm, 0u);
-    jb_raw(&jb, " clrL ");
-    jb_fixed(&jb, p->clear_left_cm, 0u);
-    jb_raw(&jb, " clrR ");
-    jb_fixed(&jb, p->clear_right_cm, 0u);
-    jb_raw(&jb, " side ");
-    jb_char(&jb, (p->side != 0) ? p->side : '-');
-    (void)post_event("OBSTACLE_PROFILE", text);
+    return (x < 0.0f) ? -(int32_t)(0.5f - x) : (int32_t)(x + 0.5f);
 }
 
-LOCAL void abort_avoidance(const char *p_why)
+LOCAL void profile_event(const obstacle_profile_t *p)
+{
+    evt_b_t b;
+    int32_t w = round_cm(p->width_cm);
+
+    evt_begin(&b, EVC_OBSTACLE_PROFILE);
+    evt_cm9(&b, p->r_min_cm);
+    /* D10: r CM9, w U10 cm, off S10, clrL S10, clrR S10, side E2 */
+    evt_u(&b, (w > 0) ? (uint32_t)w : 0u, 10u);
+    evt_s(&b, round_cm(p->offset_cm), 10u);
+    evt_s(&b, round_cm(p->clear_left_cm), 10u);
+    evt_s(&b, round_cm(p->clear_right_cm), 10u);
+    evt_u(&b, (p->side == 'L') ? 1u : ((p->side == 'R') ? 2u : 0u), 2u);
+    (void)evt_post(&b);
+}
+
+LOCAL void abort_avoidance(abort_reason_t why)
 {
     motion_stop(SRC_OBSTACLE);
     servo_move(0.0f, 0.0f);
     fault_set(FAULT_BYPASS_ABORT);
-    (void)post_event("AVOIDANCE_ABORT", p_why);
+    (void)evt_post1(EVC_AVOIDANCE_ABORT, (uint32_t)why, 4u);
     flag_set(EVF_BYPASS_ABORT);
 }
 
-LOCAL void event2(const char *p_name, const char *p_a, float x, const char *p_b)
+/* BYPASS_EXTEND: kind U1 (0 "obstacle still beside the car", 1 "return
+   blocked"), distance CM9 */
+LOCAL void bypass_extend_event(uint32_t kind, float cm)
 {
-    char   text[TLM_EVENT_DETAIL_LEN];
-    jbuf_t jb;
+    evt_b_t b;
 
-    jb_init(&jb, text, sizeof(text));
-    jb_raw(&jb, p_a);
-    jb_fixed(&jb, x, 0u);
-    jb_raw(&jb, p_b);
-    (void)post_event(p_name, text);
+    evt_begin(&b, EVC_BYPASS_EXTEND);
+    evt_u(&b, kind, 1u);
+    evt_cm9(&b, cm);
+    (void)evt_post(&b);
 }
 
 /* After the scan (and before each bypass attempt): reverse only if the
@@ -991,26 +1003,25 @@ typedef enum
     STANDOFF_CAPPED       /* refused by the reverse cap, the car did not move */
 } standoff_res_t;
 
-/* OBST_REVERSE_CAP: "<p_a>[N<p_b>]U of C mm used, T mm total" (< 72 chars) */
-LOCAL void rev_cap_event(const char *p_a, bool b_num, float x, const char *p_b)
+/* OBST_REVERSE_CAP: kind E2 (0 "standoff N mm refused", 1 "rescan skipped",
+   2 "rescan reverse cut to N mm"), N U10, used U10, cap U10, total U12 (mm, D10):
+   "<kind text>: U of C mm used, T mm total" */
+LOCAL uint32_t mm_u(float mm)
 {
-    char   text[TLM_EVENT_DETAIL_LEN];
-    jbuf_t jb;
+    return (mm > 0.0f) ? (uint32_t)(mm + 0.5f) : 0u;
+}
 
-    jb_init(&jb, text, sizeof(text));
-    jb_raw(&jb, p_a);
-    if (b_num)
-    {
-        jb_fixed(&jb, x, 0u);
-        jb_raw(&jb, p_b);
-    }
-    jb_fixed(&jb, g_backed_mm, 0u);
-    jb_raw(&jb, " of ");
-    jb_fixed(&jb, g_rev_cap, 0u);
-    jb_raw(&jb, " mm used, ");
-    jb_fixed(&jb, g_rev_total_mm, 0u);
-    jb_raw(&jb, " mm total");
-    (void)post_event("OBST_REVERSE_CAP", text);
+LOCAL void rev_cap_event(uint32_t kind, float x)
+{
+    evt_b_t b;
+
+    evt_begin(&b, EVC_OBST_REVERSE_CAP);
+    evt_u(&b, kind, 2u);
+    evt_u(&b, mm_u(x), 10u);
+    evt_u(&b, mm_u(g_backed_mm), 10u);
+    evt_u(&b, mm_u(g_rev_cap), 10u);
+    evt_u(&b, mm_u(g_rev_total_mm), 12u);
+    (void)evt_post(&b);
 }
 
 LOCAL standoff_res_t standoff(char side, float margin_mm)
@@ -1029,11 +1040,19 @@ LOCAL standoff_res_t standoff(char side, float margin_mm)
     }
     if (obstacle_reverse_budget(need, g_backed_mm, g_rev_cap, false, &allowed) == OBST_REV_REFUSED)
     {
-        rev_cap_event("standoff ", true, need, " mm refused: ");
+        rev_cap_event(0u, need);
         return STANDOFF_CAPPED;
     }
-    event2("OBSTACLE_BACKOFF", "reversing ", need,
-           (side == 'L') ? " mm: a 45 deg turn would clip the left corner" : " mm: a 45 deg turn would clip the right corner");
+    {
+        /* OBSTACLE_BACKOFF: mm U8 (<= OBST_BACKOFF_MAX_MM = 250), side U1 (0 L, 1 R):
+           "reversing N mm: a 45 deg turn would clip the left/right corner" */
+        evt_b_t b;
+
+        evt_begin(&b, EVC_OBSTACLE_BACKOFF);
+        evt_u(&b, mm_u(need), 8u);
+        evt_u(&b, (side == 'L') ? 0u : 1u, 1u);
+        (void)evt_post(&b);
+    }
     if (!reverse_mm(need))
     {
         return STANDOFF_FAILED;
@@ -1046,25 +1065,25 @@ LOCAL standoff_res_t standoff(char side, float margin_mm)
    shortened to what is left (OBST_REVERSE_CAP), or skipped when less than
    OBST_REVERSE_MIN_MM is left (OBST_REVERSE_CAP, AVOIDANCE_ABORT, no
    OBSTACLE_RESCAN). false = the avoidance was aborted. */
-LOCAL bool rescan_reverse(const char *p_rescan_text)
+LOCAL bool rescan_reverse(uint32_t rescan_kind)
 {
     float      allowed;
     obst_rev_t rv = obstacle_reverse_budget((float)OBST_RESCAN_REVERSE_MM, g_backed_mm, g_rev_cap, true, &allowed);
 
     if (rv == OBST_REV_REFUSED)
     {
-        rev_cap_event("rescan skipped: ", false, 0.0f, "");
-        abort_avoidance("reverse limit reached");
+        rev_cap_event(1u, 0.0f);
+        abort_avoidance(ABR_REVERSE_LIMIT);
         return false;
     }
-    (void)post_event("OBSTACLE_RESCAN", p_rescan_text);
+    (void)evt_post1(EVC_OBSTACLE_RESCAN, rescan_kind, 1u);   /* 0 "no room", 1 "blocked": "...: reversing 100 mm and scanning again" */
     if (rv == OBST_REV_SHORTENED)
     {
-        rev_cap_event("rescan reverse cut to ", true, allowed, " mm: ");
+        rev_cap_event(2u, allowed);
     }
     if (!reverse_mm(allowed))
     {
-        abort_avoidance("reverse failed (E-stop, proximity or timeout)");
+        abort_avoidance(ABR_REVERSE_FAILED);
         return false;
     }
     return true;
@@ -1088,8 +1107,7 @@ LOCAL char tie_look(char side)
     float    piv = (float)OBST_TIE_PIVOT_DEG;
     float    d_l;
     float    d_r;
-    char     text[TLM_EVENT_DETAIL_LEN];
-    jbuf_t   jb;
+    evt_b_t  b;
 
     if (step(motion_start_turn(-piv, g_params.turn_mm_s, SRC_OBSTACLE), false, 0.0f, 0u, &hit) != LEG_OK)
     {
@@ -1120,14 +1138,12 @@ LOCAL char tie_look(char side)
     {
         /* still equal: keep the smaller detour */
     }
-    jb_init(&jb, text, sizeof(text));
-    jb_raw(&jb, "tie: 90 deg look L ");
-    jb_fixed(&jb, d_l, 0u);
-    jb_raw(&jb, " cm, R ");
-    jb_fixed(&jb, d_r, 0u);
-    jb_raw(&jb, " cm -> side ");
-    jb_char(&jb, side);
-    (void)post_event("OBSTACLE_TIE", text);
+    /* OBSTACLE_TIE: left U9 (cm), right U9 (cm), side E2 (1 L, 2 R) */
+    evt_begin(&b, EVC_OBSTACLE_TIE);
+    evt_u(&b, mm_u(d_l), 9u);
+    evt_u(&b, mm_u(d_r), 9u);
+    evt_u(&b, (side == 'L') ? 1u : 2u, 2u);
+    (void)evt_post(&b);
     return side;
 }
 
@@ -1156,7 +1172,7 @@ LOCAL void avoid(void)
     char          side = 0;
 
     /* a SET during an avoidance takes effect at the next obstacle */
-    g_legacy       = (g_params.obst_legacy >= 0.5f);
+    g_legacy       = prm_flag(PRM_OBST_LEGACY);
     g_rev_cap      = g_params.obst_reverse_max_mm;
     g_backed_mm    = 0.0f;
     g_rev_total_mm = 0.0f;
@@ -1178,7 +1194,7 @@ LOCAL void avoid(void)
             }
             if (coarse_all_clear(coarse, (float)OBSTACLE_CLEAR_CM + (g_backed_mm / 10.0f)))
             {
-                (void)post_event("OBSTACLE_CLEARED", "coarse sweep clear: resume line following");
+                (void)evt_post0(EVC_OBSTACLE_CLEARED);   /* "coarse sweep clear: resume line following" */
                 flag_set(EVF_BYPASS_COMPLETE);
                 return;
             }
@@ -1190,7 +1206,7 @@ LOCAL void avoid(void)
             }
             if (!obstacle_profile(&g_fine, coarse, half, margin, &g_prof))
             {
-                abort_avoidance("profile failed (no echo in the fine scan)");
+                abort_avoidance(ABR_PROFILE_FAILED);
                 return;
             }
             fine_scan_events();
@@ -1216,7 +1232,7 @@ LOCAL void avoid(void)
                                         ((tries[0] >= 2u) ? OBST_BLOCKED_L : 0u) | ((tries[1] >= 2u) ? OBST_BLOCKED_R : 0u) |
                                         (g_legacy ? OBST_CHOOSE_LEGACY : 0u));
             g_prof.side = side;
-            g_status.scan_side = side;
+            st_set_scan_side(side);
             profile_event(&g_prof);
             (void)post_obstacle(&g_prof);
             if ((side != 0) && is_tie(half, margin, tries))
@@ -1227,18 +1243,18 @@ LOCAL void avoid(void)
                     return;
                 }
                 g_prof.side        = side;
-                g_status.scan_side = side;
+                st_set_scan_side(side);
             }
             if (side == 0)
             {
                 if (rescans >= 1u)
                 {
-                    abort_avoidance("no room on either side");
+                    abort_avoidance(ABR_NO_ROOM);
                     return;
                 }
                 rescans++;
                 b_scan = true;
-                if (!rescan_reverse("no room: reversing 100 mm and scanning again"))
+                if (!rescan_reverse(0u))
                 {
                     return;
                 }
@@ -1260,28 +1276,28 @@ LOCAL void avoid(void)
 
             if (so == STANDOFF_CAPPED)
             {
-                abort_avoidance("reverse limit reached");
+                abort_avoidance(ABR_REVERSE_LIMIT);
                 return;
             }
             if (so != STANDOFF_OK)
             {
-                abort_avoidance("reverse failed (E-stop, proximity or timeout)");
+                abort_avoidance(ABR_REVERSE_FAILED);
                 return;
             }
         }
         if (!bypass_plan(&g_prof, g_half_obs, margin + extra[si], g_params.obst_depth_mm, (float)REACQ_MAX_LATERAL_MM, &plan))
         {
-            abort_avoidance("no bypass plan");
+            abort_avoidance(ABR_NO_PLAN);
             return;
         }
         g_seen_extra_mm = g_ext_mm[si];            /* the real side may be this much further out */
         res = run_bypass(&plan, g_half_obs + margin + extra[si], margin);
         if ((res == LEG_OK) || (res == LEG_SEARCH))
         {
-            g_status.obstacles++;
-            (void)post_event("BYPASS_COMPLETE", (res == LEG_SEARCH) ? ((plan.side > 0) ? "passed on the right; on the path, searching for the line"
-                                                                                       : "passed on the left; on the path, searching for the line")
-                                                                    : ((plan.side > 0) ? "passed on the right" : "passed on the left"));
+            st_obstacle_done();
+            /* BYPASS_COMPLETE: U1 searching, U1 right ("passed on the left/right[; on the path, searching for the line]") */
+            /* D10: right F1, search F1 */
+            (void)evt_post1(EVC_BYPASS_COMPLETE, ((plan.side > 0) ? 2u : 0u) | ((res == LEG_SEARCH) ? 1u : 0u), 2u);
             flag_set(EVF_BYPASS_COMPLETE);
             return;
         }
@@ -1295,28 +1311,22 @@ LOCAL void avoid(void)
         tries[si]++;
         progress[si] = (g_n_legs > progress[si]) ? g_n_legs : progress[si];
         {
-            char   text[TLM_EVENT_DETAIL_LEN];
-            jbuf_t jb;
+            /* BYPASS_BLOCKED: right U1, long U1 (side did not end in 1 m),
+               distance CM9, angle S8 (deg): "right side: something at X cm,
+               A deg; backing out" */
+            evt_b_t b;
+            bool    b_long = (g_block_deg > 500.0f);
 
-            jb_init(&jb, text, sizeof(text));
-            if (g_block_deg > 500.0f)
-            {
-                jb_raw(&jb, (side == 'R') ? "right side: obstacle side did not end in 1 m; backing out"
-                                          : "left side: obstacle side did not end in 1 m; backing out");
-            }
-            else
-            {
-                jb_raw(&jb, (side == 'R') ? "right side: something at " : "left side: something at ");
-                jb_fixed(&jb, g_block_cm, 0u);
-                jb_raw(&jb, " cm, ");
-                jb_fixed(&jb, g_block_deg, 0u);
-                jb_raw(&jb, " deg; backing out");
-            }
-            (void)post_event("BYPASS_BLOCKED", text);
+            evt_begin(&b, EVC_BYPASS_BLOCKED);
+            evt_u(&b, (side == 'R') ? 1u : 0u, 1u);
+            evt_u(&b, b_long ? 1u : 0u, 1u);
+            evt_cm9(&b, b_long ? 0.0f : g_block_cm);
+            evt_s(&b, b_long ? 0 : round_cm(g_block_deg), 8u);
+            (void)evt_post(&b);
         }
         if (!undo_legs(0u))
         {
-            abort_avoidance("backing out failed (E-stop, proximity or timeout)");
+            abort_avoidance(ABR_BACKOUT_FAILED);
             return;
         }
 
@@ -1331,8 +1341,8 @@ LOCAL void avoid(void)
             if ((tries[oi] == 0u) && (!g_legacy || obstacle_side_room(&g_prof, other, half, margin)))
             {
                 side               = other;
-                g_status.scan_side = other;
-                (void)post_event("BYPASS_RETRY", (other == 'R') ? "trying the right side (same scan)" : "trying the left side (same scan)");
+                st_set_scan_side(other);
+                (void)evt_post1(EVC_BYPASS_RETRY, (other == 'R') ? 2u : 0u, 2u);   /* D10 right F1, wider F1 = 0: "trying the left/right side (same scan)" */
                 continue;
             }
             /* 2. a side already tried, the one that got further, wider */
@@ -1351,8 +1361,8 @@ LOCAL void avoid(void)
                 {
                     side = (best == 0) ? 'L' : 'R';
                     extra[best] += (float)OBST_RETRY_WIDER_MM;
-                    g_status.scan_side = side;
-                    (void)post_event("BYPASS_RETRY", (side == 'R') ? "right side again, 100 mm wider" : "left side again, 100 mm wider");
+                    st_set_scan_side(side);
+                    (void)evt_post1(EVC_BYPASS_RETRY, (side == 'R') ? 3u : 1u, 2u);   /* wider = 1: "left/right side again, 100 mm wider" */
                     continue;
                 }
             }
@@ -1361,17 +1371,17 @@ LOCAL void avoid(void)
             {
                 rescans++;
                 b_scan = true;
-                if (!rescan_reverse("blocked: reversing 100 mm and scanning again"))
+                if (!rescan_reverse(1u))
                 {
                     return;
                 }
                 continue;
             }
         }
-        abort_avoidance("blocked on both sides");
+        abort_avoidance(ABR_BLOCKED_BOTH);
         return;
     }
-    abort_avoidance("too many attempts");
+    abort_avoidance(ABR_TOO_MANY);
 }
 
 void tsk_obstacle(INT stacd, void *exinf)
@@ -1408,19 +1418,16 @@ void tsk_obstacle(INT stacd, void *exinf)
             if (usf_trigger(&g_filt, f, g_params.obstacle_stop_cm))
             {
                 uint64_t t0 = hal_time_us();
-                char     text[TLM_EVENT_DETAIL_LEN];
-                jbuf_t   jb;
+                evt_b_t  b;
 
                 motion_stop(SRC_OBSTACLE);        /* NFR1: first avoidance command */
                 flag_set(EVF_OBSTACLE_TRIGGER);
                 usf_reset(&g_filt);
-                jb_init(&jb, text, sizeof(text));
-                jb_raw(&jb, "at ");
-                jb_fixed(&jb, f, 1u);
-                jb_raw(&jb, " cm, STOP issued in ");
-                jb_uint(&jb, (uint32_t)(hal_time_us() - t0));
-                jb_raw(&jb, " us");
-                (void)post_event("OBSTACLE", text);
+                /* OBSTACLE: distance CM13, STOP latency U16 (us) */
+                evt_begin(&b, EVC_OBSTACLE);
+                evt_cm13(&b, f);
+                evt_u(&b, (uint32_t)(hal_time_us() - t0), 16u);
+                (void)evt_post(&b);
             }
             (void)tk_dly_tsk(PING_GAP_MS - ECHO_WAIT_MS);
         }

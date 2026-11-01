@@ -31,7 +31,7 @@ static const struct
    only with bars and spaces only with spaces cancels the IR sensor's "ink
    bleed" (bars read wider and spaces narrower by the spot size), which
    breaks a plain "3 widest of 9" rule once the bleed reaches ~1.5 mm. */
-static char char_bars_spaces(const uint32_t *p_w9)
+static char char_bars_spaces(const uint16_t *p_w9)
 {
     char     pat[10] = "nnnnnnnnn";
     uint32_t b1 = 0u, b2 = 2u, s1 = 1u;
@@ -76,7 +76,7 @@ static char char_bars_spaces(const uint32_t *p_w9)
     return 0;
 }
 
-char code39_char(const uint32_t *p_w9)
+char code39_char(const uint16_t *p_w9)
 {
     {
         char c = char_bars_spaces(p_w9);
@@ -161,15 +161,17 @@ char c39_from_index(uint32_t idx)
     return (idx < C39_COUNT) ? C39_CHARS[idx] : (char)0;
 }
 
-static bool decode_one_way(const uint32_t *p_w, const bool *p_is_bar, uint32_t n,
-                           char *p_out, size_t out_len)
+static bool decode_one_way(const uint16_t *p_w, bool b_first_bar, uint32_t n,
+                           char *p_out, uint32_t out_len)
 {
     for (uint32_t start = 0u; (start + 9u) <= n; start++)
     {
         uint32_t pos;
         size_t   len = 0u;
 
-        if (!p_is_bar[start] || (code39_char(&p_w[start]) != '*'))
+        bool b_bar = b_first_bar ? ((start & 1u) == 0u) : ((start & 1u) != 0u);
+
+        if (!b_bar || (code39_char(&p_w[start]) != '*'))
         {
             continue;
         }
@@ -202,17 +204,16 @@ static bool decode_one_way(const uint32_t *p_w, const bool *p_is_bar, uint32_t n
     return false;
 }
 
-bool code39_decode(const uint32_t *p_w, const bool *p_is_bar, uint32_t n,
-                   char *p_out, size_t out_len, bool *p_reversed)
+bool code39_decode(const uint16_t *p_w, bool b_first_bar, uint32_t n,
+                   char *p_out, uint32_t out_len, bool *p_reversed)
 {
-    static uint32_t rw[128];
-    static bool     rb[128];
+    static uint16_t rw[128];
 
     if ((out_len < 2u) || (n > 128u))
     {
         return false;
     }
-    if (decode_one_way(p_w, p_is_bar, n, p_out, out_len))
+    if (decode_one_way(p_w, b_first_bar, n, p_out, out_len))
     {
         *p_reversed = false;
         return true;
@@ -220,9 +221,9 @@ bool code39_decode(const uint32_t *p_w, const bool *p_is_bar, uint32_t n,
     for (uint32_t i = 0u; i < n; i++)
     {
         rw[i] = p_w[n - 1u - i];
-        rb[i] = p_is_bar[n - 1u - i];
     }
-    if (decode_one_way(rw, rb, n, p_out, out_len))
+    /* reversed, element 0 is the old element n-1 */
+    if (decode_one_way(rw, (((n - 1u) & 1u) == 0u) ? b_first_bar : !b_first_bar, n, p_out, out_len))
     {
         *p_reversed = true;
         return true;

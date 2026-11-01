@@ -102,22 +102,34 @@ typedef struct
     float   scan_cm[5];        /* coarse sweep -60..+60 deg, < 0 = no echo */
 } obstacle_profile_t;
 
-/* ---- MBX_TELEMETRY: events published on is02/event ---- */
-#define TLM_EVENT_NAME_LEN   (20u)
-#define TLM_EVENT_DETAIL_LEN (72u)
+/* ---- MBX_TELEMETRY: events published on is02/event ----
+ * Binary Event_Frame arguments (evt.h); TSK_TELEMETRY adds the header. */
+#include "evt.h"
+
+/* ---- Packed mailbox bodies (msg_codec.h): what actually travels ---- */
 typedef struct
 {
-    char name[TLM_EVENT_NAME_LEN];
-    char detail[TLM_EVENT_DETAIL_LEN];
-} tlm_event_t;
+    uint32_t w[3];             /* motion_cmd_t in at most 69 bits (was 32 bytes) */
+} motion_msg_t;
 
-/* One mailbox message body (the kernel header is added in os_glue.h) */
+typedef struct
+{
+    uint8_t b;                 /* nav_event_t: type E3, letter U5 (was 2 bytes) */
+} nav_msg_t;
+
+typedef struct
+{
+    uint32_t w[6];             /* obstacle_profile_t in 181 bits (was 64 bytes) */
+} obst_msg_t;
+
+/* One mailbox message body (the kernel header is added in os_glue.h).
+   The largest member is the event (32 bytes); it was the 92-byte text event. */
 typedef union
 {
-    motion_cmd_t       motion;
-    nav_event_t        nav;
-    obstacle_profile_t obstacle;
-    tlm_event_t        event;
+    motion_msg_t motion;
+    nav_msg_t    nav;
+    obst_msg_t   obstacle;
+    evt_msg_t    event;
 } app_msg_body_t;
 
 /* ---- Motion events (FR24, DR 6.3 region B) ---- */
@@ -136,64 +148,30 @@ typedef enum
 
 const char *motion_event_name(motion_event_t ev);
 
-/* ---- Fault bits (NFR19), reported in telemetry ---- */
-#define FAULT_IMU_I2C        (1u << 0)
-#define FAULT_IMU_DEAD       (1u << 1)
-#define FAULT_ENCODER_LOSS   (1u << 2)
-#define FAULT_MOTION_TIMEOUT (1u << 3)
-#define FAULT_ULTRASONIC     (1u << 4)
-#define FAULT_LINE_LOST      (1u << 5)
-#define FAULT_BYPASS_ABORT   (1u << 6)
-#define FAULT_WATCHDOG       (1u << 7)
-#define FAULT_BATTERY_LOW    (1u << 8)
-#define FAULT_BATTERY_CRIT   (1u << 9)
-#define FAULT_CONFIG         (1u << 10)
-#define FAULT_BARCODE        (1u << 11)
-#define FAULT_TELEMETRY      (1u << 12)
+/* ---- Fault bits (NFR19), reported in telemetry: fault_mask.h (design D1) ---- */
+#include "fault_mask.h"
 
-/* ---- Robot snapshot for telemetry ----
- * Each group is written by one task only (owner in brackets) and read by the
- * telemetry task. Single 32-bit fields are atomic on the RP2040; a frame may
- * mix values from two consecutive 20 ms cycles, which is fine for 2 Hz
- * telemetry. Control decisions never read this struct. */
+/* ---- Robot snapshot for telemetry: the packed Status_Snapshot ----
+ * Field layout, writers and access rules: status.h. Only app_status.c
+ * touches these units directly (st_* accessors). 15 x 32 bits = 60 bytes
+ * (the unpacked struct was 156 bytes). */
 typedef struct
 {
-    volatile uint32_t state;           /* sys_state_t      [nav / safety] */
-    volatile uint32_t faults;          /* FAULT_* bits     [any, set only] */
-    /* [motion] */
-    volatile float    spd_l;           /* mm/s */
-    volatile float    spd_r;
-    volatile float    duty_l;          /* -1..+1 */
-    volatile float    duty_r;
-    volatile int32_t  enc_l;
-    volatile int32_t  enc_r;
-    volatile float    dist_mm;         /* distance travelled (mean of both wheels, absolute) */
-    volatile float    speed_scale;
-    /* [line] */
-    volatile int32_t  line_l;          /* 1 black, 0 white */
-    volatile int32_t  line_r;
-    volatile uint32_t ir_adc;
-    volatile uint32_t line_state;
-    volatile char     barcode;         /* last decoded, 0 = none */
-    volatile uint32_t bc_thr_black;    /* barcode ADC thresholds in use (from IR_WHITE/BLACK_ADC) */
-    volatile uint32_t bc_thr_white;
-    volatile uint32_t bc_enabled;      /* 0 = sampling off: IR_WHITE_ADC / IR_BLACK_ADC unusable */
-    volatile uint32_t barcodes_read;
-    /* [imu] */
-    volatile float    pitch_deg;
-    volatile float    hump_mm;
-    volatile float    hump_peak_mm;
-    volatile float    hump_max_mm;     /* FR22: highest peak this run */
-    volatile uint32_t humps;
-    volatile uint32_t motion_event;    /* motion_event_t */
-    volatile float    turn_rate_dps;
-    /* [obstacle] */
-    volatile float    obst_cm;         /* last forward reading, < 0 = no echo */
-    volatile float    scan_cm[5];
-    volatile char     scan_side;
-    volatile uint32_t obstacles;
-    /* [telemetry] */
-    volatile uint32_t vbat_mv;
+    volatile uint32_t sys;      /* state E3, faults U13, stop reason E4, motion event E3 */
+    volatile uint32_t mot_a;    /* spd_l S15, spd_r S15 */
+    volatile uint32_t mot_b;    /* duty_l S11, duty_r S11, speed_scale U7 */
+    volatile uint32_t mot_c;    /* enc_l S24 */
+    volatile uint32_t mot_d;    /* enc_r S24 */
+    volatile uint32_t mot_e;    /* dist U20 */
+    volatile uint32_t line_a;   /* line_l U1, line_r U1, ir U12, line_state E3, barcode U6, bc_enabled U1, barcodes_read U7 */
+    volatile uint32_t line_b;   /* bc_thr_black U12, bc_thr_white U12 */
+    volatile uint32_t imu_a;    /* pitch S11, hump_h S15 */
+    volatile uint32_t imu_b;    /* hump_peak U14, hump_max U14 */
+    volatile uint32_t imu_c;    /* turn S14, humps U6 */
+    volatile uint32_t obs_a;    /* obst_cm U13, scan_side U2, scan[0] U13 */
+    volatile uint32_t obs_b;    /* scan[1] U13, scan[2] U13 */
+    volatile uint32_t obs_c;    /* scan[3] U13, scan[4] U13, obstacles U6 */
+    volatile uint32_t misc;     /* vbat U13 */
 } robot_status_t;
 
 extern robot_status_t g_status;

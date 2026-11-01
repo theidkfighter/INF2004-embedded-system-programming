@@ -54,7 +54,6 @@ void     hal_barcode_config(uint32_t thr_black, uint32_t thr_white, bool b_black
 typedef struct
 {
     uint32_t odo;                                /* hal_odometer() at the edge */
-    uint32_t t_ms;
     bool     b_black;
 } hal_bc_edge_t;
 bool     hal_barcode_pop(hal_bc_edge_t *p_edge); /* oldest edge, false if none */
@@ -92,6 +91,7 @@ bool     hal_imu_int1_src(uint8_t *p_src);       /* reads INT1_SRC_A, clears the
 bool     hal_imu_int1_level(void);               /* false when INT1 is not used */
 bool     hal_imu_int1_used(void);                /* only with the LSM303DLHC */
 hal_imu_chip_t hal_imu_chip(void);
+uint32_t       hal_imu_addr(void);               /* 7-bit I2C address of the accelerometer */
 const char    *hal_imu_chip_name(void);          /* "LSM303DLHC at 0x19", "LSM303D at 0x1E", "none" */
 void     hal_i2c_recover(void);                  /* 9 SCL clocks, then re-initialise I2C1 */
 

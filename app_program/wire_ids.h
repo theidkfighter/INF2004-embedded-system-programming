@@ -26,8 +26,13 @@
 #ifndef WIRE_IDS_H
 #define WIRE_IDS_H
 
-#include <stddef.h>
 #include <stdint.h>
+
+/* No <stddef.h>: micro T-Kernel's headers define size_t themselves and the
+   task code includes this header after them. */
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
 /* ---- Format_Version and header field widths (D7) ------------------------ */
 

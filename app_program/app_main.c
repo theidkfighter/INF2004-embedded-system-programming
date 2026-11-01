@@ -13,6 +13,7 @@
 #include <tm/tmonitor.h>
 
 #include "os_glue.h"
+#include "status.h"
 #include "app_params.h"
 #include "hal.h"
 #include "usb_console_compat.h"
@@ -29,7 +30,8 @@ EXPORT INT usermain(void)
     }
     tm_printf((UB *)"\n=== IS-02 Robo-Wheeler, micro T-Kernel 3.0 ===\n");
 
-    g_status.state = (uint32_t)SYS_INIT;
+    st_set_state(SYS_INIT);
+    fault_set(FAULT_BOOT_VALUE);              /* no Wi-Fi / MQTT yet (design D1) */
     params_init();
 
     if (!os_create_objects())

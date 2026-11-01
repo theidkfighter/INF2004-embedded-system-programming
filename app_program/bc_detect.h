@@ -115,7 +115,7 @@ typedef struct
     int32_t  raw1;
     uint32_t raw_n;
     /* smoothed bins, ring */
-    int32_t  ring[ADT_RING];
+    int16_t  ring[ADT_RING];      /* smoothed bins 0..4095 (U12 in a halfword, CR1) */
     uint32_t n_s;                 /* smoothed bins so far (index of the next one) */
     /* decision for the bin in the middle of the ring */
     bool     b_black;

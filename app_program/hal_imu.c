@@ -157,6 +157,11 @@ hal_imu_chip_t hal_imu_chip(void)
     return g_chip;
 }
 
+uint32_t hal_imu_addr(void)
+{
+    return (uint32_t)g_addr;
+}
+
 const char *hal_imu_chip_name(void)
 {
     return (g_chip == HAL_IMU_LSM303DLHC) ? "LSM303DLHC at 0x19" :
