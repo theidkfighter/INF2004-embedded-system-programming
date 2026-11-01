@@ -54,7 +54,6 @@ void     hal_barcode_config(uint32_t thr_black, uint32_t thr_white, bool b_black
 typedef struct
 {
     uint32_t odo;                                /* hal_odometer() at the edge */
-    uint32_t t_ms;
     bool     b_black;
 } hal_bc_edge_t;
 bool     hal_barcode_pop(hal_bc_edge_t *p_edge); /* oldest edge, false if none */
