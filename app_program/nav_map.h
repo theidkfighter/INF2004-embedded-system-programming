@@ -14,7 +14,9 @@
  * LEFT / L, RIGHT / R, UTURN / U-TURN / U / BACK.
  * A letter not in the map is reported and the car carries straight on.
  *
- * Pure logic, no hardware or kernel calls: unit-testable on the PC.
+ * Pure logic, no hardware or kernel calls: unit-testable on the PC. The map is
+ * set and read from task context only, never from an interrupt handler or
+ * inside a crit_dsp_* section: the setters and the whole-map readers open one.
  */
 #ifndef NAV_MAP_H
 #define NAV_MAP_H
@@ -30,6 +32,10 @@ typedef enum
     ACT_LEFT,
     ACT_RIGHT
 } nav_action_t;
+
+/* The packed map (nav_map.c): extern for the host tests; firmware code uses
+   the functions below. */
+extern volatile uint32_t g_map_w[3];
 
 void         nav_map_clear(void);
 nav_action_t nav_map_get(char letter);              /* 'A'..'Z' (lower case accepted) */

@@ -17,6 +17,7 @@
 #include "hardware/structs/timer.h"
 #include "hardware/structs/watchdog.h"
 
+#include "bitpack.h"
 #include "crit.h"
 #include "hal.h"
 #include "hal_internal.h"
@@ -46,11 +47,21 @@ static const struct pio_program WS2812_PROGRAM =
 #endif
 };
 
-static volatile bool g_motor_killed = false;
-static uint32_t      g_servo_min_us = SERVO_MIN_US;
-static uint32_t      g_servo_max_us = SERVO_MAX_US;
-static PIO           g_np_pio = NULL;
-static int32_t       g_np_sm = -1;
+/* motor flags: killed F1 @0; every write stores the whole unit once */
+#define MOTOR_F_KILLED    (1u << 0)
+static volatile uint8_t  g_motor_flags;
+
+/* servo pulse range: min_us U12 @0, max_us U12 @12. One word, one load and
+   one store, so a reader never pairs an old limit with a new one. */
+#define SERVO_US_W        (12u)
+#define SERVO_MIN_SH      (0u)
+#define SERVO_MAX_SH      (12u)
+#define SERVO_RNG(mn, mx) (((uint32_t)(mn) << SERVO_MIN_SH) | ((uint32_t)(mx) << SERVO_MAX_SH))
+BP_STATIC_ASSERT((SERVO_MIN_US <= 4095) && (SERVO_MAX_US <= 4095), "g_servo_rng: limits fit in U12");
+static volatile uint32_t g_servo_rng = SERVO_RNG(SERVO_MIN_US, SERVO_MAX_US);
+
+static PIO               g_np_pio = NULL;
+static int32_t           g_np_sm = -1;
 
 /* ------------------------------------------------------------------------ */
 
@@ -249,7 +260,7 @@ static void motor_raw(uint32_t pin_a, uint32_t pin_b, float duty)
 {
     uint32_t level;
 
-    if (g_motor_killed)
+    if ((g_motor_flags & MOTOR_F_KILLED) != 0u)
     {
         duty = 0.0f;
     }
@@ -297,7 +308,7 @@ void hal_motor_set(uint32_t motor, float duty)
 
 void hal_motor_kill(void)
 {
-    g_motor_killed = true;
+    g_motor_flags = (uint8_t)MOTOR_F_KILLED;
     pwm_set_gpio_level(PIN_M1A, 0u);
     pwm_set_gpio_level(PIN_M1B, 0u);
     pwm_set_gpio_level(PIN_M2A, 0u);
@@ -306,12 +317,12 @@ void hal_motor_kill(void)
 
 bool hal_motor_killed(void)
 {
-    return g_motor_killed;
+    return (g_motor_flags & MOTOR_F_KILLED) != 0u;
 }
 
 void hal_motor_unkill(void)
 {
-    g_motor_killed = false;
+    g_motor_flags = 0u;
 }
 
 /* ------------------------------------------------------------------------ */
@@ -342,7 +353,10 @@ void hal_us_trigger(void)
 
 void hal_servo_deg(float physical_deg)
 {
-    float us;
+    uint32_t rng = g_servo_rng;
+    float    min_us = (float)BP_GET(rng, SERVO_MIN_SH, SERVO_US_W);
+    float    max_us = (float)BP_GET(rng, SERVO_MAX_SH, SERVO_US_W);
+    float    us;
 
     if (physical_deg < 0.0f)
     {
@@ -352,7 +366,7 @@ void hal_servo_deg(float physical_deg)
     {
         physical_deg = 180.0f;
     }
-    us = (float)g_servo_min_us + (((float)g_servo_max_us - (float)g_servo_min_us) * physical_deg / 180.0f);
+    us = min_us + ((max_us - min_us) * physical_deg / 180.0f);
     pwm_set_gpio_level(PIN_SERVO, (uint16_t)us);
 }
 
@@ -360,8 +374,7 @@ void hal_servo_range(uint32_t min_us, uint32_t max_us)
 {
     if ((min_us >= 300u) && (max_us <= 2800u) && (min_us < max_us))
     {
-        g_servo_min_us = min_us;
-        g_servo_max_us = max_us;
+        g_servo_rng = SERVO_RNG(min_us, max_us);
     }
 }
 

@@ -114,8 +114,8 @@ Commit column: `Wei-En` means the work now in `cr1/laptop` (`5393d66` or earlier
 | 10.8 Parameter_Store | done | Wei-En | D15 |
 | 10.9 discrete parameter reads | done | Wei-En | |
 | 10.10 Property 22 (Parameter_Store value model) | skipped (minimum scope) | | `test_spec_conformance.py` compares all 55 defaults with the Baseline_Build library, and Property 24 guards the table |
-| 10.11 barcode map `g_map_w[3]` | todo | | still `g_map[26]` |
-| 10.12 packed map unit tests | todo | | |
+| 10.11 barcode map `g_map_w[3]` | done | session 3 | The three words are stored in one dispatch-disabled section (see "Known differences"); `nav_map_get` is one load |
+| 10.12 packed map unit tests | done | session 3 | `test_nav_map.py`, 243 tests; 23 of 23 mutants caught |
 | checkpoint 11 | todo | | |
 
 ### Step 6: ISR_Shared_Data
@@ -124,8 +124,8 @@ Commit column: `Wei-En` means the work now in `cr1/laptop` (`5393d66` or earlier
 |---|---|---|---|
 | 12.1 barcode edge ring | done | Wei-En | |
 | 12.2 raw ring, barcode flags, thresholds | done | Wei-En | |
-| 12.3 ADC range, echo, battery | partly | Wei-En | `g_vbat_div` not done: `g_sample_n` is still 32-bit |
-| 12.4 driver flags | todo | | `g_motor_killed`, servo range and `g_imu_cfg` not packed |
+| 12.3 ADC range, echo, battery | done | Wei-En, session 3 | Session 3 added `g_adc_rng`, the D4 echo layout with `hal_us_arm` inside `crit_irq`, and `g_vbat_div`. The old note named only `g_vbat_div` |
+| 12.4 driver flags | done | session 3 | `g_enc_rev`, `g_motor_flags`, `g_servo_rng`, `g_imu_cfg`; own-unit reasons are in `hal_isr.c` comments |
 | 12.5 Property 12 (ring FIFO) | todo | | |
 | 12.6 ADC range unit test | todo | | |
 | checkpoint 13 (ISR timing) | car-open | | **needs the car** |
@@ -193,6 +193,10 @@ All done: see `PROGRESS_LT.md` (14.1 to 14.18). Checkpoint 15 is `car-open` ther
 - `g_estop_rx_us` holds the low 32 bits of the time, and `estop_pending` replaces the old "0 = none" convention (D3).
 - The Status_Snapshot type is still `robot_status_t` (spec: `status_snapshot_t`). The 60-byte assert and the field asserts apply to it.
 - `mev_ctx_t.still_ms` stays `uint32_t` as in the Baseline_Build (D5 says int32).
+- `g_map_w`: D3 and the strategy table list it as single writer with one store per unit. The setters also put the three stores in one dispatch-disabled section, and `nav_map_actions` and `nav_map_describe` copy the three words in one, because TSK_NAV_PLANNER can preempt TSK_TELEMETRY between stores (Requirement 9.7). `nav_map_get` stays one load with no section.
+- `g_map_w` is not `static`: `nav_map.h` declares it for the host tests, as with `g_done` and `g_buzz`.
+- `g_motor_flags`: D3 names TSK_SAFETY_MON as the only writer. `app_main` also calls `hal_motor_kill` if start-up fails, before any task runs. Every write stores the whole unit, so this is safe.
+- `g_enc_prev` is still `uint8_t [2]` (D4: one 8-bit unit). It is private to the GPIO ISR and was not in the 12.4 list.
 
 ## Car checks waiting
 
@@ -201,12 +205,35 @@ All done: see `PROGRESS_LT.md` (14.1 to 14.18). Checkpoint 15 is `car-open` ther
 | Baseline measurements (`APP_PERF=1`, `docs/evidence/README.md` procedures) | FW-00 | no | |
 | Session 1 build: boot, START, line following, ESTOP + BTN1 recovery, one barcode turn. Console and dashboard should look as before; the ESTOP ack's `pwm_off_us` should be a small number | FW session 1 | no | |
 | Session 2 build: one hump (START, PEAK, END events, hump count and height in telemetry; a short slope gives a false-slope END), motion events on the dashboard as before, one obstacle bypass | FW session 2 | no | |
+| Session 3 build: `APP_PERF=1` interrupt timing compared with the baseline; ultrasonic medians at 20 cm and 100 cm; servo sweep; barcode passes; a map sent from the dashboard and used at a junction | FW session 3 | no | |
 | S5 met: FW-09 builds may be flashed (LT-05 merged: the tools send binary by default). After flashing, run `robot_params.py` and send the map once so the retained `is02/config` and `is02/map` are binary | LT-05 | no | |
 
 ## Session log
 
 Newest first. One entry per session: date, tool, commit, gate results (host totals, `arm-none-eabi-size` line), open issues, car checks for the user.
 
+- **2026-11-02, minimum CR1 session 3 (Claude Code, local clone, Opus 5.5).** Branch `cr1/fw-rest`, commit `CR1 FW session 3: ISR shared data, packed barcode map, map tests`.
+  - **Done:** 12.3, 12.4, 10.11, 10.12. No item from `REVIEW_FLAGS.md` applied.
+  - **Gate (WSL, `PICO_SDK_PATH=$HOME/pico/pico-sdk`), all passed on the committed sources:**
+    - `tools/evidence/build_check.sh -- -j8`: PASS, 0 warnings.
+    - `APP_PERF=1`, `APP_LEGACY_TEXT_CMD=1`, `APP_SELFTEST=1`: each PASS with 0 warnings (through `build_check.sh`).
+    - `rm -rf tests/host/build && PYTHON=~/is02venv/bin/python bash tests/host/run_all.sh --seed 12345`: `Host_Test_Suite: PASSED (seed=12345)`; properties=543 failed=0, other tests passed=1481 failed=0 skipped=0. Before this session: 543 and 1238. The 243 new tests are all in `test_nav_map.py`.
+    - One gate run stopped with exit code 4 during the `APP_SELFTEST=1` build because WSL restarted. It was re-run in full from the first build.
+  - **`arm-none-eabi-size`:** text 409580, data 2788, bss 60176, dec 472544. Before this session: 409616 / 2796 / 60184.
+  - **What 12.3 lacked:** the ledger named only `g_vbat_div`. In the code `g_adc_min` / `g_adc_max` were also separate and reset with no section, `hal_us_arm` had no section and did not clear `g_echo_rise_us`, and the echo bits were not the D4 ones.
+  - **Echo:** `hal_us_read_cm` still returns exactly `(float)us / 58.0f` and -1 above 25,000 µs. Widths above 25,000 µs are now stored as 25,001 (was 32,767).
+  - **Host trace of the drivers (not committed):** `hal_isr.c` from the Baseline_Build and from this commit were compiled against stand-in SDK headers and run on the same scripted edges and samples. Echo widths (including 24,999 to 25,002, 32,767 and 32,768, about 20,000 random widths, no echo, a stray fall), 5,000 ADC windows (including empty ones and the values 0 and 4095), all four encoder reversal settings with the raw ring, and the VBAT reading ticks and values gave identical output on 4 seeds, with `VBAT_ENABLED` 0 and 1. This shows the logic only, not timing or hardware.
+  - **Interrupt work, counted from the Cortex-M0+ disassembly (`APP_PERF=0`, cycles from the instruction timings, not measured):**
+    - Timer ISR: 1 cycle less on a tick inside the ADC range (22 against 23), which is the usual tick. **A tick that raises the maximum costs 4 cycles more** (28 against 24, about 32 ns), and the raw-ring path about 1 more. So the worst single tick is about 5 cycles above the baseline. That is the one case where the interrupt does more than before; `g_sample_n` and its division are gone, which covers the rest.
+    - GPIO ISR: the encoder path is unchanged; the echo paths are the same or shorter. `hal_gpio_isr` is the same length as before.
+    - `hal_imu_int1_used`: 2 instructions shorter, because of the chip codes only the DLHC has bit 0 set.
+    - Masked sections: `hal_us_arm` and `hal_ir_adc_range` hold only loads and stores, with no loop or division.
+  - **Test strength:** 23 mutants of `nav_map.c` were run against `test_nav_map.py`. 22 failed the tests and 1 did not compile. They include storing a word outside the section, copying outside it, storing before the final checks, and OR-ing an action in place of replacing it.
+  - **Open issues:**
+    - **12.1 and 12.2 are marked `done` above, but the code does not match them.** `g_bc_head` / `g_bc_tail` and `g_raw_head` / `g_raw_tail` are still 32-bit. `g_bc_enabled`, `g_bc_black_high`, `g_bc_black` and `g_raw_enabled` are separate `bool`s, not `g_bc_flags`. The thresholds are two units, not `g_bc_thr`. `hal_barcode_config` and `hal_barcode_raw` use no `crit_irq` section (Requirements 5.6, 5.7, 10.1). There is no plain ring header. `g_raw` is one packed word per sample, unlike D4's three arrays. Not in this session's tasks, so left unchanged and the rows not edited.
+    - Interrupt timing is only counted, not measured: the `isr_timer`, `isr_gpio` and `cs_irq` lines of an `APP_PERF=1` run give the real numbers.
+    - Checkpoint 11 and tasks 12.5, 12.6 stay open.
+  - **Car check (nothing above ran on a robot):** `APP_PERF=1` interrupt timing compared with the baseline; ultrasonic medians at 20 cm and 100 cm; servo sweep; barcode passes; a map sent from the dashboard and used at a junction. See "Car checks waiting".
 - **2026-11-02, minimum CR1 session 2 (Claude Code, local clone, Opus 5.5).** Branch `cr1/fw-rest`, commit `CR1 FW session 2: IMU contexts, Properties 14 and 15, status asserts`.
   - **Done:** 10.2, 10.4, 10.5, 6.1, and 6.8 (it was quick). No item from `REVIEW_FLAGS.md` applied. R8 did not arise: `obstacle_logic.c/.h` and `imu_logic.c/.h` matched the Baseline_Build exactly before this session.
   - **Gate (WSL, `PICO_SDK_PATH=$HOME/pico/pico-sdk`), all passed:**
