@@ -53,8 +53,6 @@ LOCAL float             g_line_r;
 LOCAL uint32_t          g_line_t;
 LOCAL float             g_scale = 1.0f;
 LOCAL volatile uint16_t g_next_id = 1u;
-LOCAL volatile uint16_t g_done_id;
-LOCAL volatile uint32_t g_done_result;
 
 /* ------------------------------------------------------------------------ */
 /* API used by the other tasks                                               */
@@ -129,6 +127,7 @@ bool motion_wait(uint16_t id, uint32_t other_bits, uint32_t timeout_ms,
     {
         UINT     ptn = 0;
         uint32_t left = timeout_ms - (hal_time_ms() - t0);
+        uint32_t done;
         ER       er;
 
         if ((hal_time_ms() - t0) >= timeout_ms)
@@ -146,9 +145,10 @@ bool motion_wait(uint16_t id, uint32_t other_bits, uint32_t timeout_ms,
             return false;
         }
         flag_clear(EVF_MOTION_DONE);
-        if (g_done_id == id)
+        done = motion_done_get();             /* one load: id and result of one primitive */
+        if (DONE_ID(done) == id)
         {
-            *p_result = (motion_result_t)g_done_result;
+            *p_result = DONE_RESULT(done);
             return true;
         }
     }
@@ -221,8 +221,7 @@ LOCAL void finish(motion_result_t res)
         return;
     }
     g_prim.b_active = false;
-    g_done_id       = g_prim.id;
-    g_done_result   = (uint32_t)res;
+    motion_done_put(g_prim.id, res);
     g_w[0].target   = 0.0f;
     g_w[1].target   = 0.0f;
     flag_set(EVF_MOTION_DONE);

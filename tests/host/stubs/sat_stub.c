@@ -19,12 +19,16 @@ void sat_note(uint32_t n)
 {
     uint32_t v;
 
+    s_calls++;
+    if (n == 0u)
+    {
+        return;
+    }
     crit_dsp_enter();
     v = (uint32_t)s_sat_count;
     v = (n > (SAT_MAX - v)) ? SAT_MAX : (v + n);
     s_sat_count = (uint16_t)v;
     crit_dsp_exit();
-    s_calls++;
 }
 
 uint16_t sat_count(void)

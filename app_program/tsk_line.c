@@ -521,9 +521,11 @@ void tsk_line(INT stacd, void *exinf)
                a sensor then counts only after it has read white, so one
                sitting on something dark (off the mat, a seam) cannot hide the
                line from the other one. */
-            if (reacq_seen != g_reacq_seq)
+            uint32_t reacq = g_reacq_seq;            /* one load */
+
+            if (reacq_seen != reacq)
             {
-                reacq_seen = g_reacq_seq;
+                reacq_seen = reacq;
                 found_n    = 0u;
                 white_l    = 0u;
                 white_r    = 0u;

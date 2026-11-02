@@ -13,7 +13,7 @@
 #                         app_program header, hal.h, hal_internal.h, pins.h,
 #                         tk/tkernel.h or a Pico SDK header (Requirement 19.3).
 #   plain_header:<name>   Each packed-field accessor header (bitpack.h, crit.h,
-#                         fault_mask.h, status.h, msg_codec.h, evt.h,
+#                         fault_mask.h, status.h, shared.h, msg_codec.h, evt.h,
 #                         wire_ids.h, wire.h, perf.h) includes only C standard
 #                         headers and app_program headers that in turn include
 #                         no micro T-Kernel or Pico SDK header (checked
@@ -63,8 +63,8 @@ RESULTS="${IS02_RESULTS:-}"
 # ---- Baseline_Build values ---------------------------------------------------
 PURE_LOGIC=(line_logic imu_logic obstacle_logic barcode_logic bc_detect bc_multi
             code39 nav_map speed_ctl)
-ACCESSOR_HEADERS=(bitpack.h crit.h fault_mask.h status.h msg_codec.h evt.h
-                  wire_ids.h wire.h perf.h)
+ACCESSOR_HEADERS=(bitpack.h crit.h fault_mask.h status.h shared.h msg_codec.h
+                  evt.h wire_ids.h wire.h perf.h)
 
 # EVF_* names in bit order: index = bit position in g_flg_sys.
 EVF_BASE=(EVF_COLLISION EVF_PROXIMITY EVF_REMOTE_ESTOP EVF_BATTERY_CRITICAL

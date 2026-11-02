@@ -46,9 +46,7 @@
 #define CONSOLE_MS      (2000u)
 #define CMD_SLOTS       (8u)
 
-IMPORT volatile uint64_t g_estop_rx_us;      /* tsk_safety.c */
-IMPORT volatile uint32_t g_estop_pwm_off_us;
-IMPORT volatile bool     g_estop_reported;
+IMPORT volatile bool     g_estop_reported;   /* tsk_safety.c */
 
 /* Command queue: Command_Frames decoded in the radio task, handled here.
    Each slot is a wire_cmd_t (16 bytes) plus its decode status. */
@@ -61,10 +59,8 @@ typedef struct
 LOCAL cmd_slot_t        g_cmds[CMD_SLOTS];
 LOCAL volatile uint32_t g_cmd_head;          /* radio task */
 LOCAL volatile uint32_t g_cmd_tail;          /* this task */
-LOCAL volatile bool     g_estop_ack_due;
 LOCAL uint8_t           g_config[WIRE_CFG_LEN(WIRE_PARAMS_MAX)];
 LOCAL volatile uint32_t g_config_len;
-LOCAL volatile bool     g_config_due;
 LOCAL uint8_t           g_out[NET_MSG_MAX];  /* one outgoing ack / event / heartbeat */
 LOCAL uint16_t          g_seq;               /* Telemetry_Frame sequence, U15 (wraps) */
 LOCAL uint16_t          g_hb_seq;            /* Heartbeat_Frame sequence, U14 (wraps) */
@@ -105,8 +101,7 @@ void app_net_command(const uint8_t *p, uint32_t len, uint64_t rx_us)
     if ((len == 1u) && (p[0] == (uint8_t)((WIRE_FORMAT_VERSION << 4) | (uint32_t)WCMD_ESTOP)))
     {
         /* NFR17 fast path: straight to the safety monitor, no queueing */
-        g_estop_rx_us   = rx_us;
-        g_estop_ack_due = true;
+        estop_rx_put((uint32_t)rx_us);
         flag_set(EVF_REMOTE_ESTOP);
         (void)tk_wup_tsk(g_tsk_safety);
         return;
@@ -138,14 +133,14 @@ void app_net_map(const uint8_t *p, uint32_t len)
 
 void app_net_config(const uint8_t *p, uint32_t len)
 {
-    if (!g_config_due && (len <= sizeof(g_config)))
+    if (!config_due() && (len <= sizeof(g_config)))
     {
         for (uint32_t i = 0u; i < len; i++)
         {
             g_config[i] = p[i];
         }
         g_config_len = len;
-        g_config_due = true;
+        config_due_set();
         (void)tk_wup_tsk(g_tsk_tlm);
     }
 }
@@ -273,7 +268,7 @@ LOCAL void handle_command(const cmd_slot_t *p_s)
     switch (p_c->cmd)
     {
         case WCMD_ESTOP:                      /* normally the fast path */
-            g_estop_ack_due = true;
+            estop_ack_request();
             flag_set(EVF_REMOTE_ESTOP);
             (void)tk_wup_tsk(g_tsk_safety);
             break;
@@ -345,13 +340,12 @@ LOCAL void estop_ack(void)
 {
     wire_ack_t a;
 
-    if (!g_estop_ack_due || (g_estop_rx_us != 0u))
+    if (!estop_ack_take())
     {
-        return;                               /* the safety monitor has not acted yet */
+        return;                               /* nothing due, or the safety monitor has not acted yet */
     }
-    g_estop_ack_due = false;
     ack_init(&a, WCMD_ESTOP, RSN_MOTORS_OFF);
-    a.a.pwm_off_us = (g_estop_pwm_off_us > 0xFFFFu) ? 0xFFFFu : (uint16_t)g_estop_pwm_off_us;
+    a.a.pwm_off_us = estop_pwm_off();
     ack_send(&a);
 }
 
@@ -390,7 +384,7 @@ LOCAL void handle_config(void)
     wire_ack_t   a;
     int          st = wire_dec_config(g_config, g_config_len, cfg_apply_one, &r);
 
-    g_config_due = false;
+    config_due_clear();
     params_apply();
     if (st != WIRE_OK)
     {
@@ -750,7 +744,7 @@ void tsk_telemetry(INT stacd, void *exinf)
             g_cmd_tail++;
         }
         estop_ack();
-        if (g_config_due)
+        if (config_due())
         {
             handle_config();
         }

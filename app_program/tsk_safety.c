@@ -54,8 +54,6 @@ LOCAL uint32_t      g_t_estop;
 #define ALARM_MS     (3000u)          /* E-stop alarm sounds for 3 s, then the LED stays red */
 
 
-volatile uint64_t g_estop_rx_us;          /* set by the MQTT command handler */
-volatile uint32_t g_estop_pwm_off_us;     /* read by the telemetry ack */
 volatile bool     g_estop_reported;
 
 LOCAL void tone_start(const tone_t *p_t)
@@ -131,15 +129,15 @@ LOCAL void kill(void)
 
 LOCAL void enter_estop(stop_reason_t reason)
 {
-    uint64_t t_kill;
+    uint32_t t_kill;
+    uint32_t rx_us;
 
     kill();
-    t_kill = hal_time_us();
-    if (g_estop_rx_us != 0u)
+    t_kill = (uint32_t)hal_time_us();
+    if (estop_rx_take(&rx_us))
     {
-        g_estop_pwm_off_us = (uint32_t)(t_kill - g_estop_rx_us);
-        g_estop_rx_us      = 0u;
-        g_estop_reported   = false;
+        estop_pwm_off_put(t_kill - rx_us);    /* modulo 2^32 */
+        g_estop_reported = false;
     }
     st_set_stop((uint32_t)reason);
     (void)sys_set_state(SYS_ESTOP, true);
@@ -250,6 +248,7 @@ void tsk_safety(INT stacd, void *exinf)
     {
         sys_state_t st;
         uint32_t    f;
+        uint32_t    rx_us;
         bool        b_btn1 = false;
         bool        b_btn2 = false;
 
@@ -264,10 +263,9 @@ void tsk_safety(INT stacd, void *exinf)
         }
 
         /* ---- hazards first ---- */
-        if ((st == SYS_ESTOP) && ((f & EVF_REMOTE_ESTOP) != 0u) && (g_estop_rx_us != 0u))
+        if ((st == SYS_ESTOP) && ((f & EVF_REMOTE_ESTOP) != 0u) && estop_rx_take(&rx_us))
         {
-            g_estop_pwm_off_us = 0u;              /* already stopped: ack at once */
-            g_estop_rx_us      = 0u;
+            estop_pwm_off_put(0u);                /* already stopped: ack at once */
         }
         if (st != SYS_ESTOP)
         {

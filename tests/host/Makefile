@@ -49,6 +49,8 @@ LIB_SRCS  += wire.c
 STUB_SRCS += wire_export.c
 # Status_Snapshot accessors (status.h) and the Event_Frame builder (evt.h).
 LIB_SRCS  += app_status.c evt.c msg_codec.c
+# Other Task_Shared_Data accessors (shared.h, Property 18).
+LIB_SRCS  += app_shared.c
 # Parameter_Store (design D15)
 LIB_SRCS  += app_params.c jfmt.c
 STUB_SRCS += evt_stub.c

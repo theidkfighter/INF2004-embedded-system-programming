@@ -55,6 +55,12 @@ uint32_t crit_stub_errors(void);           /* number of nesting errors          
 uint32_t crit_stub_error_flags(void);      /* OR of the CRIT_ERR_* bits seen    */
 bool     crit_stub_in_dsp(void);
 bool     crit_stub_in_irq(void);
+/* Watches and hooks (Property 18); crit_stub_reset() clears them. At most 8
+   regions of 64 bytes; a region past that returns false. */
+bool     crit_stub_watch(const volatile void *p, uint32_t n);
+uint32_t crit_stub_outside_writes(void);   /* writes seen with no section open  */
+uint32_t crit_stub_changed_sections(void); /* sections that changed a watched byte */
+void     crit_stub_set_hooks(void (*p_enter)(void), void (*p_exit)(void));
 
 /* ---- sat_stub.c -----------------------------------------------------------
  * Saturation_Counter with the firmware rule (Requirement 1.10): starts at 0,

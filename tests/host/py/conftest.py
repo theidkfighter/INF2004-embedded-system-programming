@@ -101,6 +101,9 @@ _STUB_SIGNATURES = {
     "crit_stub_error_flags": (_u32,),
     "crit_stub_in_dsp": (_bool,),
     "crit_stub_in_irq": (_bool,),
+    "crit_stub_watch": (_bool, _vp, _u32),
+    "crit_stub_outside_writes": (_u32,),
+    "crit_stub_changed_sections": (_u32,),
     # sat_stub.c
     "sat_note": (None, _u32),
     "sat_count": (_u16,),
