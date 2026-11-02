@@ -122,8 +122,8 @@ Commit column: `Wei-En` means the work now in `cr1/laptop` (`5393d66` or earlier
 
 | Task | Status | Commit | Note |
 |---|---|---|---|
-| 12.1 barcode edge ring | done | Wei-En | |
-| 12.2 raw ring, barcode flags, thresholds | done | Wei-En | |
+| 12.1 barcode edge ring | done | Wei-En, session 4 | The entry was packed on Wei-En. Session 4 added the 8-bit M7 indices and the plain header `isr_ring.h` |
+| 12.2 raw ring, barcode flags, thresholds | done | Wei-En, session 4 | Session 4 added `g_bc_flags`, `g_bc_thr`, the 16-bit M9 indices and the `crit_irq` sections. `g_raw` keeps its one-word slot (see "Known differences") |
 | 12.3 ADC range, echo, battery | done | Wei-En, session 3 | Session 3 added `g_adc_rng`, the D4 echo layout with `hal_us_arm` inside `crit_irq`, and `g_vbat_div`. The old note named only `g_vbat_div` |
 | 12.4 driver flags | done | session 3 | `g_enc_rev`, `g_motor_flags`, `g_servo_rng`, `g_imu_cfg`; own-unit reasons are in `hal_isr.c` comments |
 | 12.5 Property 12 (ring FIFO) | todo | | |
@@ -197,6 +197,9 @@ All done: see `PROGRESS_LT.md` (14.1 to 14.18). Checkpoint 15 is `car-open` ther
 - `g_map_w` is not `static`: `nav_map.h` declares it for the host tests, as with `g_done` and `g_buzz`.
 - `g_motor_flags`: D3 names TSK_SAFETY_MON as the only writer. `app_main` also calls `hal_motor_kill` if start-up fails, before any task runs. Every write stores the whole unit, so this is safe.
 - `g_enc_prev` is still `uint8_t [2]` (D4: one 8-bit unit). It is private to the GPIO ISR and was not in the 12.4 list.
+- `g_raw[256]`: D4 and task 12.2 name three arrays (`g_raw_er`, `g_raw_el`, `g_raw_adc`). The ring keeps the one-word slot from Wei-En, which meets Requirement 5.5 (U12 ADC field, 256 entries) and uses 1,024 bytes instead of 2,560. The slot holds only the low 9 bits of each wheel count, so the reader rebuilds full counts, and after a ring overflow it counts no movement for one sample. The Baseline_Build kept exact counts there. Composing the slot is also what makes the raw path slower than the Baseline_Build (see session 4).
+- `hal_barcode_config` clamps thresholds to 4095 to fit U12. The Baseline_Build stored them unclamped. No difference on the car: both thresholds lie between `IR_WHITE_ADC` and `IR_BLACK_ADC`, which are 0..4095, because the hysteresis parameters are at most 0.30.
+- `isr_ring.h` is new (task 12.1 asks for a plain header but names none). `test_isr_ring.py` checks its helpers with examples and round trips; the FIFO model is still 12.5.
 
 ## Car checks waiting
 
@@ -206,12 +209,38 @@ All done: see `PROGRESS_LT.md` (14.1 to 14.18). Checkpoint 15 is `car-open` ther
 | Session 1 build: boot, START, line following, ESTOP + BTN1 recovery, one barcode turn. Console and dashboard should look as before; the ESTOP ack's `pwm_off_us` should be a small number | FW session 1 | no | |
 | Session 2 build: one hump (START, PEAK, END events, hump count and height in telemetry; a short slope gives a false-slope END), motion events on the dashboard as before, one obstacle bypass | FW session 2 | no | |
 | Session 3 build: `APP_PERF=1` interrupt timing compared with the baseline; ultrasonic medians at 20 cm and 100 cm; servo sweep; barcode passes; a map sent from the dashboard and used at a junction | FW session 3 | no | |
+| Session 4 build: barcode passes with `BARCODE_DETECT` 1 and 0 (same characters, no new `ovr` count); `APP_PERF=1` `isr_timer` worst case against the baseline, limit in Requirement 20.3: the larger of 110 % and baseline + 1 µs; `cs_irq` line at or below 10 µs | FW session 4 | no | |
 | S5 met: FW-09 builds may be flashed (LT-05 merged: the tools send binary by default). After flashing, run `robot_params.py` and send the map once so the retained `is02/config` and `is02/map` are binary | LT-05 | no | |
 
 ## Session log
 
 Newest first. One entry per session: date, tool, commit, gate results (host totals, `arm-none-eabi-size` line), open issues, car checks for the user.
 
+- **2026-11-02, minimum CR1 session 4 (Claude Code, local clone, Opus 5.5).** Branch `cr1/fw-rest`, commit `CR1 FW session 4: edge and raw rings, barcode flags and thresholds`.
+  - **Done:** the rest of 12.1 and 12.2, which session 3 found marked `done` but missing from the code. No item from `REVIEW_FLAGS.md` applied.
+  - **Gate (WSL, `PICO_SDK_PATH=$HOME/pico/pico-sdk`), all passed on the committed sources:**
+    - `tools/evidence/build_check.sh -- -j8`: PASS, 0 warnings.
+    - `APP_PERF=1`, `APP_LEGACY_TEXT_CMD=1`, `APP_SELFTEST=1`: each PASS with 0 warnings (through `build_check.sh`).
+    - `rm -rf tests/host/build && PYTHON=~/is02venv/bin/python bash tests/host/run_all.sh --seed 12345`: `Host_Test_Suite: PASSED (seed=12345)`; properties=543 failed=0, other tests passed=1489 failed=0 skipped=0. Before this session: 543 and 1481. New: 7 tests in `test_isr_ring.py` and the `plain_header:isr_ring.h` static check.
+  - **`arm-none-eabi-size`:** text 409624, data 2788, bss 60160, dec 472572. Before this session: 409580 / 2788 / 60176.
+  - **Host trace of the drivers (not committed, as in session 3):** on 4 seeds, with `VBAT_ENABLED` 0 and 1, the new `hal_isr.c` gave output identical to the previous commit and to the Baseline_Build. Added for this session: all threshold settings on both polarities, 7,600 to 8,400 edges with random pops, edge-ring and raw-ring overflow, runs past the 7-bit, 8-bit and 9-bit index ranges, and `hal_barcode_raw` with `hal_barcode_config` in both orders. After an overflow the trace compares ADC values only, since the counts differ on purpose (see "Known differences"). An out-of-range threshold of 5000 did differ from the Baseline_Build, which is how the clamp was found; the firmware can't request one.
+  - **Timer ISR against the Baseline_Build, counted from the disassembly (`hal_isr.c` at `bca7964` compiled with the firmware's command line; `BARCODE_DETECT = 1` is the default, so raw mode is the normal case; cycles from the instruction timings, not measured). From the ADC read to the return:**
+
+    | Tick | Baseline_Build | Now |
+    |---|---|---|
+    | Threshold mode, no edge | 67 | 59 |
+    | Threshold mode, edge | includes a 64-bit division call | that call is gone, and the path is shorter than at the session start |
+    | Raw mode, ADC in range | 82 | **100** |
+    | Raw mode, tick raises the ADC maximum | 83 | **108** |
+
+  - **So in raw mode the timer ISR does more work than the Baseline_Build: 18 cycles on a normal tick (144 ns), 25 on a tick that raises the maximum (200 ns).** That breaks the "no more work" rule of the session 3 and 4 instructions, though by this count it is inside the Requirement 20.3 limit (the larger of 110 % and baseline + 1 µs). Almost all of it comes from composing the packed `g_raw` slot and the packed `g_adc_rng` word. Going back to the three arrays of D4 would remove the slot cost and add 1,536 bytes of RAM. Not done: the team's choice.
+  - **Correction to session 3:** its "1 cycle less on a tick inside the ADC range" counted the `g_sample_n` saving against the ADC section only. Taken over the whole tick, and with the wrong base (the session start, not the Baseline_Build), it understated the cost. The table above replaces it. This session also made the ADC word cheaper, testing `rng == 0` in place of the `have` mask (2 cycles less per tick).
+  - **Masked sections:** `hal_barcode_config` holds about 15 instructions and `hal_barcode_raw` about 35, loads, stores and mask operations only, with no loop or division (under 1 µs by count). `hal_barcode_config` takes its thresholds before the section, and `hal_barcode_raw` now does its whole reader reset inside one section.
+  - **GPIO ISR:** this session did not touch it.
+  - **Open issues:**
+    - The `isr_timer` and `cs_irq` numbers above are counted, not measured, so the `APP_PERF=1` run on the car decides them.
+    - Checkpoint 11 and tasks 12.5, 12.6 stay open.
+  - **Car check (nothing above ran on a robot):** barcode passes with `BARCODE_DETECT` 1 and 0, `APP_PERF=1` `isr_timer` and `cs_irq` against the baseline. See "Car checks waiting".
 - **2026-11-02, minimum CR1 session 3 (Claude Code, local clone, Opus 5.5).** Branch `cr1/fw-rest`, commit `CR1 FW session 3: ISR shared data, packed barcode map, map tests`.
   - **Done:** 12.3, 12.4, 10.11, 10.12. No item from `REVIEW_FLAGS.md` applied.
   - **Gate (WSL, `PICO_SDK_PATH=$HOME/pico/pico-sdk`), all passed on the committed sources:**
@@ -223,7 +252,7 @@ Newest first. One entry per session: date, tool, commit, gate results (host tota
   - **What 12.3 lacked:** the ledger named only `g_vbat_div`. In the code `g_adc_min` / `g_adc_max` were also separate and reset with no section, `hal_us_arm` had no section and did not clear `g_echo_rise_us`, and the echo bits were not the D4 ones.
   - **Echo:** `hal_us_read_cm` still returns exactly `(float)us / 58.0f` and -1 above 25,000 µs. Widths above 25,000 µs are now stored as 25,001 (was 32,767).
   - **Host trace of the drivers (not committed):** `hal_isr.c` from the Baseline_Build and from this commit were compiled against stand-in SDK headers and run on the same scripted edges and samples. Echo widths (including 24,999 to 25,002, 32,767 and 32,768, about 20,000 random widths, no echo, a stray fall), 5,000 ADC windows (including empty ones and the values 0 and 4095), all four encoder reversal settings with the raw ring, and the VBAT reading ticks and values gave identical output on 4 seeds, with `VBAT_ENABLED` 0 and 1. This shows the logic only, not timing or hardware.
-  - **Interrupt work, counted from the Cortex-M0+ disassembly (`APP_PERF=0`, cycles from the instruction timings, not measured):**
+  - **Interrupt work, counted from the Cortex-M0+ disassembly (`APP_PERF=0`, cycles from the instruction timings, not measured). The timer ISR line below was too low: see the correction in session 4.**
     - Timer ISR: 1 cycle less on a tick inside the ADC range (22 against 23), which is the usual tick. **A tick that raises the maximum costs 4 cycles more** (28 against 24, about 32 ns), and the raw-ring path about 1 more. So the worst single tick is about 5 cycles above the baseline. That is the one case where the interrupt does more than before; `g_sample_n` and its division are gone, which covers the rest.
     - GPIO ISR: the encoder path is unchanged; the echo paths are the same or shorter. `hal_gpio_isr` is the same length as before.
     - `hal_imu_int1_used`: 2 instructions shorter, because of the chip codes only the DLHC has bit 0 set.
