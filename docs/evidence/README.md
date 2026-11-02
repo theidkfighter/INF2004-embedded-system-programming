@@ -7,8 +7,8 @@ This folder holds the Evidence_Report for Change Requirement 1: the RAM usage co
 | Build | Commit | Branch | Notes |
 |---|---|---|---|
 | Baseline_Build | `bca79643d6f9bdd3938c353fa5f6fe791fc68f94` | `Poh-Loon` | HEAD before any feature code was committed (2026-11-01, "Merge remote-tracking branch 'origin/codex/ultrasonic-refinement' into Poh-Loon") |
-| Baseline_Build with timing probes (Step 0 commit) | `<fill in: hash of the Step 0 commit>` | | Baseline code plus `perf.h` probes, build switches, test scaffolding and these templates |
-| Revised_Build | `<fill in: hash of the commit submitted for Week 13>` | | |
+| Baseline_Build with timing probes (Step 0 commit) | `542368fee64defa2c6a089db6a9769fc1819a36a` | `Poh-Loon` | Baseline code plus `perf.h` probes, build switches, test scaffolding and these templates |
+| Revised_Build | `36a380bc3d8daf0f945e6c6853db1ab53914633e` (firmware; RAM, `sizeof`, host tests and build check were run on it) | `cr1/fw-rest` | The Week 13 documents that follow it change `docs/` and `tools/evidence/` only. Record the final submitted hash here if it differs |
 
 Machine-readable form, used by `tests/host/baseline/fetch_baseline.sh` (via the `tests/host/Makefile` baseline target):
 
@@ -42,12 +42,12 @@ Record the exact command lines here. Baseline and Revised builds must use the sa
 
 | Purpose | Directory | Command line |
 |---|---|---|
-| RAM and size, Baseline_Build | `build_make/` | `<fill in, e.g. make clean && make APP_ROBOT=1>` |
-| RAM and size, Revised_Build | `build_make/` | `<fill in, e.g. make clean && make APP_ROBOT=1>` |
-| Timing, Step 0 commit | `build_make/` | `<fill in, e.g. make clean && make APP_ROBOT=1 APP_PERF=1>` |
-| Timing, Revised_Build | `build_make/` | `<fill in, e.g. make clean && make APP_ROBOT=1 APP_PERF=1>` |
-| Track runs, Revised_Build | `build_make/` | `<fill in, e.g. make clean && make APP_ROBOT=1>` |
-| Self-test, Revised_Build | `build_make/` | `<fill in, e.g. make clean && make APP_ROBOT=1 APP_SELFTEST=1>` |
+| RAM and size, Baseline_Build | `build_make/` (worktree of `bca7964`) | `make clean && make APP_ROBOT=1 APP_PERF=0 -j8` (measured 2 Nov 2026) |
+| RAM and size, Revised_Build | `build_make/` (worktree of `36a380b`) | `make clean && make APP_ROBOT=1 APP_PERF=0 -j8` (measured 2 Nov 2026) |
+| Timing, Step 0 commit | `build_make/` | `make clean && make APP_ROBOT=1 APP_PERF=1` (planned, not run yet) |
+| Timing, Revised_Build | `build_make/` | `make clean && make APP_ROBOT=1 APP_PERF=1` (planned, not run yet) |
+| Track runs, Revised_Build | `build_make/` | `make clean && make APP_ROBOT=1` (planned, not run yet) |
+| Self-test, Revised_Build | `build_make/` | `make clean && make APP_ROBOT=1 APP_SELFTEST=1` (planned, not run yet) |
 
 The linked image is `build_make/mtkernel_3.elf`, with the map file `build_make/mtkernel_3.map` and the flashable `build_make/mtkernel_3.uf2`.
 
@@ -57,11 +57,11 @@ Paste the first line of `arm-none-eabi-gcc --version` for each machine used. All
 
 | Item | Value |
 |---|---|
-| `arm-none-eabi-gcc --version` | `<fill in>` |
-| `arm-none-eabi-size --version` | `<fill in>` |
-| Host OS / shell used for the build | `<fill in, e.g. WSL Ubuntu 22.04>` |
-| Python version (host tests, scripts) | `<fill in>` |
-| Node version (JS host tests) | `<fill in>` |
+| `arm-none-eabi-gcc --version` | `arm-none-eabi-gcc (15:13.2.rel1-2) 13.2.1 20231009` |
+| `arm-none-eabi-size --version` | `GNU size (2.42-1ubuntu1+23)` (Ubuntu 24.04 binutils for arm-none-eabi) |
+| Host OS / shell used for the build | WSL Ubuntu 24.04.3 LTS, bash; Pico SDK 2.2.0 |
+| Python version (host tests, scripts) | Python 3.12.3 (`~/is02venv`) |
+| Node version (JS host tests) | v18.19.1 |
 
 ## Scripts that fill the tables
 
@@ -72,6 +72,7 @@ Paste the first line of `arm-none-eabi-gcc --version` for each machine used. All
 | `tools/evidence/type_sizes.sh` | Target `sizeof` and pool block size (`message_sizes.md` section 1) | Headers of each build |
 | `tools/evidence/msg_sizes.py <log.csv>` | MQTT payload sizes per topic (`message_sizes.md` section 2) | `is02_tool.py log` file of one track run per build |
 | `tools/evidence/frame_budget.py` | Telemetry_Frame bit budget (`message_sizes.md` section 3) | `wire_dump` output of the Revised_Build |
+| `tools/evidence/gen_docs.py` | [../data_representation.md](../data_representation.md) and [../protocol.md](../protocol.md) | headers, drivers, `wire_dump` and the target compiler (WSL) |
 | `tools/evidence/perf_report.py <console.log>` | `performance.md` timing tables | USB console log of each `APP_PERF=1` build |
 | `tests/host/run_all.sh` | Host_Test_Suite summary (`correctness.md` section 2) | Revised_Build sources |
 
@@ -85,3 +86,12 @@ Paste the first line of `arm-none-eabi-gcc --version` for each machine used. All
 | [performance.md](performance.md) | Task, ISR, critical-section and telemetry encode timing, E-stop PWM-off times, watchdog count, frame rate | 9.6, 10.2, 20.1 to 20.6, 24.4 to 24.7 |
 
 Raw inputs (console logs, `is02_tool.py log` CSV files, `telemetry_monitor.py` CSV and log files, script outputs) go in `docs/evidence/raw/`, named `<build>_<what>_<date>.<ext>`, for example `baseline_console_perf_2026-11-10.log`.
+
+## Status (2 Nov 2026)
+
+| File | State |
+|---|---|
+| [ram_usage.md](ram_usage.md) | measured |
+| [message_sizes.md](message_sizes.md) | sections 1 and 3 measured; section 2 and the 25 % check (section 4) wait for the car run |
+| [correctness.md](correctness.md) | sections 1 and 2 (build check, host tests) measured; sections 3 to 7 wait for the car |
+| [performance.md](performance.md) | waits for the car; section 4 has the instruction counts from the ledger, marked as counted |

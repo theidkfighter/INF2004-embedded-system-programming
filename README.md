@@ -390,7 +390,7 @@ MQTT/               laptop tools: mosquitto_is02.conf, dashboard.html, telemetry
 config/             *.example.h templates; your own wifi_credentials.h / mqtt_config.h (git-ignored)
 build_make/         makefiles; the .uf2 is built here (robot_defaults.mk, robot.mk = robot profile)
 tools/elf2uf2/      source of the .uf2 packer (built automatically by make)
-docs/               template documentation (GETTING_STARTED.md, PORT_RP2040.md)
+docs/               template documentation (GETTING_STARTED.md, PORT_RP2040.md), Change Requirement 1 documents (data_representation.md, protocol.md, evidence/)
 kernel/ include/ lib/ device/ etc/   µT-Kernel 3.0 template: kernel, headers, libraries, drivers, linker scripts
 ```
 
@@ -406,3 +406,10 @@ Don't delete the other boards' files (`iote_*`, `nucleo_*`, `rx*`, `stm32*` ...)
 ### 11.3 If the Pico extension tried to import the repo
 
 Delete these leftovers (they are not part of the repo): `pico_sdk_import.cmake` and `build/` in the repo root, `.vscode/` if the extension created it, and `build_make/tools/elf2uf2.exe` from a Windows (MSYS2) build. If `git status` lists dozens of `build_make/mtkernel_3/**/subdir.mk` files as modified, their line endings were rewritten: undo with `git restore build_make/mtkernel_3`.
+
+### 11.4 Data representation (Change Requirement 1)
+
+- **Data representation (Change Requirement 1):**
+  - [docs/data_representation.md](docs/data_representation.md): every application field with its valid range, resolution, required bits, baseline type and new bit layout, the shared Storage_Units with their writers and protection, the 55 parameters, and the scope decisions;
+  - [docs/protocol.md](docs/protocol.md): the binary MQTT payload formats, code tables and Parameter_IDs;
+  - [docs/evidence/README.md](docs/evidence/README.md): RAM, message size, correctness and performance evidence (the car measurements are marked "to be measured" until they are taken).

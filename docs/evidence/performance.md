@@ -19,6 +19,8 @@ Critical-section maxima (section 5) must include driving at `SPEED_MAX_MM_S` (25
 
 ## 2. Test conditions (Requirement 20.6)
 
+> **To be measured on the car.** Fill when the runs are done: commits `542368f` (Step 0) and the Week 13 commit, the exact `make` lines of [README.md](README.md), the track layout and the file names of the logs.
+
 | Item | Step 0 commit (Baseline_Build timing) | Revised_Build |
 |---|---|---|
 | Commit | `<fill in>` | `<fill in>` |
@@ -30,6 +32,8 @@ Critical-section maxima (section 5) must include driving at `SPEED_MAX_MM_S` (25
 | Monitor CSV and log files | `<fill in>` | `<fill in>` |
 
 ## 3. Task cycle response times (Requirements 20.1, 24.4)
+
+> **To be measured on the car.** Fill from: `python tools/evidence/perf_report.py docs/evidence/raw/<build>_console_perf_<date>.log` on the USB console log of each `APP_PERF=1` build.
 
 Filled by: `perf_report.py` (`[perf] tsk_safety`, `tsk_line`, `tsk_motion`, `tsk_imu`). The time runs from the cyclic handler release to the end of the cycle. `over` counts cycles above the limit and must be 0 in every run.
 
@@ -71,6 +75,8 @@ Requirement 20.1 result (zero cycles over the limit across the 3 Revised_Build r
 
 ## 4. Interrupt handler execution times (Requirements 20.3, 24.6)
 
+> **To be measured on the car.** Fill from: `python tools/evidence/perf_report.py docs/evidence/raw/revised_console_perf_<date>.log --baseline docs/evidence/raw/step0_console_perf_<date>.log`.
+
 Filled by: `perf_report.py` (`[perf] isr_gpio`, `isr_timer`). Each build needs at least 10,000 invocations of each handler over the 3 runs. Limit for the Revised_Build worst case: the larger of 110 % of the Baseline_Build worst case and the Baseline_Build worst case + 1 µs.
 
 | Handler | Build | Invocations over 3 runs (n) | Worst case (µs) | Average (µs) |
@@ -94,7 +100,21 @@ Per-run values (Requirement 24.6 asks for one full track run per build; give run
 | `hal_timer_isr` | Step 0 commit | 1 | | | |
 | `hal_timer_isr` | Revised_Build | 1 | | | |
 
+### Counted from the disassembly (not measured)
+
+These numbers come from the ledger, session 4 (`docs/cr1/PROGRESS_FW.md`); they are instruction counts of the Cortex-M0+ code from the `bca7964` and current `hal_isr.c` compiled with the firmware's command line, not timings. The car measurement above decides the Requirement 20.3 result.
+
+| `hal_timer_isr` path (ADC read to return) | Baseline_Build cycles | Revised_Build cycles |
+|---|---|---|
+| threshold mode, no edge | 67 | 59 |
+| raw mode, ADC in range | 82 | 100 |
+| raw mode, tick raises the ADC maximum | 83 | 108 |
+
+At 125 MHz (`clk_sys`), 18 more cycles is 144 ns and 25 more is 200 ns on those two raw-mode paths. The raw-mode paths are slower than in the Baseline_Build because the one-word `g_raw` slot and the packed `g_adc_rng` word are composed in the ISR (kept by decision of 2 Nov 2026, see the ledger).
+
 ## 5. Critical-section durations (Requirements 9.6, 10.2)
+
+> **To be measured on the car.** Fill from: `python tools/evidence/perf_report.py docs/evidence/raw/<build>_console_perf_<date>.log` (the `cs_dsp` and `cs_irq` lines), including the encoder course of `correctness.md` 6.1.
 
 Filled by: `perf_report.py` (`[perf] cs_dsp`, `cs_irq`). Each section type needs at least 1,000 entries in a run that includes driving at `SPEED_MAX_MM_S`. Limit: 10 µs, measured from just before dispatch or interrupts are disabled to just after they are enabled again.
 
@@ -106,6 +126,8 @@ Filled by: `perf_report.py` (`[perf] cs_dsp`, `cs_irq`). Each section type needs
 | Interrupts masked (`cs_irq`) | Revised_Build | | | | | 10 µs | |
 
 ## 6. Telemetry frame production time (Requirements 20.4, 24.7)
+
+> **To be measured on the car.** Fill from: `python tools/evidence/perf_report.py <console.log>` (`tlm_bench` and `tlm_encode` lines).
 
 Filled by: `perf_report.py` (`[perf] tlm_bench` for the benchmark, `[perf] tlm_encode` for frames built during a track run). The time runs from reading the Status_Snapshot to having the complete payload in the output buffer and excludes the MQTT publish. Baseline_Build: JSON frame build. Revised_Build: Wire_Codec encode.
 
@@ -127,6 +149,8 @@ Requirement 20.4 result (Revised mean ≤ Baseline mean and Revised maximum ≤ 
 
 ## 7. E-stop PWM-off times (Requirements 13.4, 24.7)
 
+> **To be measured on the car.** Fill from: check L6 of the `telemetry_monitor.py` summary in each track run of `correctness.md` section 3.
+
 Filled by: `telemetry_monitor.py` summary, check L6 (`robot PWM off <n> us after the command arrived`), from the track runs in [correctness.md](correctness.md) section 3. One row per remote ESTOP sent while the motors were driven. Limit: 10 ms (10,000 µs).
 
 | Build | Run | Round trip laptop to ack (ms) | PWM off after command arrived (µs) | Limit | Result |
@@ -139,6 +163,8 @@ Filled by: `telemetry_monitor.py` summary, check L6 (`robot PWM off <n> us after
 | Revised_Build | 3 | | | 10,000 µs | |
 
 ## 8. Watchdog E-stops (Requirements 20.2, 24.7)
+
+> **To be measured on the car.** Fill from: the watchdog count in the `telemetry_monitor.py` summary (and the `FAULT_WATCHDOG` bit) of each track run.
 
 Filled by: counting `EMERGENCY_STOP` events with the watchdog reason in the monitor log file of each run (`is02/event` lines). Limit: 0 per run.
 
@@ -153,6 +179,8 @@ Filled by: counting `EMERGENCY_STOP` events with the watchdog reason in the moni
 
 ## 9. Telemetry frame rate (Requirements 20.5, 24.7)
 
+> **To be measured on the car.** Fill from: check L1 of the `telemetry_monitor.py` summary: `python MQTT/telemetry_monitor.py --broker <LAPTOP_IP>`.
+
 Filled by: `telemetry_monitor.py` summary, check L1 (`<hz> Hz over <n> frames (robot clock; target 2 Hz)`). The window must be at least 60 s with at least 120 live frames, excluding frames replayed from the Frame_Ring. Limit: 1.8 Hz to 2.2 Hz.
 
 | Build | Run | Window (s) | Live frames (n) | Rate (Hz) | Limit | Result |
@@ -161,6 +189,8 @@ Filled by: `telemetry_monitor.py` summary, check L1 (`<hz> Hz over <n> frames (r
 | Revised_Build | 1 | | | | 1.8 to 2.2 Hz | |
 
 ## 10. Summary against the Requirement 20 limits (Requirement 20.6)
+
+> **To be measured on the car.** Fill from: fill from sections 3 to 9 after the car runs.
 
 | Criterion | Measurement | Baseline_Build value | Revised_Build value | Samples | Conditions | Limit | Result |
 |---|---|---|---|---|---|---|---|
@@ -175,6 +205,8 @@ Filled by: `telemetry_monitor.py` summary, check L1 (`<hz> Hz over <n> frames (r
 | L6 | E-stop PWM-off time, worst | | | | one ESTOP per track run in `correctness.md` section 3 | 10 ms | |
 
 ## 11. Measurements outside a limit (Requirement 24.5)
+
+> **To be measured on the car.** Fill from: fill from section 10 after the car runs.
 
 Fill in one row for every value above that fails its limit, and for every E-stop PWM-off time above 10 ms. Leave the table empty if every result passes.
 

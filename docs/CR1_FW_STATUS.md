@@ -1,5 +1,7 @@
 # CR1 firmware track: status against the spec (branch `Wei-En`)
 
+> **Superseded (2 Nov 2026):** `docs/cr1/PROGRESS_FW.md` is now the record of the firmware track, on branch `cr1/fw-rest`. This file is kept for history and is no longer updated.
+
 Base: `Poh-Loon` at `542368f`. Contract: `docs/cr1/spec/design.md` D7 to D15 and
 `app_program/wire_ids.h` (unchanged, Format_Version 1). This file sits outside
 `docs/cr1/` so it does not clash with the team's copy of the guides; copy the

@@ -1,5 +1,7 @@
 # RAM per symbol: Baseline_Build bca7964 vs cr1/min-bit-continue
 
+> **Superseded (2 Nov 2026).** This table was made at an earlier commit (revised `.bss` 60,268). The measured comparison for the submitted commit is [ram_usage.md](ram_usage.md) (revised `.bss` 60,160, `.data` + `.bss` 62,948).
+
 Generated with `arm-none-eabi-nm -S` on is02_robot_smp0.elf (same toolchain, same config). Only symbols whose size changed are listed.
 
 | totals | text | data | bss | RAM (data+bss) |

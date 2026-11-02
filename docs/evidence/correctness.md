@@ -10,99 +10,115 @@ Where to read values: the `telemetry_monitor.py` CSV has `enc_l`, `enc_r`, `barc
 
 ## 1. Firmware build check (Requirement 19.5)
 
-Filled by: `tools/evidence/build_check.sh` (runs `make clean && make APP_ROBOT=1` in `build_make/`, counts warnings, compares with the Baseline_Build count and lists warnings in new or changed files).
+Filled by: `tools/evidence/build_check.sh` (runs `make clean && make APP_ROBOT=1` in `build_make/`, counts warnings, compares with the Baseline_Build count and lists warnings in new or changed files). Run on 2 Nov 2026 in WSL Ubuntu 24.04 on a clean `git worktree` of the commit below, with placeholder `config/*.h` files. The full make log is about 730 KB and is not committed.
 
 | Item | Value |
 |---|---|
-| Commit checked | `<fill in>` |
-| Build exit status | |
-| Compiler warnings, Baseline_Build clean build | |
-| Compiler warnings, Revised_Build clean build | |
-| Warnings that name a file added or changed since the baseline commit | |
-| Script exit status | |
-| Result | `<pass/fail>` |
+| Commit checked | `36a380bc3d8daf0f945e6c6853db1ab53914633e` |
+| Build exit status | 0 (`build: ok`) |
+| Compiler warnings, Baseline_Build clean build | 0 (`tools/evidence/baseline_warnings.txt`) |
+| Compiler warnings, Revised_Build clean build | 0 |
+| Warnings that name a file added or changed since the baseline commit | 0 (187 files changed since `bca7964`) |
+| Script exit status | 0 |
+| Result | **pass** |
+
+Command: `cd <worktree> && PICO_SDK_PATH=$HOME/pico/pico-sdk bash tools/evidence/build_check.sh -- -j8`. Earlier sessions also built with `APP_PERF=1`, `APP_LEGACY_TEXT_CMD=1` and `APP_SELFTEST=1` through the same script, each with 0 warnings (ledger sessions 1 to 4); those variants were not repeated for this document.
 
 ## 2. Host_Test_Suite results (Requirements 24.1, 24.8)
 
-Filled by: `tests/host/run_all.sh` (run in WSL from the repository root; optional `--seed <s>`). Paste each summary line `P<n> <title> | <payload type or Storage_Unit> | cases=<n> | failed=<n> | seed=<s>` into the table, one row per line. Every property needs at least 100 cases; Properties 4, 25, 26 and 27 need at least 1,000 per payload type, Storage_Unit or command code.
+Filled by: `tests/host/run_all.sh` (run in WSL from the repository root; optional `--seed <s>`). The summary lines `P<n> <title> | <payload type or Storage_Unit> | cases=<n> | failed=<n> | seed=<s>` are in the raw output file; the tables below add them up per property. Python rows are the C-library side run by pytest, JavaScript rows the Node side (`node --test`).
 
 | Item | Value |
 |---|---|
-| Commit tested | `<fill in>` |
-| Command line | `<fill in, e.g. bash tests/host/run_all.sh --seed 12345>` |
-| Seed | |
-| Exit status | |
-| Raw output file | `<fill in>` |
+| Commit tested | `36a380bc3d8daf0f945e6c6853db1ab53914633e` (the sources at the start of this session) |
+| Command line | `rm -rf tests/host/build && PYTHON=~/is02venv/bin/python bash tests/host/run_all.sh --seed 12345` |
+| Seed | 12345 |
+| Exit status | 0, last line `Host_Test_Suite: PASSED (seed=12345)` |
+| Totals | properties=543 failed=0; other tests passed=1489 failed=0 skipped=0 (pytest 1,924 passed in 139 s; Node 262 pass; `test_static.sh` 24 pass; `test_compile_fail.sh` 8 pass) |
+| Raw output file | `docs/evidence/raw/revised_host_tests_2026-11-02.log` |
 
 ### 2.1 Requirement 18 properties and codec pairs (Requirement 24.1)
 
+The Python rows exercise the C Wire_Codec against the Python Laptop_Codec; the JavaScript rows exercise the C Wire_Codec against the JavaScript Laptop_Codec (`node --test`).
+
 | Requirement 18 criterion | Property | Codec pairs exercised | Payload types / Storage_Units | Cases | Failed | Result |
 |---|---|---|---|---|---|---|
-| 18.1 robot-to-laptop round trip | P25 | C Wire_Codec → Python Laptop_Codec; C Wire_Codec → JavaScript Laptop_Codec | Telemetry, Heartbeat, Ack, each Event_Code | | | |
-| 18.2 laptop-to-robot round trip | P26 | Python Laptop_Codec → C Wire_Codec; JavaScript Laptop_Codec → C Wire_Codec | each command code, Map, Config | | | |
-| 18.3 decode then encode is identity | P27 | C Wire_Codec; Python Laptop_Codec; JavaScript Laptop_Codec | all seven payload types | | | |
-| 18.4 saturation | P2 | C Wire_Codec and packed accessors | every encoded field | | | |
-| 18.5 field independence | P4 | C packed accessors | every multi-field Storage_Unit | | | |
-| 18.6 cross-codec shared vectors | P28 | C Wire_Codec, Python Laptop_Codec, JavaScript Laptop_Codec | shared vector set | | | |
-| 18.7 malformed payload rejection | P21 | C Wire_Codec (Command, Map, Config); Python and JavaScript Laptop_Codecs (other types) | all seven payload types | | | |
+| 18.1 robot-to-laptop round trip | P25 | C Wire_Codec → Python Laptop_Codec (7,500); C Wire_Codec → JavaScript Laptop_Codec (7,500) | Telemetry, Heartbeat, Ack (1,000 each per pair) and 45 Event_Codes (100 each per pair): 48 units | 15,000 | 0 | pass |
+| 18.2 laptop-to-robot round trip | P26 | Python Laptop_Codec → C Wire_Codec (13,000); JavaScript Laptop_Codec → C Wire_Codec (13,000) | 13 units: each command code, Map, Config (1,000 each per pair) | 26,000 | 0 | pass |
+| 18.3 decode then encode is identity | P27 | C Wire_Codec, Python Laptop_Codec (7,000); C Wire_Codec, JavaScript Laptop_Codec (7,000) | all seven payload types (1,000 each per pair) | 14,000 | 0 | pass |
+| 18.4 saturation | P2 | C packed accessors and Wire_Codec encoders (Python/ctypes) | 72 fields of the Status_Snapshot, odometry record, messages and frames | 143,071 | 0 | pass |
+| 18.5 field independence | P4 | C packed accessors | **no property result**: `test_status_snapshot.py` has example checks only (ledger 6.4, `partly`) | n/a | n/a | not met as a property |
+| 18.6 cross-codec shared vectors | P28 | C Wire_Codec, Python Laptop_Codec (445); C Wire_Codec, JavaScript Laptop_Codec (345) | shared vector set | 790 | 0 | pass |
+| 18.7 malformed payload rejection | P21 | C Wire_Codec, both Laptop_Codecs | **no property result**: skipped (minimum scope, ledger 18.5); the reject paths run inside P19 and P26 to P28 | n/a | n/a | not run |
 
 ### 2.2 All property summary lines
 
-| Property | Title | Payload type or Storage_Unit | Cases | Failed | Seed |
-|---|---|---|---|---|---|
-| P1 | Continuous stores round to the nearest step | | | | |
-| P2 | Out-of-range and NaN stores saturate and are counted | | | | |
-| P3 | Sentinel codes never collide with values | | | | |
-| P4 | Packed accessors round-trip and keep fields independent | | | | |
-| P5 | Invalid discrete writes have no effect | | | | |
-| P6 | Saturating counters hold at their maximum | | | | |
-| P7 | The Fault_Mask follows the bit-set model | | | | |
-| P8 | Line sensor codes follow the polarity rule | | | | |
-| P9 | Code 39 index mapping is a bijection | | | | |
-| P10 | Inter-task messages round-trip | | | | |
-| P11 | Motion targets match the Baseline_Build | | | | |
-| P12 | Rings behave like a FIFO model | | | | |
-| P13 | Barcode decoding matches the Baseline_Build | | | | |
-| P14 | Obstacle planning matches the Baseline_Build | | | | |
-| P15 | Hump detection matches the Baseline_Build | | | | |
-| P16 | Event detail text can be rebuilt | | | | |
-| P17 | Variable-length details split without loss | | | | |
-| P18 | Critical sections are balanced and cover every shared update | | | | |
-| P19 | Every encoded frame has the fixed header and length | | | | |
-| P20 | GET:PARAMS parts cover every parameter once | | | | |
-| P21 | Malformed payloads are rejected without side effects | | | | |
-| P22 | The Parameter_Store matches the Baseline_Build value model | | | | |
-| P23 | Accepting a Map_Frame replaces the whole map | | | | |
-| P24 | The parameter table version detects table edits | | | | |
-| P25 | Robot-to-laptop frames round-trip through both Laptop_Codecs | | | | |
-| P26 | Laptop-to-robot frames round-trip into the Wire_Codec | | | | |
-| P27 | Decode then encode is the identity on bytes | | | | |
-| P28 | The three codecs agree on the shared vectors | | | | |
-| P29 | Tool inputs parse to Parameter_IDs or report the bad line | | | | |
-| P30 | Unknown codes are shown numerically | | | | |
+One row per property that printed summary lines. Cases are summed over the rows of the property (one row per payload type, field or Storage_Unit, and per runner). `Units` is the number of distinct payload types, fields or Storage_Units. Every property has at least 100 cases except P9, which is exhaustive over the 43 Code 39 characters (86 cases = 43 characters × 2 checks).
+
+| Property | Title | Units | Cases, C with Python | Cases, C with JavaScript | Failed | Seed | Result |
+|---|---|---|---|---|---|---|---|
+| P1 | Continuous stores round to the nearest step | 71 | 14200 (71 rows) | - | 0 | 12345 | pass |
+| P2 | Out-of-range and NaN stores saturate and are counted | 72 | 143071 (214 rows) | - | 0 | 12345 | pass |
+| P3 | Sentinel codes never collide with values | 22 | 23724 (44 rows) | - | 0 | 12345 | pass |
+| P9 | Code 39 index mapping is a bijection | 1 | 86 (2 rows) | - | 0 | 12345 | pass |
+| P10 | Inter-task messages round-trip | 3 | 800 (3 rows) | - | 0 | 12345 | pass |
+| P14 | Obstacle planning matches the Baseline_Build | 2 | 2000 (2 rows) | - | 0 | 12345 | pass |
+| P15 | Hump detection matches the Baseline_Build | 2 | 2000 (2 rows) | - | 0 | 12345 | pass |
+| P16 | Event detail text can be rebuilt | 46 | 9000 (45 rows) | 4500 (1 rows) | 0 | 12345 | pass |
+| P18 | Critical sections are balanced and cover every shared update | 6 | 600 (6 rows) | - | 0 | 12345 | pass |
+| P19 | Every encoded frame has the fixed header and length | 3 | 200 (3 rows) | - | 0 | 12345 | pass |
+| P24 | The parameter table version detects table edits | 1 | 1000 (1 rows) | 1000 (1 rows) | 0 | 12345 | pass |
+| P25 | Robot-to-laptop frames round-trip through both Laptop_Codecs | 48 | 7500 (48 rows) | 7500 (48 rows) | 0 | 12345 | pass |
+| P26 | Laptop-to-robot frames round-trip into the Wire_Codec | 13 | 13000 (13 rows) | 13000 (13 rows) | 0 | 12345 | pass |
+| P27 | Decode then encode is the identity on bytes | 7 | 7000 (7 rows) | 7000 (7 rows) | 0 | 12345 | pass |
+| P28 | The three codecs agree on the shared vectors | 1 | 445 (1 rows) | 345 (1 rows) | 0 | 12345 | pass |
+| P29 | Tool inputs parse to Parameter_IDs or report the bad line | 2 | 1000 (2 rows) | 1000 (2 rows) | 0 | 12345 | pass |
+| P30 | Unknown codes are shown numerically | 3 | 600 (3 rows) | 600 (3 rows) | 0 | 12345 | pass |
+
+Properties with no summary line (no result is claimed for them):
+
+| Property | Status | Cases |
+|---|---|---|
+| P4 | partly: example checks only (ledger 6.4) | - |
+| P5 | skipped (minimum scope, ledger 6.5) | - |
+| P6 | skipped (minimum scope, ledger 6.6) | - |
+| P7 | todo (ledger 5.3) | - |
+| P8 | skipped (minimum scope, ledger 6.7) | - |
+| P11 | skipped (minimum scope, ledger 8.6) | - |
+| P12 | todo (ledger 12.5) | - |
+| P13 | differential test `test_diff_barcode.py` runs (313 tests, all pass) but prints no property line | - |
+| P17 | skipped (minimum scope, ledger 16.3) | - |
+| P20 | skipped (minimum scope, ledger 16.7) | - |
+| P21 | skipped (minimum scope, ledger 18.5) | - |
+| P22 | skipped (minimum scope, ledger 10.10) | - |
+| P23 | skipped (minimum scope, ledger 18.6) | - |
 
 ### 2.3 Example, static and compile-fail tests
 
-Filled by: `tests/host/run_all.sh` (non-property test results).
+Filled by: `tests/host/run_all.sh` (non-property test results). pytest counts below are the number of test records per file; every one passed.
 
 | Test | Result | Notes |
 |---|---|---|
-| `test_static.sh` | | |
-| `test_compile_fail.sh` | | |
-| `test_layout_doc.py` | | |
-| `test_tables.py` | | |
-| `test_fingerprint.py` | | |
-| `test_resolution.py` | | |
-| `test_nan.py` | | |
-| `test_adc_range.py` | | |
-| `test_presentation.py` | | |
-| `test_estop_classify.py` | | |
-| `test_legacy_text.py` | | |
-| `test_pool_empty.py` | | |
-| `test_tools.py` | | |
-| `run_all.sh --selfcheck` | | |
+| `test_static.sh` | pass | `static checks: passed=24 failed=0 skipped=0` |
+| `test_compile_fail.sh` | pass | 8 PASS lines: 7 narrow-field header edits fail to compile with the field's name, the unchanged headers compile |
+| `test_layout_doc.py` | not written | task 20.7 skipped; `docs/data_representation.md` is generated by `tools/evidence/gen_docs.py`, which stops when a computed Required_Bits differs from the code |
+| `test_tables.py` | covered by `test_codec_tables.py` | 10 tests pass, plus `tables.test.js` in Node (task 20.8 skipped as a separate file) |
+| `test_fingerprint.py` | not written | the parameter table CRC is checked by P24 (1,000 cases Python, 1,000 JavaScript) and `test_spec_conformance.py` |
+| `test_resolution.py` | skipped | task 3.13 rest; P1 covers the rounding |
+| `test_nan.py` | pass | 71 tests |
+| `test_adc_range.py` | not written | task 12.6 `todo` |
+| `test_presentation.py` | pass | 10 tests, plus `presentation.test.js` in Node |
+| `test_estop_classify.py` | not written | skipped (ledger 18.7) |
+| `test_legacy_text.py` | not written | skipped (ledger 18.7) |
+| `test_pool_empty.py` | not written | skipped (ledger 8.8) |
+| `test_tools.py` | pass | 97 tests |
+| `run_all.sh --selfcheck` | not run in this session | `test_selfcheck.sh` is part of the checked-in suite; the gate command above does not call it |
+
+Other pytest files in the run (tests, all passed): `test_baseline_lib.py` 6, `test_bitpack.py` 20, `test_codec_basic.py` 376, `test_codec_cross.py` 1, `test_codec_events.py` 85, `test_diff_barcode.py` 313, `test_isr_ring.py` 7, `test_msg_codec.py` 24, `test_nav_map.py` 243, `test_prop01_rounding.py` 71, `test_prop03_sentinels.py` 22, `test_prop09_c39_bijection.py` 1, `test_prop14_obstacle.py` 2, `test_prop15_hump.py` 16, `test_prop18_critical_sections.py` 9, `test_spec_conformance.py` 22, `test_status_snapshot.py` 15, `test_stubs.py` 9, `test_wire_basic.py` 22, `test_wire_tools.py` 5.
 
 ## 3. Track runs (Requirement 19.7)
+
+> **To be measured on the car.** Nothing in this section has been recorded yet; the tables stay empty until the run. Fill from: `python MQTT/telemetry_monitor.py --broker <LAPTOP_IP>` (add `--legacy-json` for the Baseline_Build); procedure below.
 
 Do 3 full track runs with each build on the same track, with the same barcode map and the same `robot_params.txt`. A run starts when the robot enters LINE_FOLLOWING at the track start and ends when it stops at the track end.
 
@@ -127,6 +143,8 @@ Procedure for each run:
 Result (every Revised_Build run matches the Baseline_Build runs in every column except the file names): `<pass/fail>`
 
 ## 4. Telemetry_Monitor summaries, checks L1 to L6 (Requirement 24.2)
+
+> **To be measured on the car.** Nothing in this section has been recorded yet; the tables stay empty until the run. Fill from: the summary `telemetry_monitor.py` prints when you press `q` in the runs of section 3.
 
 Filled by: the summary that `telemetry_monitor.py` prints when it quits (also written at the end of its log file). Use one full track run per build from section 3. Each run must include at least one command answered by an Ack_Frame (L5) and at least one ESTOP (L6).
 
@@ -154,6 +172,8 @@ Filled by: the summary that `telemetry_monitor.py` prints when it quits (also wr
 
 ## 5. Functional checklist (Requirement 24.3)
 
+> **To be measured on the car.** Nothing in this section has been recorded yet; the tables stay empty until the run. Fill from: fill the expected outcomes before the runs, the observed ones from the monitor log (`is02/event` lines) and CSV of section 3.
+
 Fill in the expected outcome on the track before the runs. A feature passes on a build only if the observed outcome equals the expected outcome.
 
 | Feature | Expected outcome on the track | Observed, Baseline_Build | Result, Baseline_Build | Observed, Revised_Build | Result, Revised_Build |
@@ -169,7 +189,11 @@ Fill in the expected outcome on the track before the runs. A feature passes on a
 
 ## 6. Hardware checks
 
+> **To be measured on the car.** Every check in this section needs the robot. The command for each check is at the top of its subsection.
+
 ### 6.1 Encoder counts on a 1,000 mm course at `SPEED_MAX_MM_S` (Requirement 10.7)
+
+> **To be measured on the car.** Fill from: drive method and `hal_enc_errors()` read over SWD as described below; `python MQTT/telemetry_monitor.py --broker <LAPTOP_IP>` gives `enc_l`, `enc_r`; builds `make clean && make APP_ROBOT=1 APP_PERF=1`.
 
 Builds: the Step 0 commit and the Revised_Build, both with `APP_PERF=1`, so the same runs also give the critical-section maxima at `SPEED_MAX_MM_S` for [performance.md](performance.md) section 5.
 
@@ -212,6 +236,8 @@ Procedure, 5 runs per build:
 
 ### 6.2 Barcode passes (Requirement 10.9)
 
+> **To be measured on the car.** Fill from: `BARCODE_DEBUG=1` (`python MQTT/robot_params.py` or `SET`), then the `BC_DBG` events and the `bc` field in `python MQTT/telemetry_monitor.py --broker <LAPTOP_IP>`.
+
 Set-up: one printed Code 39 barcode on the track, the same `LINE_BASE_MM_S` for both builds, and `BARCODE_DEBUG=1` so each `BC_DBG` event reports the overrun count (`ovr`). The overrun count can also be read over SWD (`print 'hal_isr.c'::g_bc_overruns`).
 
 Procedure, 5 passes per build:
@@ -243,6 +269,8 @@ Procedure, 5 passes per build:
 
 ### 6.3 Ultrasonic medians at 20 cm and 100 cm (Requirement 10.10)
 
+> **To be measured on the car.** Fill from: `python MQTT/telemetry_monitor.py --broker <LAPTOP_IP>`; column `obst_cm` of its CSV.
+
 The obstacle task pings only in LINE_FOLLOWING and OBSTACLE AVOIDANCE, so the robot is held stationary on a stand while it is in LINE_FOLLOWING.
 
 Set-up:
@@ -272,6 +300,8 @@ Procedure, for each build and each distance:
 
 ### 6.4 Wi-Fi link loss and MQTT session loss bits, offline buffering (Requirements 3.7, 3.9, 19.9)
 
+> **To be measured on the car.** Fill from: `python MQTT/telemetry_monitor.py --broker <LAPTOP_IP>` plus `python MQTT/is02_tool.py --broker <LAPTOP_IP> log docs/evidence/raw/<build>_faults_<date>.csv` for `faults`.
+
 Fault_Mask bit values: Wi-Fi link loss = bit 13 (8192), MQTT session loss = bit 14 (16384). The Baseline_Build has no such bits; record its state and console text as the reference.
 
 Procedure, for each build:
@@ -293,6 +323,8 @@ Procedure, for each build:
 
 ### 6.5 Encoder loss fault (Requirement 3.3)
 
+> **To be measured on the car.** Fill from: same two commands as 6.4.
+
 `FAULT_ENCODER_LOSS` is bit 2 (value 4). The check sets it when a wheel has duty above 0.30 (`ENC_LOSS_DUTY`) and zero encoder ticks for at least 200 ms (`ENC_LOSS_MS`).
 
 Procedure, for each build:
@@ -310,6 +342,8 @@ Procedure, for each build:
 | Revised_Build | Left | | | | | | |
 
 ### 6.6 Ultrasonic no-echo bit (Requirement 3.8)
+
+> **To be measured on the car.** Fill from: same two commands as 6.4, robot on the stand.
 
 Ultrasonic no-echo is Fault_Mask bit 15 (32768). The obstacle task pings only while line following, so use the stand set-up from section 6.3.
 
@@ -329,6 +363,8 @@ Procedure, for each build:
 
 ### 6.7 E-stop triggers (Requirement 19.10)
 
+> **To be measured on the car.** Fill from: `python MQTT/telemetry_monitor.py --broker <LAPTOP_IP>` (key `e` for the remote ESTOP) and the USB console.
+
 For each trigger, the motors must turn off, the state must become EMERGENCY STOP (or ERROR where the Baseline_Build enters ERROR for that cause), the Revised_Build must publish an Event_Frame and Ack_Frame carrying the same information as the Baseline_Build event and ack, and the robot must leave the state only through the same user action as on the Baseline_Build.
 
 | Trigger | How to cause it | Build | Motors off | State | Event (and ack) published | Reason text | Action that left the state | Result |
@@ -347,6 +383,8 @@ For each trigger, the motors must turn off, the state must become EMERGENCY STOP
 | Heartbeat watchdog (300 ms) | | Revised_Build | | | | | | |
 
 ### 6.8 On-target concurrency self-test, `APP_SELFTEST=1` (Requirement 9.8)
+
+> **To be measured on the car.** Fill from: `cd build_make && make clean && make APP_ROBOT=1 APP_SELFTEST=1`, then read the `[selftest]` line on the USB console.
 
 Build: Revised_Build with `make clean && make APP_ROBOT=1 APP_SELFTEST=1`. This build is used only for this check.
 
@@ -371,6 +409,8 @@ Procedure:
 | Result | `<pass/fail>` |
 
 ## 7. Failures and identified causes (Requirements 24.5, 24.8)
+
+> **To be measured on the car.** Nothing in this section has been recorded yet; the tables stay empty until the run. Fill from: fill from sections 2 to 6 once the car runs are in. The host-test section has no failure.
 
 Fill in one row for every failing Host_Test_Suite property (with its failing input and seed), every failing check L1 to L6, every functional checklist feature marked fail on either build, and every hardware check above that fails its limit or could not be measured. Leave the table empty if everything passes.
 

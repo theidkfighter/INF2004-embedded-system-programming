@@ -1,0 +1,551 @@
+== Host_Test_Suite (seed=12345) ==
+
+== Host_Test_Suite summary ==
+P1 Continuous stores round to the nearest step | frame.event.BC_DBG.width | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.event.CM13 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.event.CM9 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.event.HUMP.h | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.event.HUMP.max | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.event.MISSION_COMPLETE.dist | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.event.MISSION_COMPLETE.max | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.event.OBSTACLE.cm | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.event.SIDE_FOLLOW.limit | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.event.SIDE_FOLLOW.near | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.dist | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.duty_l | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.duty_r | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.hump_h | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.hump_max | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.hump_peak | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.obst_cm | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.pitch | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.scan0 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.scan1 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.scan2 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.scan3 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.scan4 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.spd_l | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.spd_r | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | frame.telemetry.turn_dps | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.motion.MC_BYPASS.dist | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.motion.MC_BYPASS.speed | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.motion.MC_BYPASS.timeout_ms | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.motion.MC_LINE.left | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.motion.MC_LINE.right | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.motion.MC_SPEED_LIMIT.scale | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.motion.MC_TURN.speed | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.motion.MC_TURN.timeout_ms | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.motion.MC_TURN.turn_deg | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.clear_left | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.clear_right | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.offset | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.r_min | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.scan0 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.scan1 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.scan2 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.scan3 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.scan4 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.theta_l | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.theta_r | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.width | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.x_l | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | msg.obstacle.x_r | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | odo.a_fwd_g | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | odo.dist_mm | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | odo.heading_deg | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | odo.turn_dps | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | odo.v_mm_s | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.imu_a.hump_h | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.imu_a.pitch | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.imu_b.hump_max | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.imu_b.hump_peak | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.imu_c.turn_dps | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.mot_a.spd_l | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.mot_a.spd_r | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.mot_b.duty_l | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.mot_b.duty_r | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.mot_b.speed_scale | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.mot_e.dist_mm | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.obs_a.obst_cm | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.obs_a.scan0 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.obs_b.scan1 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.obs_b.scan2 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.obs_c.scan3 | cases=200 | failed=0 | seed=12345
+P1 Continuous stores round to the nearest step | status.obs_c.scan4 | cases=200 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.BC_DBG.width | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.BC_DBG.width | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.BC_DBG.width | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.CM13 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.CM13 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.CM13 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.CM9 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.CM9 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.CM9 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.HUMP.h | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.HUMP.h | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.HUMP.h | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.HUMP.max | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.HUMP.max | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.HUMP.max | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.MISSION_COMPLETE.dist | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.MISSION_COMPLETE.dist | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.MISSION_COMPLETE.dist | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.MISSION_COMPLETE.max | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.MISSION_COMPLETE.max | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.MISSION_COMPLETE.max | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.OBSTACLE.cm | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.OBSTACLE.cm | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.OBSTACLE.cm | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.SIDE_FOLLOW.limit | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.SIDE_FOLLOW.limit | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.SIDE_FOLLOW.limit | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.SIDE_FOLLOW.near | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.SIDE_FOLLOW.near | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.event.SIDE_FOLLOW.near | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.dist | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.dist | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.dist | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.duty_l | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.duty_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.duty_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.duty_r | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.duty_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.duty_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.hump_h | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.hump_h | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.hump_h | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.hump_max | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.hump_max | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.hump_max | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.hump_peak | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.hump_peak | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.hump_peak | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.obst_cm | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.obst_cm | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.obst_cm | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.pitch | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.pitch | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.pitch | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan0 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan0 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan0 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan1 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan1 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan1 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan2 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan2 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan2 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan3 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan3 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan3 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan4 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan4 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.scan4 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.spd_l | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.spd_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.spd_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.spd_r | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.spd_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.spd_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.turn_dps | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.turn_dps | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | frame.telemetry.turn_dps | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | g_sat_count | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_BYPASS.dist | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_BYPASS.dist | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_BYPASS.dist | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_BYPASS.speed | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_BYPASS.speed | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_BYPASS.speed | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_BYPASS.timeout_ms | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_BYPASS.timeout_ms | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_BYPASS.timeout_ms | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_LINE.left | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_LINE.left | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_LINE.left | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_LINE.right | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_LINE.right | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_LINE.right | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_SPEED_LIMIT.scale | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_SPEED_LIMIT.scale | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_SPEED_LIMIT.scale | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_TURN.speed | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_TURN.speed | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_TURN.speed | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_TURN.timeout_ms | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_TURN.timeout_ms | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_TURN.timeout_ms | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_TURN.turn_deg | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_TURN.turn_deg | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.motion.MC_TURN.turn_deg | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.clear_left | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.clear_left | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.clear_left | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.clear_right | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.clear_right | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.clear_right | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.offset | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.offset | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.offset | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.r_min | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.r_min | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.r_min | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan0 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan0 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan0 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan1 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan1 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan1 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan2 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan2 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan2 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan3 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan3 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan3 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan4 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan4 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.scan4 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.theta_l | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.theta_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.theta_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.theta_r | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.theta_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.theta_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.width | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.width | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.width | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.x_l | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.x_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.x_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.x_r | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.x_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | msg.obstacle.x_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.a_fwd_g | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.a_fwd_g | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.a_fwd_g | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.dist_mm | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.dist_mm | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.dist_mm | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.heading_deg | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.heading_deg | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.heading_deg | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.turn_dps | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.turn_dps | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.turn_dps | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.v_mm_s | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.v_mm_s | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | odo.v_mm_s | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_a.hump_h | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_a.hump_h | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_a.hump_h | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_a.pitch | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_a.pitch | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_a.pitch | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_b.hump_max | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_b.hump_max | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_b.hump_max | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_b.hump_peak | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_b.hump_peak | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_b.hump_peak | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_c.turn_dps | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_c.turn_dps | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.imu_c.turn_dps | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_a.spd_l | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_a.spd_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_a.spd_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_a.spd_r | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_a.spd_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_a.spd_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_b.duty_l | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_b.duty_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_b.duty_l | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_b.duty_r | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_b.duty_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_b.duty_r | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_b.speed_scale | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_b.speed_scale | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_b.speed_scale | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_e.dist_mm | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_e.dist_mm | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.mot_e.dist_mm | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_a.obst_cm | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_a.obst_cm | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_a.obst_cm | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_a.scan0 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_a.scan0 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_a.scan0 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_b.scan1 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_b.scan1 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_b.scan1 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_b.scan2 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_b.scan2 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_b.scan2 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_c.scan3 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_c.scan3 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_c.scan3 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_c.scan4 | cases=1 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_c.scan4 | cases=1000 | failed=0 | seed=12345
+P2 Out-of-range and NaN stores saturate and are counted | status.obs_c.scan4 | cases=1000 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | code39_index | cases=256 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | code39_index | cases=200 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.event.CM13 | cases=1008 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.event.CM13 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.event.CM9 | cases=1008 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.event.CM9 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.event.OBSTACLE.cm | cases=1008 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.event.OBSTACLE.cm | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.telemetry.obst_cm | cases=1008 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.telemetry.obst_cm | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.telemetry.scan0 | cases=1008 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.telemetry.scan0 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.telemetry.scan1 | cases=1008 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.telemetry.scan1 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.telemetry.scan2 | cases=1008 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.telemetry.scan2 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.telemetry.scan3 | cases=1008 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.telemetry.scan3 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.telemetry.scan4 | cases=1008 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | frame.telemetry.scan4 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | msg.obstacle.r_min | cases=1008 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | msg.obstacle.r_min | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | msg.obstacle.scan0 | cases=1008 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | msg.obstacle.scan0 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | msg.obstacle.scan1 | cases=1008 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | msg.obstacle.scan1 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | msg.obstacle.scan2 | cases=1008 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | msg.obstacle.scan2 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | msg.obstacle.scan3 | cases=1008 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | msg.obstacle.scan3 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | msg.obstacle.scan4 | cases=1008 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | msg.obstacle.scan4 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | status.obs_a.obst_cm | cases=1008 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | status.obs_a.obst_cm | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | status.obs_a.scan0 | cases=1008 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | status.obs_a.scan0 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | status.obs_b.scan1 | cases=1008 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | status.obs_b.scan1 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | status.obs_b.scan2 | cases=1008 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | status.obs_b.scan2 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | status.obs_c.scan3 | cases=1008 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | status.obs_c.scan3 | cases=100 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | status.obs_c.scan4 | cases=1008 | failed=0 | seed=12345
+P3 Sentinel codes never collide with values | status.obs_c.scan4 | cases=100 | failed=0 | seed=12345
+P9 Code 39 index mapping is a bijection | code39 | cases=43 | failed=0 | seed=12345
+P9 Code 39 index mapping is a bijection | code39 | cases=43 | failed=0 | seed=12345
+P10 Inter-task messages round-trip | motion | cases=300 | failed=0 | seed=12345
+P10 Inter-task messages round-trip | nav | cases=200 | failed=0 | seed=12345
+P10 Inter-task messages round-trip | obstacle | cases=300 | failed=0 | seed=12345
+P14 Obstacle planning matches the Baseline_Build | free scan | cases=1000 | failed=0 | seed=12345
+P14 Obstacle planning matches the Baseline_Build | shaped scan | cases=1000 | failed=0 | seed=12345
+P15 Hump detection matches the Baseline_Build | hump_ctx_t.f, free samples | cases=1000 | failed=0 | seed=12345
+P15 Hump detection matches the Baseline_Build | hump_ctx_t.f, held pitch runs | cases=1000 | failed=0 | seed=12345
+P16 Event detail text can be rebuilt | AVOIDANCE_ABORT | cases=200 | failed=0 | seed=12345
+P16 Event detail text can be rebuilt | BARCODE | cases=200 | failed=0 | seed=12345
+P16 Event detail text can be rebuilt | BARCODE_FAILED | cases=200 | failed=0 | seed=12345
+P16 Event detail text can be rebuilt | BARCODE_FAULT | cases=200 | failed=0 | seed=12345
+P16 Event detail text can be rebuilt | BARCODE_UNKNOWN | cases=200 | failed=0 | seed=12345
+P16 Event detail text can be rebuilt | BATTERY_LOW | cases=200 | failed=0 | seed=12345
+P16 Event detail text can be rebuilt | BC_DBG | cases=200 | failed=0 | seed=12345
+P16 Event detail text can be rebuilt | BYPASS_BLOCKED | cases=200 | failed=0 | seed=12345
+P16 Event detail text can be rebuilt | BYPASS_COMPLETE | cases=200 | failed=0 | seed=12345
+P16 Event detail text can be rebuilt | BYPASS_EXTEND | cases=200 | failed=0 | seed=12345
+P16 Event detail text can be rebuilt | BYPASS_RETRY | cases=200 | failed=0 | seed=12345
+P16 Event detail text can be rebuilt | BYPASS_RETURN | cases=200 | failed=0 | seed=12345
+P16 Event detail text can be rebuilt | BYPASS_SIDESTEP | cases=200 | failed=0 | seed=12345
+P16 Event detail text can be rebuilt | EMERGENCY_STOP | cases=200 | failed=0 | seed=12345
+P16 Event detail text can be rebuilt | ERROR | cases=200 | failed=0 | seed=12345
+P16 Event detail text can be rebuilt | FAULT_IMU | cases=200 | failed=0 | seed=12345
+P16 Event detail text can be rebuilt | FAULT_IMU_I2C | cases=200 | failed=0 | seed=12345
+P16 Event detail text can be rebuilt | FINE_SCAN | cases=200 | failed=0 | seed=12345
+P16 Event detail text can be rebuilt | HUMP_END | cases=200 | failed=0 | seed=12345
+P16 Event detail text can be rebuilt | HUMP_PEAK | cases=200 | failed=0 | seed=12345
+P16 Event detail text can be rebuilt | HUMP_START | cases=200 | failed=0 | seed=12345
+P16 Event detail text can be rebuilt | IMPACT | cases=200 | failed=0 | seed=12345
+P16 Event detail text can be rebuilt | IMU_OK | cases=200 | failed=0 | seed=12345
+P16 Event detail text can be rebuilt | LINE_FOUND | cases=200 | failed=0 | seed=12345
+P16 Event detail text can be rebuilt | LINE_LOST | cases=200 | failed=0 | seed=12345
+P16 Event detail text can be rebuilt | LINE_SEARCH | cases=200 | failed=0 | seed=12345
+P16 Event detail text can be rebuilt | MAP | cases=200 | failed=0 | seed=12345
+P16 Event detail text can be rebuilt | MAP_WARNING | cases=200 | failed=0 | seed=12345
+P16 Event detail text can be rebuilt | MISSION_COMPLETE | cases=200 | failed=0 | seed=12345
+P16 Event detail text can be rebuilt | NAV | cases=200 | failed=0 | seed=12345
+P16 Event detail text can be rebuilt | NAV_ACTION | cases=200 | failed=0 | seed=12345
+P16 Event detail text can be rebuilt | OBSTACLE | cases=200 | failed=0 | seed=12345
+P16 Event detail text can be rebuilt | OBSTACLE_BACKOFF | cases=200 | failed=0 | seed=12345
+P16 Event detail text can be rebuilt | OBSTACLE_CLEARED | cases=200 | failed=0 | seed=12345
+P16 Event detail text can be rebuilt | OBSTACLE_PROFILE | cases=200 | failed=0 | seed=12345
+P16 Event detail text can be rebuilt | OBSTACLE_RESCAN | cases=200 | failed=0 | seed=12345
+P16 Event detail text can be rebuilt | OBSTACLE_TIE | cases=200 | failed=0 | seed=12345
+P16 Event detail text can be rebuilt | OBST_REVERSE_CAP | cases=200 | failed=0 | seed=12345
+P16 Event detail text can be rebuilt | RECOVERED | cases=200 | failed=0 | seed=12345
+P16 Event detail text can be rebuilt | RECOVERY_REFUSED | cases=200 | failed=0 | seed=12345
+P16 Event detail text can be rebuilt | SIDE_FOLLOW | cases=200 | failed=0 | seed=12345
+P16 Event detail text can be rebuilt | SIDE_LOOK | cases=200 | failed=0 | seed=12345
+P16 Event detail text can be rebuilt | START_REFUSED | cases=200 | failed=0 | seed=12345
+P16 Event detail text can be rebuilt | STATE | cases=200 | failed=0 | seed=12345
+P16 Event detail text can be rebuilt | TURN_SNAP | cases=200 | failed=0 | seed=12345
+P16 Event detail text can be rebuilt | all events | cases=4500 | failed=0 | seed=12345
+P18 Critical sections are balanced and cover every shared update | Status_Snapshot units | cases=100 | failed=0 | seed=12345
+P18 Critical sections are balanced and cover every shared update | g_buzz | cases=100 | failed=0 | seed=12345
+P18 Critical sections are balanced and cover every shared update | g_done | cases=100 | failed=0 | seed=12345
+P18 Critical sections are balanced and cover every shared update | g_estop_pwm_off_us | cases=100 | failed=0 | seed=12345
+P18 Critical sections are balanced and cover every shared update | g_net_flags, g_estop_rx_us | cases=100 | failed=0 | seed=12345
+P18 Critical sections are balanced and cover every shared update | odometry_put, odometry_get | cases=100 | failed=0 | seed=12345
+P19 Every encoded frame has the fixed header and length | cmd+map+config | cases=50 | failed=0 | seed=12345
+P19 Every encoded frame has the fixed header and length | event | cases=100 | failed=0 | seed=12345
+P19 Every encoded frame has the fixed header and length | telemetry+heartbeat | cases=50 | failed=0 | seed=12345
+P24 The parameter table version detects table edits | parameter table | cases=1000 | failed=0 | seed=12345
+P24 The parameter table version detects table edits | parameter table | cases=1000 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | AVOIDANCE_ABORT | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | AVOIDANCE_ABORT | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | BARCODE | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | BARCODE | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | BARCODE_FAILED | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | BARCODE_FAILED | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | BARCODE_FAULT | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | BARCODE_FAULT | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | BARCODE_UNKNOWN | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | BARCODE_UNKNOWN | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | BATTERY_LOW | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | BATTERY_LOW | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | BC_DBG | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | BC_DBG | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | BYPASS_BLOCKED | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | BYPASS_BLOCKED | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | BYPASS_COMPLETE | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | BYPASS_COMPLETE | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | BYPASS_EXTEND | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | BYPASS_EXTEND | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | BYPASS_RETRY | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | BYPASS_RETRY | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | BYPASS_RETURN | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | BYPASS_RETURN | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | BYPASS_SIDESTEP | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | BYPASS_SIDESTEP | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | EMERGENCY_STOP | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | EMERGENCY_STOP | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | ERROR | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | ERROR | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | FAULT_IMU | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | FAULT_IMU | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | FAULT_IMU_I2C | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | FAULT_IMU_I2C | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | FINE_SCAN | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | FINE_SCAN | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | HUMP_END | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | HUMP_END | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | HUMP_PEAK | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | HUMP_PEAK | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | HUMP_START | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | HUMP_START | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | IMPACT | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | IMPACT | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | IMU_OK | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | IMU_OK | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | LINE_FOUND | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | LINE_FOUND | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | LINE_LOST | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | LINE_LOST | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | LINE_SEARCH | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | LINE_SEARCH | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | MAP | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | MAP | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | MAP_WARNING | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | MAP_WARNING | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | MISSION_COMPLETE | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | MISSION_COMPLETE | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | NAV | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | NAV | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | NAV_ACTION | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | NAV_ACTION | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | OBSTACLE | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | OBSTACLE | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | OBSTACLE_BACKOFF | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | OBSTACLE_BACKOFF | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | OBSTACLE_CLEARED | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | OBSTACLE_CLEARED | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | OBSTACLE_PROFILE | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | OBSTACLE_PROFILE | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | OBSTACLE_RESCAN | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | OBSTACLE_RESCAN | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | OBSTACLE_TIE | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | OBSTACLE_TIE | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | OBST_REVERSE_CAP | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | OBST_REVERSE_CAP | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | RECOVERED | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | RECOVERED | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | RECOVERY_REFUSED | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | RECOVERY_REFUSED | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | SIDE_FOLLOW | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | SIDE_FOLLOW | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | SIDE_LOOK | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | SIDE_LOOK | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | START_REFUSED | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | START_REFUSED | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | STATE | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | STATE | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | TURN_SNAP | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | TURN_SNAP | cases=100 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | ack | cases=1000 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | ack | cases=1000 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | heartbeat | cases=1000 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | heartbeat | cases=1000 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | telemetry | cases=1000 | failed=0 | seed=12345
+P25 Robot-to-laptop frames round-trip through both Laptop_Codecs | telemetry | cases=1000 | failed=0 | seed=12345
+P26 Laptop-to-robot frames round-trip into the Wire_Codec | BARCODE | cases=1000 | failed=0 | seed=12345
+P26 Laptop-to-robot frames round-trip into the Wire_Codec | BARCODE | cases=1000 | failed=0 | seed=12345
+P26 Laptop-to-robot frames round-trip into the Wire_Codec | ESTOP | cases=1000 | failed=0 | seed=12345
+P26 Laptop-to-robot frames round-trip into the Wire_Codec | ESTOP | cases=1000 | failed=0 | seed=12345
+P26 Laptop-to-robot frames round-trip into the Wire_Codec | GET_MAP | cases=1000 | failed=0 | seed=12345
+P26 Laptop-to-robot frames round-trip into the Wire_Codec | GET_MAP | cases=1000 | failed=0 | seed=12345
+P26 Laptop-to-robot frames round-trip into the Wire_Codec | GET_PARAMS | cases=1000 | failed=0 | seed=12345
+P26 Laptop-to-robot frames round-trip into the Wire_Codec | GET_PARAMS | cases=1000 | failed=0 | seed=12345
+P26 Laptop-to-robot frames round-trip into the Wire_Codec | MAP | cases=1000 | failed=0 | seed=12345
+P26 Laptop-to-robot frames round-trip into the Wire_Codec | MAP | cases=1000 | failed=0 | seed=12345
+P26 Laptop-to-robot frames round-trip into the Wire_Codec | MAP_CLEAR | cases=1000 | failed=0 | seed=12345
+P26 Laptop-to-robot frames round-trip into the Wire_Codec | MAP_CLEAR | cases=1000 | failed=0 | seed=12345
+P26 Laptop-to-robot frames round-trip into the Wire_Codec | PING | cases=1000 | failed=0 | seed=12345
+P26 Laptop-to-robot frames round-trip into the Wire_Codec | PING | cases=1000 | failed=0 | seed=12345
+P26 Laptop-to-robot frames round-trip into the Wire_Codec | RESUME | cases=1000 | failed=0 | seed=12345
+P26 Laptop-to-robot frames round-trip into the Wire_Codec | RESUME | cases=1000 | failed=0 | seed=12345
+P26 Laptop-to-robot frames round-trip into the Wire_Codec | SET | cases=1000 | failed=0 | seed=12345
+P26 Laptop-to-robot frames round-trip into the Wire_Codec | SET | cases=1000 | failed=0 | seed=12345
+P26 Laptop-to-robot frames round-trip into the Wire_Codec | START | cases=1000 | failed=0 | seed=12345
+P26 Laptop-to-robot frames round-trip into the Wire_Codec | START | cases=1000 | failed=0 | seed=12345
+P26 Laptop-to-robot frames round-trip into the Wire_Codec | STOP | cases=1000 | failed=0 | seed=12345
+P26 Laptop-to-robot frames round-trip into the Wire_Codec | STOP | cases=1000 | failed=0 | seed=12345
+P26 Laptop-to-robot frames round-trip into the Wire_Codec | config | cases=1000 | failed=0 | seed=12345
+P26 Laptop-to-robot frames round-trip into the Wire_Codec | config | cases=1000 | failed=0 | seed=12345
+P26 Laptop-to-robot frames round-trip into the Wire_Codec | map | cases=1000 | failed=0 | seed=12345
+P26 Laptop-to-robot frames round-trip into the Wire_Codec | map | cases=1000 | failed=0 | seed=12345
+P27 Decode then encode is the identity on bytes | ack | cases=1000 | failed=0 | seed=12345
+P27 Decode then encode is the identity on bytes | ack | cases=1000 | failed=0 | seed=12345
+P27 Decode then encode is the identity on bytes | command | cases=1000 | failed=0 | seed=12345
+P27 Decode then encode is the identity on bytes | command | cases=1000 | failed=0 | seed=12345
+P27 Decode then encode is the identity on bytes | config | cases=1000 | failed=0 | seed=12345
+P27 Decode then encode is the identity on bytes | config | cases=1000 | failed=0 | seed=12345
+P27 Decode then encode is the identity on bytes | event | cases=1000 | failed=0 | seed=12345
+P27 Decode then encode is the identity on bytes | event | cases=1000 | failed=0 | seed=12345
+P27 Decode then encode is the identity on bytes | heartbeat | cases=1000 | failed=0 | seed=12345
+P27 Decode then encode is the identity on bytes | heartbeat | cases=1000 | failed=0 | seed=12345
+P27 Decode then encode is the identity on bytes | map | cases=1000 | failed=0 | seed=12345
+P27 Decode then encode is the identity on bytes | map | cases=1000 | failed=0 | seed=12345
+P27 Decode then encode is the identity on bytes | telemetry | cases=1000 | failed=0 | seed=12345
+P27 Decode then encode is the identity on bytes | telemetry | cases=1000 | failed=0 | seed=12345
+P28 The three codecs agree on the shared vectors | shared vectors | cases=345 | failed=0 | seed=12345
+P28 The three codecs agree on the shared vectors | shared vectors | cases=445 | failed=0 | seed=12345
+P29 Tool inputs parse to Parameter_IDs or report the bad line | robot_params.txt | cases=500 | failed=0 | seed=12345
+P29 Tool inputs parse to Parameter_IDs or report the bad line | robot_params.txt | cases=500 | failed=0 | seed=12345
+P29 Tool inputs parse to Parameter_IDs or report the bad line | robot_params.txt with a bad line | cases=500 | failed=0 | seed=12345
+P29 Tool inputs parse to Parameter_IDs or report the bad line | robot_params.txt with a bad line | cases=500 | failed=0 | seed=12345
+P30 Unknown codes are shown numerically | ack command | cases=200 | failed=0 | seed=12345
+P30 Unknown codes are shown numerically | ack command | cases=200 | failed=0 | seed=12345
+P30 Unknown codes are shown numerically | ack reason | cases=200 | failed=0 | seed=12345
+P30 Unknown codes are shown numerically | ack reason | cases=200 | failed=0 | seed=12345
+P30 Unknown codes are shown numerically | event | cases=200 | failed=0 | seed=12345
+P30 Unknown codes are shown numerically | event | cases=200 | failed=0 | seed=12345
+other tests: passed=1489 failed=0 skipped=0
+
+properties=543 failed=0 | other tests failed=0 | seed=12345
+Host_Test_Suite: PASSED (seed=12345)
+exit 0

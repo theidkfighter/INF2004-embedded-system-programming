@@ -36,9 +36,9 @@ The spec in `spec/` (requirements, design, tasks) is the plan. **Hard rule from 
 | What | Commit / branch |
 |---|---|
 | Repository | `github.com/theidkfighter/INF2004-embedded-system-programming` |
-| Integration branch | `Poh-Loon` |
-| Firmware track branch | `cr1/fw` (from `Poh-Loon`) |
-| Laptop track branch | `cr1/laptop` (from `Poh-Loon`) |
+| Base branch | `Poh-Loon` |
+| Working CR1 branch (the only one since 2 Nov 2026) | `cr1/fw-rest` (from `cr1/laptop`, which came from `Poh-Loon`) |
+| Closed branches | `cr1/fw`, `Wei-En` and `cr1/laptop`: their work is already in `cr1/fw-rest`; they get no more commits |
 | Baseline_Build (RAM, message-size and behaviour "before") | `bca79643d6f9bdd3938c353fa5f6fe791fc68f94` (recorded in `docs/evidence/README.md`) |
 | Step 0 + first part of Step 1 (timing "before": probes) | `542368f` ("Add minimum-bit data representation: Step 0 tooling and Step 1 foundations") |
 | Obstacle-avoidance work already merged into Poh-Loon | `codex/ultrasonic-refinement` (`45dfa2c`) and `main` (`af2f71e`) |
@@ -52,7 +52,7 @@ The chat works on its own clone of the repo in its cloud workspace, not on the u
 - **Pushing:**
   - It needs push access. The chat asks for it with its "add repository" tool (`access: push`). That needs the user's GitHub account linked to Claude, with write access to the team repo.
   - Without push access, the chat commits locally, makes a patch (`git format-patch origin/<branch>..HEAD`) and gives it to the user, who applies it in their clone with `git am <file>`. **On 1 Nov 2026 no GitHub account was linked, so patches are the default.**
-- **Which branch:** push to your track branch (`cr1/fw` or `cr1/laptop`), never straight to `Poh-Loon`. The user merges into `Poh-Loon` as `INTEGRATION.md` says.
+- **Which branch:** commit and push on `cr1/fw-rest`, never straight to `Poh-Loon` (the base). The user merges `cr1/fw-rest` into `Poh-Loon` as `INTEGRATION.md` says.
 
 ## 4. Environment set-up (cloud workspace, Ubuntu 24.04)
 

@@ -57,9 +57,9 @@ The laptop track can start **now**, in parallel with FW-01a: LT-01, LT-02 and LT
 
 ## 4. Branches and merging
 
-1. Each track works on its branch: `cr1/fw` or `cr1/laptop`.
-2. At the end of each step, the track's gate passes on its branch, then the user merges the branch into `Poh-Loon` (pull request or `git merge --no-ff`).
-3. Before starting a step, merge `Poh-Loon` back into your track branch (`git merge origin/Poh-Loon`), so you have the other track's latest work and the contract.
+1. All CR1 work (both tracks) is on one branch, `cr1/fw-rest`, since 2 Nov 2026. `Poh-Loon` is the base; `cr1/fw`, `Wei-En` and `cr1/laptop` are closed and their work is already in `cr1/fw-rest`.
+2. At the end of each step, the gate passes on `cr1/fw-rest`, then the user merges it into `Poh-Loon` (pull request or `git merge --no-ff`).
+3. Before starting a step, merge `Poh-Loon` back into `cr1/fw-rest` (`git merge origin/Poh-Loon`) if it has moved, so you have the latest base and the contract.
 4. **Expected conflicts:** none in code, because files don't overlap. If `git merge` reports one, stop and record it; don't resolve it by editing the other track's files.
 5. After every merge into `Poh-Loon`, run the **full** gate there: firmware build + all host tests. That's the integration test.
 
