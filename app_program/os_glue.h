@@ -14,6 +14,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "app_types.h"
+#include "shared.h"
 
 /* ---- task priorities (smaller number = higher priority) ----
  * DR Section 3 order, offset to fit around the template's services:
@@ -46,21 +47,14 @@
 #define EVF_ERROR_REQ        (1u << 16)   /* any task: enter ERROR (fault bits say why) */
 #define EVF_LOCAL_STOP       (1u << 17)   /* BTN2 */
 
-/* ---- buzzer patterns (EVF_BUZZER_REQ) ---- */
-#define BUZZ_NONE        (0u)
-#define BUZZ_START       (1u)
-#define BUZZ_BARCODE     (2u)
-#define BUZZ_COMPLETE    (3u)
-#define BUZZ_ERROR       (4u)
-#define BUZZ_LOW_BATTERY (5u)
-#define BUZZ_WARN        (6u)
-
-/* ---- heartbeats watched by the safety monitor ---- */
+/* ---- heartbeats watched by the safety monitor ----
+   Modular 8-bit counters, one writer each. The check only needs "changed
+   since the last 10 ms look"; 8 bits alias only after 256 missed periods. */
 #define HB_MOTION   (0u)
 #define HB_LINE     (1u)
 #define HB_IMU      (2u)
 #define HB_COUNT    (3u)
-extern volatile uint32_t g_hb[HB_COUNT];
+extern volatile uint8_t g_hb[HB_COUNT];
 
 /* ---- kernel objects ---- */
 extern ID g_flg_sys;
@@ -89,15 +83,14 @@ app_msg_t *msg_recv(ID mbxid, TMO tmo);          /* NULL on timeout */
 bool       post_motion(const motion_cmd_t *p_cmd);
 bool       post_nav(nav_event_type_t type, char code);
 bool       post_obstacle(const obstacle_profile_t *p_prof);
-bool       post_event(const char *p_name, const char *p_detail);   /* is02/event */
+bool       post_evt(const evt_msg_t *p_m);                         /* is02/event (evt.h builds it) */
 
 void       flag_set(uint32_t bits);
 void       flag_clear(uint32_t bits);
 uint32_t   flag_peek(void);
 bool       flag_take(uint32_t bits, uint32_t *p_got);              /* read + clear these bits */
 
-void       buzzer_request(uint32_t pattern);
-uint32_t   buzzer_pattern_take(void);
+void       buzzer_request(uint32_t pattern);         /* ignored if > BUZZ_WARN */
 
 /* System state (DR Section 5). Only the safety monitor may leave or enter
    EMERGENCY_STOP / ERROR; other callers are refused while either is active. */
@@ -105,24 +98,8 @@ bool       sys_set_state(sys_state_t state, bool b_safety);
 sys_state_t sys_state(void);
 void       fault_set(uint32_t fault_bits);       /* NFR19: reported in telemetry */
 void       fault_clear(uint32_t fault_bits);
-extern const char * volatile g_stop_reason;      /* why the last E-stop / ERROR happened */
-extern volatile uint32_t g_reacq_seq;            /* bumped by the bypass: TSK_LINE re-arms its line watch */
-
-/* Shared odometry (written by the motion task) */
-typedef struct
-{
-    int32_t enc_r;
-    int32_t enc_l;
-    float   dist_r_mm;          /* signed, forward + */
-    float   dist_l_mm;
-    float   heading_deg;        /* from the encoders, + = clockwise */
-    float   v_mm_s;             /* mean of both wheels */
-    float   a_fwd_g;            /* forward acceleration from the encoder speed */
-    float   turn_dps;
-    uint32_t odo_um;            /* travelled distance, monotonic, micrometres */
-} odometry_t;
-void       odometry_get(odometry_t *p_out);
-void       odometry_put(const odometry_t *p_in);
+/* why the last E-stop / ERROR happened: st_stop() (status.h), stop_reason_t */
+extern volatile uint8_t g_reacq_seq;             /* modular, bumped by the bypass: TSK_LINE re-arms its line watch */
 
 /* Pushes driver-held parameters (encoder directions, servo range) after a change */
 void       params_apply(void);

@@ -10,6 +10,7 @@ Release
 build_make/tools/elf2uf2
 tools/elf2uf2/elf2uf2
 build_make/.build_profile
+build_make/.robot_opts
 
 # Local Wi-Fi credentials. Copy config/wifi_credentials.example.h to this
 # path and edit it; never commit the populated file.
@@ -29,6 +30,18 @@ config/mqtt_config.h
 tests/test_logic
 tests/test_logic.exe
 
+# DO NOT push import leftovers
+/pico_sdk_import.cmake
+/build/
+# from kiro
+references
+robot_firmware
+.kiro
+
+# local build log, Windows elf2uf2 build, Mosquitto persistence file
+build_make/build.log
+build_make/tools/elf2uf2.exe
+is02_mosquitto.db
 # DO NOT push import leftovers
 /pico_sdk_import.cmake
 /build/

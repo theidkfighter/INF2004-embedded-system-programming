@@ -21,6 +21,7 @@
 #include <tk/tkernel.h>
 
 #include "os_glue.h"
+#include "status.h"
 #include "motion_api.h"
 #include "line_logic.h"
 #include "barcode_logic.h"
@@ -28,6 +29,7 @@
 #include "bc_multi.h"
 #include "app_params.h"
 #include "hal.h"
+#include "perf.h"
 #include "jfmt.h"
 #include "robot_config.h"
 
@@ -49,7 +51,7 @@ LOCAL float        g_path_frac;
 
 LOCAL bool is_black(bool b_level)
 {
-    return b_level == (g_params.line_do_black_high > 0.5f);
+    return b_level == (prm_tri(PRM_LINE_DO_BLACK_HIGH) > 0);
 }
 
 LOCAL void barcode_arm(void)
@@ -68,14 +70,14 @@ LOCAL void barcode_arm(void)
     g_bc_par.stray_gap_um = 30000u;
     g_bc_par.max_gap_um   = 60000u;
     bc_reset(&g_bc);
-    g_det_on = b_ok && (g_params.barcode_detect > 0.5f);
+    g_det_on = b_ok && prm_flag(PRM_BARCODE_DETECT);
     if (g_det_on)
     {
         /* bc_detect.c on distance bins (BARCODE_DETECT = 1) */
         float dh = g_params.barcode_det_hys * ((b > w) ? (b - w) : (w - b));
 
         bcm_init(&g_bcm, (uint32_t)w, (uint32_t)b, g_params.barcode_det_hys,
-                 (uint32_t)(g_params.barcode_levels + 0.5f));
+                 (uint32_t)prm_int(PRM_BARCODE_LEVELS));
         bcm_set_adapt_swing(&g_bcm, g_params.barcode_adapt_swing);
         thr_black = (uint32_t)(b_high ? (mid + dh) : (mid - dh));
         thr_white = (uint32_t)(b_high ? (mid - dh) : (mid + dh));
@@ -87,12 +89,10 @@ LOCAL void barcode_arm(void)
         hal_barcode_raw(false);
         hal_barcode_config(thr_black, thr_white, b_high, b_ok);
     }
-    g_status.bc_thr_black = thr_black;
-    g_status.bc_thr_white = thr_white;
-    g_status.bc_enabled   = b_ok ? 1u : 0u;
+    st_set_bc_levels(thr_black, thr_white, b_ok);
     if (!b_ok)
     {
-        (void)post_event("BC_DBG", "barcode sampling OFF: IR_WHITE_ADC / IR_BLACK_ADC unset or too close");
+        (void)evt_post1(EVC_BC_DBG, 0u, 3u);   /* variant 0: "barcode sampling OFF: IR_WHITE_ADC / IR_BLACK_ADC unset or too close" */
     }
 }
 
@@ -104,37 +104,37 @@ LOCAL uint32_t odo_to_um(uint32_t odo_counts)
 
 LOCAL void report_barcode(bc_result_t res, char code, bool b_rev)
 {
-    char    text[TLM_EVENT_DETAIL_LEN];
+    char    text[32];
     jbuf_t  jb;
+    evt_b_t b;
 
     jb_init(&jb, text, sizeof(text));
     if (res == BC_DECODED)
     {
         jb_char(&jb, code);
         jb_raw(&jb, b_rev ? " (read backwards)" : " (read forwards)");
-        g_status.barcode = code;
-        g_status.barcodes_read++;
+        st_barcode_read(code);
+        /* BARCODE / BARCODE_UNKNOWN (digit or symbol): code U6, backwards U1 */
+        evt_begin(&b, ((code >= 'A') && (code <= 'Z')) ? EVC_BARCODE : EVC_BARCODE_UNKNOWN);
+        evt_u(&b, evt_char6(code), 6u);
+        evt_u(&b, b_rev ? 1u : 0u, 1u);
         if ((code >= 'A') && (code <= 'Z'))
         {
             (void)post_nav(NAV_BARCODE, code);
             buzzer_request(BUZZ_BARCODE);
-            (void)post_event("BARCODE", text);
         }
-        else
-        {
-            (void)post_event("BARCODE_UNKNOWN", text);   /* digit or symbol: not a command */
-        }
+        (void)evt_post(&b);
         log_line(text);
     }
     else if (res == BC_FAULT)
     {
         fault_set(FAULT_BARCODE);
         (void)post_nav(NAV_BARCODE_FAULT, 'C');
-        (void)post_event("BARCODE_FAULT", "3 ambiguous barcodes: going straight (C)");
+        (void)evt_post0(EVC_BARCODE_FAULT);   /* "3 ambiguous barcodes: going straight (C)" */
     }
     else if (res == BC_FAILED)
     {
-        (void)post_event("BARCODE_FAILED", "window did not decode");
+        (void)evt_post0(EVC_BARCODE_FAILED);  /* "window did not decode" */
     }
     else
     {
@@ -148,69 +148,59 @@ LOCAL void report_barcode(bc_result_t res, char code, bool b_rev)
    starting with a bar). Narrow should be ~3x smaller than wide. */
 LOCAL void debug_widths(const bc_ctx_t *p_bc, uint32_t n);
 
+/* BC_DBG window fields: n U7, res E2 (bc_result_t), code U6, backwards U1,
+   thr_b U12, thr_w U12, overruns U16 (laptop: "n=29 decoded Z (forwards),
+   thr 2400/1800, ovr 0"; n < 9 with res 0 = "stray mark") */
+LOCAL void bc_window_fields(evt_b_t *p_b, uint32_t n, bc_result_t res, char code, bool b_rev)
+{
+    evt_u(p_b, n, 7u);
+    evt_u(p_b, (uint32_t)res & 3u, 2u);
+    evt_u(p_b, (res == BC_DECODED) ? evt_char6(code) : 63u, 6u);   /* C6, 63 = none */
+    evt_u(p_b, ((res == BC_DECODED) && b_rev) ? 1u : 0u, 1u);
+    evt_u(p_b, st_bc_thr_black(), 12u);
+    evt_u(p_b, st_bc_thr_white(), 12u);
+    evt_u(p_b, hal_barcode_overruns(), 16u);
+}
+
 LOCAL void debug_window(bc_result_t res, char code, bool b_rev)
 {
-    char     text[TLM_EVENT_DETAIL_LEN];
-    jbuf_t   jb;
+    evt_b_t  b;
     uint32_t n = g_bc.last_n;
 
-    if ((g_params.barcode_debug < 0.5f) || (n < 3u))
+    if (!prm_flag(PRM_BARCODE_DEBUG) || (n < 3u))
     {
         return;
     }
-    jb_init(&jb, text, sizeof(text));
-    jb_raw(&jb, "n=");
-    jb_uint(&jb, n);
-    if (res == BC_DECODED)
-    {
-        jb_raw(&jb, " decoded ");
-        jb_char(&jb, code);
-        jb_raw(&jb, b_rev ? " (backwards)" : " (forwards)");
-    }
-    else if (res == BC_NONE)
-    {
-        jb_raw(&jb, (n < BARCODE_MIN_ELEMENTS) ? " stray mark (fewer than 9)" : " closed");
-    }
-    else
-    {
-        jb_raw(&jb, " NOT decoded");
-    }
-    jb_raw(&jb, ", thr ");
-    jb_uint(&jb, g_status.bc_thr_black);
-    jb_char(&jb, '/');
-    jb_uint(&jb, g_status.bc_thr_white);
-    jb_raw(&jb, ", ovr ");
-    jb_uint(&jb, hal_barcode_overruns());
-    (void)post_event("BC_DBG", text);
+    evt_begin(&b, EVC_BC_DBG);
+    evt_u(&b, 1u, 3u);                        /* variant 1: one level */
+    bc_window_fields(&b, n, res, code, b_rev);
+    (void)evt_post(&b);
     debug_widths(&g_bc, n);
 }
 
-/* the element widths of one window, in 0.1 mm, bar first (at most 6 lines) */
+/* the element widths of one window, in 0.1 mm, bar first: BC_DBG variant 4,
+   part U3 (1..6), count U5 (0..16), count x width U12 (at most 6 parts) */
 LOCAL void debug_widths(const bc_ctx_t *p_bc, uint32_t n)
 {
-    char     text[TLM_EVENT_DETAIL_LEN];
-    jbuf_t   jb;
     uint32_t i = 0u;
     uint32_t part = 1u;
 
-    while (i < n)
+    while ((i < n) && (part <= WIRE_BC_PARTS_MAX))
     {
-        jb_init(&jb, text, sizeof(text));
-        jb_raw(&jb, "w");
-        jb_uint(&jb, part);
-        jb_raw(&jb, " (0.1mm, bar first):");
-        while ((i < n) && (jb_len(&jb) < (TLM_EVENT_DETAIL_LEN - 8u)))
+        evt_b_t  b;
+        uint32_t k = ((n - i) > WIRE_BC_WIDTHS_MAX) ? WIRE_BC_WIDTHS_MAX : (n - i);
+
+        evt_begin(&b, EVC_BC_DBG);
+        evt_u(&b, 4u, 3u);
+        evt_u(&b, part, 3u);
+        evt_u(&b, k, 5u);
+        for (uint32_t j = 0u; j < k; j++)
         {
-            jb_char(&jb, ' ');
-            jb_uint(&jb, (p_bc->w[i] + 50u) / 100u);
+            evt_u(&b, bc_width_01mm(p_bc, i), 12u);
             i++;
         }
-        (void)post_event("BC_DBG", text);
+        (void)evt_post(&b);
         part++;
-        if (part > 6u)
-        {
-            break;                            /* at most 6 lines per window */
-        }
     }
 }
 
@@ -221,8 +211,7 @@ LOCAL void debug_widths(const bc_ctx_t *p_bc, uint32_t n)
    "adapt" is the local-contrast read (BARCODE_LEVELS = 6). */
 LOCAL void debug_pass(bc_result_t res, char code, bool b_rev)
 {
-    char     text[TLM_EVENT_DETAIL_LEN];
-    jbuf_t   jb;
+    evt_b_t  b;
     int32_t  k = g_bcm.used;
     uint32_t n;
 
@@ -235,56 +224,34 @@ LOCAL void debug_pass(bc_result_t res, char code, bool b_rev)
         }
     }
     n = g_bcm.last_n[k];
-    if ((g_params.barcode_debug < 0.5f) || (n < 3u))
+    if (!prm_flag(PRM_BARCODE_DEBUG) || (n < 3u))
     {
         return;
     }
-    jb_init(&jb, text, sizeof(text));
-    jb_raw(&jb, "n=");
-    jb_uint(&jb, n);
-    if (res == BC_DECODED)
-    {
-        jb_raw(&jb, " decoded ");
-        jb_char(&jb, code);
-        jb_raw(&jb, b_rev ? " (backwards) at " : " (forwards) at ");
-        jb_raw(&jb, bcm_level_name((uint32_t)k));
-    }
-    else if (res == BC_NONE)
-    {
-        jb_raw(&jb, " stray mark (fewer than 9)");
-    }
-    else
-    {
-        jb_raw(&jb, g_bcm.b_conflict ? " NOT decoded: levels disagree" : " NOT decoded");
-    }
-    jb_raw(&jb, ", thr ");
-    jb_uint(&jb, g_status.bc_thr_black);
-    jb_char(&jb, '/');
-    jb_uint(&jb, g_status.bc_thr_white);
-    jb_raw(&jb, ", ovr ");
-    jb_uint(&jb, hal_barcode_overruns());
-    (void)post_event("BC_DBG", text);
+    /* variant 2: the window fields + level U3 (bcm_level_name), conflict U1 */
+    evt_begin(&b, EVC_BC_DBG);
+    evt_u(&b, 2u, 3u);
+    bc_window_fields(&b, n, res, code, b_rev);
+    evt_u(&b, (uint32_t)k, 3u);
+    evt_u(&b, g_bcm.b_conflict ? 1u : 0u, 1u);
+    (void)evt_post(&b);
 
     if (g_bcm.n_levels > 1u)
     {
-        jb_init(&jb, text, sizeof(text));
-        jb_raw(&jb, "levels");
-        for (uint32_t i = 0u; i < g_bcm.n_levels; i++)
+        /* variant 3 (design D10): n_levels U3, always 6 x (res E2, code C6,
+           n U7); entries past n_levels are sent as (0, 63, 0) */
+        evt_begin(&b, EVC_BC_DBG);
+        evt_u(&b, 3u, 3u);
+        evt_u(&b, g_bcm.n_levels, 3u);
+        for (uint32_t i = 0u; i < BCM_MAX_LEVELS; i++)
         {
-            jb_char(&jb, ' ');
-            jb_raw(&jb, bcm_level_name(i));
-            jb_char(&jb, ':');
-            if (g_bcm.last_res[i] == BC_DECODED)
-            {
-                jb_char(&jb, g_bcm.last_code[i]);
-            }
-            else
-            {
-                jb_char(&jb, (g_bcm.last_res[i] == BC_NONE) ? '-' : 'x');
-            }
-            jb_uint(&jb, g_bcm.last_n[i]);
+            bool b_used = (i < g_bcm.n_levels);
+
+            evt_u(&b, b_used ? ((uint32_t)g_bcm.last_res[i] & 3u) : 0u, 2u);
+            evt_u(&b, (b_used && (g_bcm.last_res[i] == BC_DECODED)) ? evt_char6(g_bcm.last_code[i]) : 63u, 6u);
+            evt_u(&b, b_used ? g_bcm.last_n[i] : 0u, 7u);
         }
-        (void)post_event("BC_DBG", text);
+        (void)evt_post(&b);
     }
     debug_widths(&g_bcm.bc[k], n);
 }
@@ -402,7 +369,7 @@ LOCAL void follow(bool b_l, bool b_r, float ds_mm, float dheading)
             g_searching = false;
             line_reset(&g_line);
             flag_set(EVF_LINE_FOUND);
-            (void)post_event("LINE_FOUND", "search");
+            (void)evt_post0(EVC_LINE_FOUND);   /* "search" */
         }
         else
         {
@@ -413,7 +380,7 @@ LOCAL void follow(bool b_l, bool b_r, float ds_mm, float dheading)
                 motion_stop(SRC_LINE);
                 fault_set(FAULT_LINE_LOST);
                 flag_set(EVF_LINE_LOST);
-                (void)post_event("LINE_LOST", "search found nothing");
+                (void)evt_post0(EVC_LINE_LOST);    /* "search found nothing" */
             }
             else
             {
@@ -441,14 +408,18 @@ LOCAL void follow(bool b_l, bool b_r, float ds_mm, float dheading)
     {
         g_searching = true;
         search_start(&g_search, (g_line.side < 0) ? -1 : 1, (float)LINE_SEARCH_DEG, (float)LINE_SEARCH_MAX_DEG);
-        (void)post_event("LINE_SEARCH", (g_line.side < 0) ? "left first" : "right first");
+        (void)evt_post1(EVC_LINE_SEARCH, (g_line.side < 0) ? 0u : 1u, 1u);   /* 0 "left first", 1 "right first" */
         return;
     }
     {
         /* slow down in tight curves: at full steer the outer wheel would
            otherwise need 2 x base speed, which the PI loop cannot reach */
         float mag  = (out.steer < 0.0f) ? -out.steer : out.steer;
-        float base = g_params.line_base_mm_s * (1.0f - (g_params.line_curve_slow * mag));
+        float lb   = g_params.line_base_mm_s;
+        float base;
+
+        lb   = (lb > (float)LINE_BASE_SAFE_MAX_MM_S) ? (float)LINE_BASE_SAFE_MAX_MM_S : lb;   /* safety cap */
+        base = lb * (1.0f - (g_params.line_curve_slow * mag));
 
         line_wheels(base, out.steer, &left, &right);
 
@@ -500,6 +471,7 @@ void tsk_line(INT stacd, void *exinf)
         float       ds_mm;
         float       dheading;
 
+        PERF_CYCLE_END(PERF_TSK_LINE, PERF_LIMIT_10MS_US);     /* end of the previous cycle */
         (void)tk_slp_tsk(TMO_FEVR);          /* released every 10 ms by the cyclic tick */
         g_hb[HB_LINE]++;
 
@@ -512,10 +484,7 @@ void tsk_line(INT stacd, void *exinf)
         odo_prev     = odo.odo_um;
         heading_prev = odo.heading_deg;
 
-        g_status.line_l     = b_l ? 1 : 0;
-        g_status.line_r     = b_r ? 1 : 0;
-        g_status.ir_adc     = hal_ir_adc();
-        g_status.line_state = (uint32_t)g_line.state;
+        st_set_line(b_l, b_r, hal_ir_adc(), (uint32_t)g_line.state);
 
         if (st != prev_state)
         {
@@ -552,9 +521,11 @@ void tsk_line(INT stacd, void *exinf)
                a sensor then counts only after it has read white, so one
                sitting on something dark (off the mat, a seam) cannot hide the
                line from the other one. */
-            if (reacq_seen != g_reacq_seq)
+            uint32_t reacq = g_reacq_seq;            /* one load */
+
+            if (reacq_seen != reacq)
             {
-                reacq_seen = g_reacq_seq;
+                reacq_seen = reacq;
                 found_n    = 0u;
                 white_l    = 0u;
                 white_r    = 0u;

@@ -8,6 +8,7 @@
 | `telemetry_monitor.py` | console monitor with pass/fail checks, CSV and log files, broker beacon |
 | `robot_params.py` + `robot_params.txt` | calibration, retained on `is02/config` |
 | `robot_map.py` | barcode map, retained on `is02/map` (same as `is02_tool.py map`, with checks for 4 different letters) |
+| `is02_codec.py`, `is02_codec.js` | the binary MQTT payloads, used by the Python tools and the dashboard (section 6). Keep them in this folder |
 
 Run every script with `py <script>.py ...` on Windows (not `python`: on some laptops that is an MSYS2 Python without paho-mqtt).
 
@@ -122,6 +123,8 @@ The robot firmware reads its calibration and tuning values from the retained MQT
 
 Mosquitto keeps the message (`persistence true` in `mosquitto_is02.conf`) and re-sends it every time the robot connects. If the robot is online it answers with how many values it applied and which it rejected. `--clear` deletes the retained message.
 
+Every line is checked first. A wrong NAME, a bad number or a value out of range prints the line number and NAME, and nothing is sent, so the retained copy stays as it was.
+
 ### Barcode map: dashboard, `is02_tool.py map` or `robot_map.py`
 
 Just before the demo the instructor names the four letters for forward, left, right and U-turn. Send them to the robot over MQTT; nothing is hard-coded in the firmware. Any of these does it:
@@ -172,7 +175,7 @@ On `q` (or Ctrl+C) it prints a summary like this and saves two files in `logs/`:
 | Check | Pass when | Brief / DR |
 | --- | --- | --- |
 | L1 telemetry rate | 1.8–2.2 Hz, measured with the robot's own timestamps | DR: 2 Hz telemetry |
-| L2 message structure | Every frame is valid JSON with all 13 fields | Brief: "define telemetry message structures" |
+| L2 message structure | Every telemetry payload is accepted by the codec, with all 13 fields | Brief: "define telemetry message structures" |
 | L3 no missing frames | 0 missing, even across a hotspot outage (the robot buffers ~32 s) | Brief: "connection recovery"; NFR7 / A5 |
 | L4 heartbeat | About 1 per second; gaps over 3 s only while the hotspot was off | Brief: "heartbeat/status reporting" |
 | L5 commands | Every command sent while the robot was online got an ack | Brief: "command subscription"; FR19 |
@@ -216,6 +219,34 @@ Telemetry frame (every field the brief lists for Buddy 1):
 
 The robot side is `tlm_link.c` / `tlm_link.h` (same file in both test folders): Wi-Fi, MQTT, the topics above, heartbeat, command subscription, reconnect and the offline buffer. It can be reused as the starting point of `TSK_TELEMETRY`.
 
+## 6. Binary payloads: the codecs and `--legacy-json`
+
+The formats above are the JSON and text ones. The robot moves to compact binary frames during Change Requirement 1, so every tool goes through a codec: `is02_codec.py` for the Python tools, `is02_codec.js` for the dashboard. Both turn a frame back into the JSON shape above, in the same units, so the tools show the same fields either way.
+
+**Receiving is automatic, in both modes.** A payload that starts with `{` is read as JSON, anything else as a binary frame. On `is02/cmd`, `is02/map` and `is02/config`, a payload without the binary version number is shown as text. A frame with a wrong version or length is logged with its topic, version and length, and dropped; the values on screen stay as they were.
+
+**Sending: binary is the default.** Legacy mode is off unless you ask for it:
+
+| Mode | How to set it | Commands, map and config go out as |
+| --- | --- | --- |
+| Binary (the default) | nothing; dashboard box **legacy JSON** unticked (`--no-legacy-json` is still accepted) | binary Command, Map and Config frames, on the same topics with the same retain flags. A single-byte frame is the E-stop |
+| Legacy | `--legacy-json`; dashboard box ticked | baseline text: `ESTOP`, `SET:NAME=VALUE`, `X=FWD,K=LEFT,...`, `NAME=VALUE` lines |
+
+**Use `--legacy-json` only against a Baseline_Build robot** (the build recorded as `bca7964`, for comparison runs). A robot from FW-09 on accepts binary commands only, so it ignores text, **including a text E-stop**. The dashboard box is unticked again at every page load (it is deliberately not remembered). Received payloads are read as JSON or binary in both modes.
+
+**After flashing an FW-09 build, re-publish the retained messages in binary.** The broker still holds the text `is02/config` and `is02/map` from before, and the robot reads them when it connects. Straight after flashing:
+
+1. `py robot_params.py --broker <laptop IP>`: replaces the retained `is02/config`. The CONFIG ack must show `applied` = the number of active lines and `rejected` 0.
+2. Send the map once (`py robot_map.py --broker <laptop IP> K=LEFT Q=RIGHT X=FWD M=UTURN`, `is02_tool.py map ...`, or the dashboard's Barcode mapping panel): replaces the retained `is02/map`.
+
+- `is02_tool.py` takes the option before the command word: `py is02_tool.py --legacy-json cmd START`.
+- In binary mode the input must fit a frame: `PING` takes a number 0..65535, and the map one letter per movement. The dashboard's Ping uses numbers from 49152 up in this mode.
+- `set`, `config` and `robot_params.py` check NAME and value in both modes; a bad one publishes nothing.
+- A binary heartbeat carries the robot's parameter-table version. If it differs from the codec's, the tools show a warning naming both (monitor line, dashboard banner) until a matching heartbeat arrives, and `is02_tool.py config` and `robot_params.py` refuse to publish. They wait up to 1.5 s for a heartbeat first; with none, they publish as before, because the robot picks the retained copy up when it connects. A JSON heartbeat has no version, so it neither raises nor clears the warning.
+- `is02_tool.py log` writes `pc_time, topic, len, hex, decoded_json`, which `tools/evidence/msg_sizes.py` reads.
+
+**Dependencies:** Python 3 and `paho-mqtt` for the tools. The dashboard needs nothing: no build step and no server, only `is02_codec.js` next to `dashboard.html`, and it runs from `file://`.
+
 ## Troubleshooting
 
 | Symptom | Fix |
@@ -225,4 +256,7 @@ The robot side is `tlm_link.c` / `tlm_link.h` (same file in both test folders): 
 | Robot: same, status -1 (no answer) | Wrong `MQTT_BROKER_IP` (use the laptop's IPv4 from `ipconfig`), laptop not on the same hotspot, or the firewall rule for port 1883 is missing |
 | `[FAIL] W2 Wi-Fi connect` | Wrong SSID/password, or the hotspot is 5 GHz only |
 | Dashboard: "cannot reach ... (retrying)" | Mosquitto not running, or started without `-c mosquitto_is02.conf` (no port 9001) |
+| Dashboard: blank values, console says `IS02 is not defined` | `is02_codec.js` is not next to `dashboard.html` |
+| Commands get no ack, the robot ignores E-stop | Either a Baseline_Build robot (accepts text only: use `--legacy-json` or tick the dashboard box, section 6), or a robot from FW-09 on while legacy mode is on (untick it / drop `--legacy-json`) |
+| "parameter table mismatch" | The tools and the robot come from different versions of `PARAMS[]`: update whichever is older |
 | Frames arrive but no acks | The robot is subscribed but the monitor sent while it was offline; press `p` again |

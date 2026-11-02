@@ -18,10 +18,13 @@
 #include <tk/tkernel.h>
 
 #include "os_glue.h"
+#include "status.h"
+#include "msg_codec.h"
 #include "motion_api.h"
 #include "speed_ctl.h"
 #include "app_params.h"
 #include "hal.h"
+#include "perf.h"
 #include "robot_config.h"
 
 #define LINE_STALE_MS     (100u)
@@ -50,8 +53,6 @@ LOCAL float             g_line_r;
 LOCAL uint32_t          g_line_t;
 LOCAL float             g_scale = 1.0f;
 LOCAL volatile uint16_t g_next_id = 1u;
-LOCAL volatile uint16_t g_done_id;
-LOCAL volatile uint32_t g_done_result;
 
 /* ------------------------------------------------------------------------ */
 /* API used by the other tasks                                               */
@@ -61,9 +62,12 @@ LOCAL uint16_t new_id(void)
 {
     uint16_t id;
 
+    PERF_BEGIN(t_cs);
+
     (void)tk_dis_dsp();
     id = g_next_id;
     g_next_id = (uint16_t)((g_next_id == 0xFFFFu) ? 1u : (g_next_id + 1u));
+    PERF_END(PERF_CS_DSP, t_cs, PERF_LIMIT_CS_US);
     (void)tk_ena_dsp();
     return id;
 }
@@ -123,6 +127,7 @@ bool motion_wait(uint16_t id, uint32_t other_bits, uint32_t timeout_ms,
     {
         UINT     ptn = 0;
         uint32_t left = timeout_ms - (hal_time_ms() - t0);
+        uint32_t done;
         ER       er;
 
         if ((hal_time_ms() - t0) >= timeout_ms)
@@ -140,9 +145,10 @@ bool motion_wait(uint16_t id, uint32_t other_bits, uint32_t timeout_ms,
             return false;
         }
         flag_clear(EVF_MOTION_DONE);
-        if (g_done_id == id)
+        done = motion_done_get();             /* one load: id and result of one primitive */
+        if (DONE_ID(done) == id)
         {
-            *p_result = (motion_result_t)g_done_result;
+            *p_result = DONE_RESULT(done);
             return true;
         }
     }
@@ -215,8 +221,7 @@ LOCAL void finish(motion_result_t res)
         return;
     }
     g_prim.b_active = false;
-    g_done_id       = g_prim.id;
-    g_done_result   = (uint32_t)res;
+    motion_done_put(g_prim.id, res);
     g_w[0].target   = 0.0f;
     g_w[1].target   = 0.0f;
     flag_set(EVF_MOTION_DONE);
@@ -347,7 +352,9 @@ LOCAL void run_primitive(int32_t enc_r, int32_t enc_l, float mmpc, uint32_t now)
 void tsk_motion(INT stacd, void *exinf)
 {
     speed_params_t sp;
-    odometry_t     odo = { 0 };
+    odometry_t     odo = { 0 };              /* full precision here; odometry_put() packs a copy */
+    float          dist_r = 0.0f;            /* wheel distances, signed, this task only */
+    float          dist_l = 0.0f;
     int32_t        prev_r = hal_enc_count(HAL_WHEEL_RIGHT);
     int32_t        prev_l = hal_enc_count(HAL_WHEEL_LEFT);
     uint64_t       t_prev = hal_time_us();
@@ -374,6 +381,7 @@ void tsk_motion(INT stacd, void *exinf)
         uint32_t   now;
         bool       b_stop;
 
+        PERF_CYCLE_END(PERF_TSK_MOTION, PERF_LIMIT_20MS_US);   /* end of the previous cycle */
         (void)tk_slp_tsk(TMO_FEVR);          /* released every 20 ms by the cyclic tick */
         g_hb[HB_MOTION]++;
 
@@ -393,10 +401,9 @@ void tsk_motion(INT stacd, void *exinf)
         prev_l = enc_l;
 
         /* 1. odometry */
-        odo.enc_r      = enc_r;
-        odo.enc_l      = enc_l;
-        odo.dist_r_mm += (float)d_r * mmpc;
-        odo.dist_l_mm += (float)d_l * mmpc;
+        dist_r      += (float)d_r * mmpc;
+        dist_l      += (float)d_l * mmpc;
+        odo.dist_mm  = 0.5f * (dist_r + dist_l);
         if (g_params.track_width_mm > 0.0f)
         {
             float dh = (((float)(d_l - d_r) * mmpc) / g_params.track_width_mm) * RAD_TO_DEG;
@@ -414,7 +421,10 @@ void tsk_motion(INT stacd, void *exinf)
         /* 2. commands */
         while ((p_msg = msg_recv(g_mbx_motion, TMO_POL)) != NULL)
         {
-            handle_cmd(&p_msg->body.motion, enc_r, enc_l, now);
+            motion_cmd_t c;
+
+            msg_motion_unpack(&p_msg->body.motion, &c);
+            handle_cmd(&c, enc_r, enc_l, now);
             msg_free(p_msg);
         }
 
@@ -472,13 +482,7 @@ void tsk_motion(INT stacd, void *exinf)
         }
 
         /* telemetry snapshot */
-        g_status.spd_r       = g_w[0].speed;
-        g_status.spd_l       = g_w[1].speed;
-        g_status.duty_r      = g_w[0].duty;
-        g_status.duty_l      = g_w[1].duty;
-        g_status.enc_r       = enc_r;
-        g_status.enc_l       = enc_l;
-        g_status.dist_mm     = (float)odo.odo_um / 1000.0f;
-        g_status.speed_scale = g_scale;
+        st_set_motion(g_w[1].speed, g_w[0].speed, g_w[1].duty, g_w[0].duty,
+                      enc_l, enc_r, (float)odo.odo_um / 1000.0f, g_scale);
     }
 }

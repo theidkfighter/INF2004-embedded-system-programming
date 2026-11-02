@@ -59,7 +59,7 @@ typedef struct
     det_t       det[BCM_FIXED_LEVELS];
     adt_t       adt;                      /* read 6 */
     bc_ctx_t    bc[BCM_MAX_LEVELS];
-    bc_result_t res[BCM_MAX_LEVELS];      /* this pass, per level */
+    uint8_t     res[BCM_MAX_LEVELS];      /* bc_result_t (E2) this pass, per level */
     char        code[BCM_MAX_LEVELS];
     bool        rev[BCM_MAX_LEVELS];
     bool        b_pass;
@@ -69,9 +69,9 @@ typedef struct
     /* the pass that just finished (diagnostics) */
     int32_t     used;                     /* level index that gave the letter, -1 = none */
     bool        b_conflict;               /* levels decoded different letters */
-    bc_result_t last_res[BCM_MAX_LEVELS];
+    uint8_t     last_res[BCM_MAX_LEVELS]; /* bc_result_t (E2) */
     char        last_code[BCM_MAX_LEVELS];
-    uint32_t    last_n[BCM_MAX_LEVELS];   /* elements per level */
+    uint8_t     last_n[BCM_MAX_LEVELS];   /* elements per level (U7, 0..96) */
 } bcm_t;
 
 /* level_pct(i): switch level of copy i in percent (50, 35, 65, 25, 75; 0 for

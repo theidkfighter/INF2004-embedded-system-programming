@@ -80,7 +80,7 @@ static void note(bcm_t *p_m, uint32_t i, bc_result_t r, char code, bool b_rev, u
             p_m->b_settle  = true;
             p_m->settle_um = pos_um + BCM_SETTLE_UM;
         }
-        p_m->res[i]  = (r == BC_DECODED) ? BC_DECODED : BC_FAILED;   /* faults are counted per pass */
+        p_m->res[i]  = (uint8_t)((r == BC_DECODED) ? BC_DECODED : BC_FAILED);   /* faults are counted per pass */
         p_m->code[i] = code;
         p_m->rev[i]  = b_rev;
     }
@@ -149,7 +149,7 @@ static bc_result_t finish_pass(bcm_t *p_m, char *p_code, bool *p_rev)
     {
         p_m->last_res[i]  = p_m->res[i];
         p_m->last_code[i] = p_m->code[i];
-        p_m->last_n[i]    = p_m->bc[i].last_n;
+        p_m->last_n[i]    = (uint8_t)p_m->bc[i].last_n;
         p_m->res[i]       = BC_NONE;
         p_m->code[i]      = 0;
     }

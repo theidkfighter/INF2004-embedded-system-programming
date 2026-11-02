@@ -25,10 +25,11 @@
 #include "hardware/i2c.h"
 #include "hardware/structs/timer.h"
 
+#include "bitpack.h"
 #include "hal.h"
 #include "pins.h"
 
-#define IMU_I2C           (i2c1)
+#define IMU_I2C          (i2c1)
 #define I2C_TIMEOUT_US    (2000u)
 
 /* LSM303DLHC accelerometer */
@@ -56,8 +57,31 @@
 #define D_ADDR_SA0_HIGH   (0x1Du)
 #define D_G_PER_LSB       (0.000122f)  /* +-4 g */
 
-static uint8_t       g_addr = IMU_ACCEL_ADDR;
-static hal_imu_chip_t g_chip = HAL_IMU_NONE;
+/* chip E2 @0, addr U7 @2. Written by hal_imu_init() only, under MTX_I2C_BUS
+   once the tasks run; one composed store. Readers take one load, including
+   the GPIO ISR through hal_imu_int1_used(). */
+#define IMU_CHIP_SH       (0u)
+#define IMU_CHIP_W        (2u)
+#define IMU_ADDR_SH       (2u)
+#define IMU_ADDR_W        (7u)
+#define IMU_CFG(chip, addr) ((uint16_t)(((uint32_t)(chip) << IMU_CHIP_SH) | ((uint32_t)(addr) << IMU_ADDR_SH)))
+static volatile uint16_t g_imu_cfg = IMU_CFG(HAL_IMU_NONE, IMU_ACCEL_ADDR);
+
+static hal_imu_chip_t cfg_chip(uint32_t cfg)
+{
+    return (hal_imu_chip_t)BP_GET(cfg, IMU_CHIP_SH, IMU_CHIP_W);
+}
+
+static uint8_t cfg_addr(uint32_t cfg)
+{
+    return (uint8_t)BP_GET(cfg, IMU_ADDR_SH, IMU_ADDR_W);
+}
+
+/* Selects the address to probe; the chip stays as it was until the probe ends. */
+static void set_addr(uint8_t addr)
+{
+    g_imu_cfg = IMU_CFG(cfg_chip(g_imu_cfg), addr);
+}
 
 static absolute_time_t deadline(void)
 {
@@ -68,16 +92,18 @@ static bool reg_write(uint8_t reg, uint8_t value)
 {
     uint8_t buf[2] = { reg, value };
 
-    return i2c_write_blocking_until(IMU_I2C, g_addr, buf, 2u, false, deadline()) == 2;
+    return i2c_write_blocking_until(IMU_I2C, cfg_addr(g_imu_cfg), buf, 2u, false, deadline()) == 2;
 }
 
 static bool reg_read(uint8_t reg, uint8_t *p_buf, uint32_t len)
 {
-    if (i2c_write_blocking_until(IMU_I2C, g_addr, &reg, 1u, true, deadline()) != 1)
+    uint8_t addr = cfg_addr(g_imu_cfg);
+
+    if (i2c_write_blocking_until(IMU_I2C, addr, &reg, 1u, true, deadline()) != 1)
     {
         return false;
     }
-    return i2c_read_blocking_until(IMU_I2C, g_addr, p_buf, len, false, deadline()) == (int)len;
+    return i2c_read_blocking_until(IMU_I2C, addr, p_buf, len, false, deadline()) == (int)len;
 }
 
 static void i2c_pins(void)
@@ -94,7 +120,7 @@ static bool init_dlhc(void)
     uint8_t check = 0u;
     uint8_t src;
 
-    g_addr = IMU_ACCEL_ADDR;
+    set_addr(IMU_ACCEL_ADDR);
     if (!reg_write(CTRL_REG1_A, 0x57u))          /* 100 Hz, X/Y/Z on */
     {
         return false;
@@ -118,7 +144,7 @@ static bool init_lsm303d(uint8_t addr)
     uint8_t who = 0u;
     uint8_t check = 0u;
 
-    g_addr = addr;
+    set_addr(addr);
     if (!reg_read(D_WHO_AM_I, &who, 1u) || (who != D_WHO_AM_I_VALUE))
     {
         return false;
@@ -139,34 +165,46 @@ bool hal_imu_init(void)
     i2c_pins();
     if (init_dlhc())
     {
-        g_chip = HAL_IMU_LSM303DLHC;
+        g_imu_cfg = IMU_CFG(HAL_IMU_LSM303DLHC, cfg_addr(g_imu_cfg));
         return true;
     }
     if (init_lsm303d(D_ADDR_SA0_LOW) || init_lsm303d(D_ADDR_SA0_HIGH))
     {
-        g_chip = HAL_IMU_LSM303D;
+        g_imu_cfg = IMU_CFG(HAL_IMU_LSM303D, cfg_addr(g_imu_cfg));
         return true;
     }
-    g_chip = HAL_IMU_NONE;
-    g_addr = IMU_ACCEL_ADDR;
+    g_imu_cfg = IMU_CFG(HAL_IMU_NONE, IMU_ACCEL_ADDR);
     return false;
 }
 
 hal_imu_chip_t hal_imu_chip(void)
 {
-    return g_chip;
+    return cfg_chip(g_imu_cfg);
+}
+
+uint32_t hal_imu_addr(void)
+{
+    return (uint32_t)cfg_addr(g_imu_cfg);
 }
 
 const char *hal_imu_chip_name(void)
 {
-    return (g_chip == HAL_IMU_LSM303DLHC) ? "LSM303DLHC at 0x19" :
-           (g_chip == HAL_IMU_LSM303D) ? ((g_addr == D_ADDR_SA0_LOW) ? "LSM303D at 0x1E" : "LSM303D at 0x1D") :
+    uint32_t       cfg  = g_imu_cfg;
+    hal_imu_chip_t chip = cfg_chip(cfg);
+
+    return (chip == HAL_IMU_LSM303DLHC) ? "LSM303DLHC at 0x19" :
+           (chip == HAL_IMU_LSM303D) ? ((cfg_addr(cfg) == D_ADDR_SA0_LOW) ? "LSM303D at 0x1E" : "LSM303D at 0x1D") :
            "none";
 }
 
+/* Called from the GPIO ISR: of the chip codes 0..2 only the DLHC has bit 0
+   set, so one mask replaces the field extraction and compare. */
+BP_STATIC_ASSERT(((uint32_t)HAL_IMU_NONE == 0u) && ((uint32_t)HAL_IMU_LSM303DLHC == 1u) &&
+                 ((uint32_t)HAL_IMU_LSM303D == 2u), "g_imu_cfg: chip codes used by hal_imu_int1_used");
+
 bool hal_imu_int1_used(void)
 {
-    return g_chip == HAL_IMU_LSM303DLHC;
+    return (g_imu_cfg & ((uint32_t)HAL_IMU_LSM303DLHC << IMU_CHIP_SH)) != 0u;
 }
 
 bool hal_imu_accel_g(float *p_x, float *p_y, float *p_z)
@@ -177,7 +215,7 @@ bool hal_imu_accel_g(float *p_x, float *p_y, float *p_z)
     {
         return false;
     }
-    if (g_chip == HAL_IMU_LSM303D)
+    if (cfg_chip(g_imu_cfg) == HAL_IMU_LSM303D)
     {
         /* 16 bit, 0.122 mg/LSB at +-4 g */
         *p_x = (float)(int16_t)(((uint16_t)raw[1] << 8) | raw[0]) * D_G_PER_LSB;
@@ -194,7 +232,7 @@ bool hal_imu_accel_g(float *p_x, float *p_y, float *p_z)
 
 bool hal_imu_int1_src(uint8_t *p_src)
 {
-    if (g_chip == HAL_IMU_LSM303D)
+    if (cfg_chip(g_imu_cfg) == HAL_IMU_LSM303D)
     {
         *p_src = 0u;                              /* INT1 not used with this chip */
         return true;

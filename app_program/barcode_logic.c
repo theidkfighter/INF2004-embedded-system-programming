@@ -8,8 +8,8 @@
 void bc_reset(bc_ctx_t *p_bc)
 {
     p_bc->n        = 0u;
-    p_bc->b_open   = false;
-    p_bc->b_black  = false;
+    p_bc->b_open   = 0u;
+    p_bc->b_black  = 0u;
     p_bc->start_um = 0u;
     p_bc->edge_um  = 0u;
     p_bc->min_um   = 0xFFFFFFFFu;
@@ -25,14 +25,14 @@ void bc_cancel(bc_ctx_t *p_bc)
         p_bc->last_n = p_bc->n;   /* w[] / bar[] keep the widths for a diagnostic dump */
     }
     p_bc->n      = 0u;
-    p_bc->b_open = false;
+    p_bc->b_open = 0u;
     p_bc->min_um = 0xFFFFFFFFu;
     p_bc->max_um = 0u;
 }
 
 bool bc_window_open(const bc_ctx_t *p_bc)
 {
-    return p_bc->b_open;
+    return (p_bc->b_open != 0u);
 }
 
 /* Decodes the finished window and resets it. */
@@ -47,7 +47,7 @@ static bc_result_t finish(bc_ctx_t *p_bc, const bc_params_t *p_par, char *p_code
         bc_cancel(p_bc);
         return BC_NONE;                      /* stray mark: ignore */
     }
-    if (code39_decode(p_bc->w, p_bc->bar, p_bc->n, text, sizeof(text), &b_rev) && (text[0] != '\0'))
+    if (code39_decode(p_bc->w, true, p_bc->n, text, sizeof(text), &b_rev) && (text[0] != '\0'))
     {
         *p_code     = text[0];
         *p_reversed = b_rev;
@@ -85,7 +85,7 @@ bc_result_t bc_edge(bc_ctx_t *p_bc, const bc_params_t *p_par, uint32_t pos_um, b
         if (b_black)
         {
             /* first black bar: open the sampling window */
-            p_bc->b_open   = true;
+            p_bc->b_open   = 1u;
             p_bc->n        = 0u;
             p_bc->start_um = pos_um;
             p_bc->min_um   = 0xFFFFFFFFu;
@@ -98,9 +98,8 @@ bc_result_t bc_edge(bc_ctx_t *p_bc, const bc_params_t *p_par, uint32_t pos_um, b
 
         if (p_bc->n < BC_MAX_ELEMENTS)
         {
-            p_bc->w[p_bc->n]   = width;
-            p_bc->bar[p_bc->n] = p_bc->b_black;   /* the element that just ended */
-            p_bc->n++;
+            p_bc->w[p_bc->n] = (uint16_t)((width > BC_W_MAX) ? BC_W_MAX : width);
+            p_bc->n++;                            /* element n-1 was a bar when n-1 is even */
             if ((width > 0u) && (width < p_bc->min_um))
             {
                 p_bc->min_um = width;
@@ -115,7 +114,7 @@ bc_result_t bc_edge(bc_ctx_t *p_bc, const bc_params_t *p_par, uint32_t pos_um, b
             res = finish(p_bc, p_par, p_code, p_reversed);
         }
     }
-    p_bc->b_black = b_black;
+    p_bc->b_black = b_black ? 1u : 0u;
     p_bc->edge_um = pos_um;
     return res;
 }

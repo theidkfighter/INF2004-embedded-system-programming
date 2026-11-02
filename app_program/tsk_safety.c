@@ -20,10 +20,12 @@
 #include <tk/tkernel.h>
 
 #include "os_glue.h"
+#include "status.h"
 #include "motion_api.h"
 #include "app_check.h"
 #include "app_params.h"
 #include "hal.h"
+#include "perf.h"
 #include "jfmt.h"
 #include "robot_config.h"
 
@@ -51,10 +53,7 @@ LOCAL uint32_t      g_t_estop;
 
 #define ALARM_MS     (3000u)          /* E-stop alarm sounds for 3 s, then the LED stays red */
 
-const char * volatile g_stop_reason = "";
 
-volatile uint64_t g_estop_rx_us;          /* set by the MQTT command handler */
-volatile uint32_t g_estop_pwm_off_us;     /* read by the telemetry ack */
 volatile bool     g_estop_reported;
 
 LOCAL void tone_start(const tone_t *p_t)
@@ -128,83 +127,93 @@ LOCAL void kill(void)
     hal_servo_deg(params_servo_phys(0.0f));   /* straight ahead, trimmed */
 }
 
-LOCAL void enter_estop(const char *p_reason)
+LOCAL void enter_estop(stop_reason_t reason)
 {
-    uint64_t t_kill;
+    uint32_t t_kill;
+    uint32_t rx_us;
 
     kill();
-    t_kill = hal_time_us();
-    if (g_estop_rx_us != 0u)
+    t_kill = (uint32_t)hal_time_us();
+    if (estop_rx_take(&rx_us))
     {
-        g_estop_pwm_off_us = (uint32_t)(t_kill - g_estop_rx_us);
-        g_estop_rx_us      = 0u;
-        g_estop_reported   = false;
+        estop_pwm_off_put(t_kill - rx_us);    /* modulo 2^32 */
+        g_estop_reported = false;
     }
-    g_stop_reason = p_reason;
+    st_set_stop((uint32_t)reason);
     (void)sys_set_state(SYS_ESTOP, true);
     g_t_estop = hal_time_ms();
-    (void)post_event("EMERGENCY_STOP", p_reason);
-    log_line(p_reason);
+    (void)evt_post1(EVC_EMERGENCY_STOP, (uint32_t)reason, 4u);
+    log_line(wire_stop_reason_text((uint32_t)reason));
     tone_start(T_ALARM);
 }
 
-LOCAL void enter_error(const char *p_reason)
+LOCAL void enter_error(stop_reason_t reason)
 {
     kill();
-    g_stop_reason = p_reason;
+    st_set_stop((uint32_t)reason);
     (void)sys_set_state(SYS_ERROR, true);
-    (void)post_event("ERROR", p_reason);
-    log_line(p_reason);
+    (void)evt_post1(EVC_ERROR, (uint32_t)reason, 4u);
+    log_line(wire_stop_reason_text((uint32_t)reason));
     tone_start(T_ERROR);
 }
 
 /* Automated re-check before leaving E-STOP / ERROR (DR Section 5). */
-LOCAL bool recheck(char *p_why, uint32_t size)
+/* *p_bits: RECOVERY_REFUSED argument U15 (design D10) = bit 0 obstacle
+   < 8 cm, bit 1 INT1 still active, bits 2..14 missing calibration items in
+   config_check() order (app_check.h item i -> bit i + 2). */
+LOCAL bool recheck(char *p_why, uint32_t size, uint32_t *p_bits)
 {
     jbuf_t jb;
     bool   b_ok = true;
-    float  cm = g_status.obst_cm;
+    float  cm = st_obst_cm();
+
+    *p_bits = 0u;
 
     jb_init(&jb, p_why, size);
     if ((cm >= 0.0f) && (cm < (float)PROXIMITY_STOP_CM))
     {
         jb_raw(&jb, "obstacle closer than 8 cm. ");
+        *p_bits |= 1u << 0;
         b_ok = false;
     }
-    if ((g_status.faults & FAULT_IMU_DEAD) == 0u)
+    if ((st_faults() & FAULT_IMU_DEAD) == 0u)
     {
         clear_int1();
         if (hal_imu_int1_level())
         {
             jb_raw(&jb, "IMU INT1 still active. ");
+            *p_bits |= 1u << 1;
             b_ok = false;
         }
     }
     if (!config_check(&p_why[jb_len(&jb)], size - jb_len(&jb)))
     {
         b_ok = false;                         /* the list of missing values was appended */
+        *p_bits |= config_missing_bits() << 2;
     }
     return b_ok;
 }
 
 LOCAL void try_recover(void)
 {
-    char why[200];
+    char     why[200];
+    uint32_t bits;
 
-    if (recheck(why, sizeof(why)))
+    if (recheck(why, sizeof(why), &bits))
     {
         flag_clear(EVF_ESTOP | EVF_COLLISION | EVF_PROXIMITY | EVF_REMOTE_ESTOP | EVF_LOCAL_STOP |
                    EVF_ERROR_REQ | EVF_BATTERY_CRITICAL | EVF_IMU_FAULT);
-        fault_clear(~FAULT_IMU_DEAD);           /* IMU state is owned by TSK_TERRAIN_IMU */
+        fault_clear(FAULT_BASE_MASK & ~FAULT_IMU_DEAD);   /* IMU state is owned by TSK_TERRAIN_IMU; link and
+                                                            no-echo bits are not recovery faults (D1) */
         hal_motor_unkill();
         gp_tone = NULL;
         hal_buzzer(0u);
         (void)sys_set_state(SYS_IDLE, true);
-        (void)post_event("RECOVERED", "re-check passed");
+        (void)evt_post0(EVC_RECOVERED);   /* "re-check passed" */
     }
     else
     {
-        (void)post_event("RECOVERY_REFUSED", why);
+        (void)evt_post1(EVC_RECOVERY_REFUSED, bits, 15u);
         log_line("[safety] recovery refused:");
         log_line(why);
         tone_start(T_WARN);
@@ -232,50 +241,51 @@ void tsk_safety(INT stacd, void *exinf)
         fault_set(FAULT_CONFIG);
         log_line("[safety] calibration values missing (robot_config.h or SET:...):");
         log_line(missing);
-        enter_error("calibration missing");
+        enter_error(SR_CALIBRATION);
     }
 
     for (;;)
     {
         sys_state_t st;
         uint32_t    f;
+        uint32_t    rx_us;
         bool        b_btn1 = false;
         bool        b_btn2 = false;
 
+        PERF_CYCLE_END(PERF_TSK_SAFETY, PERF_LIMIT_10MS_US);   /* end of the previous cycle */
         (void)tk_slp_tsk(TMO_FEVR);          /* every 10 ms, or at once on a hazard */
         st = sys_state();
         f  = flag_peek();
-        if (((f & EVF_COLLISION) != 0u) && ((g_status.faults & FAULT_IMU_DEAD) != 0u))
+        if (((f & EVF_COLLISION) != 0u) && ((st_faults() & FAULT_IMU_DEAD) != 0u))
         {
             flag_clear(EVF_COLLISION);            /* no IMU: INT1 is not trustworthy */
             f &= ~EVF_COLLISION;
         }
 
         /* ---- hazards first ---- */
-        if ((st == SYS_ESTOP) && ((f & EVF_REMOTE_ESTOP) != 0u) && (g_estop_rx_us != 0u))
+        if ((st == SYS_ESTOP) && ((f & EVF_REMOTE_ESTOP) != 0u) && estop_rx_take(&rx_us))
         {
-            g_estop_pwm_off_us = 0u;              /* already stopped: ack at once */
-            g_estop_rx_us      = 0u;
+            estop_pwm_off_put(0u);                /* already stopped: ack at once */
         }
         if (st != SYS_ESTOP)
         {
             if ((f & EVF_REMOTE_ESTOP) != 0u)
             {
-                enter_estop("remote E-stop (MQTT)");
+                enter_estop(SR_REMOTE_ESTOP);
             }
             else if ((f & EVF_LOCAL_STOP) != 0u)
             {
-                enter_estop("BTN2 stop");
+                enter_estop(SR_BTN2);
             }
             else if (((f & EVF_COLLISION) != 0u) && driving(st))
             {
-                enter_estop("collision (IMU)");
+                enter_estop(SR_COLLISION);
                 clear_int1();
-                g_status.motion_event = (uint32_t)MEV_IMPACT;
+                st_set_motion_event(MEV_IMPACT);
             }
             else if (((f & EVF_PROXIMITY) != 0u) && driving(st))
             {
-                enter_estop("obstacle closer than 8 cm");
+                enter_estop(SR_OBSTACLE);
             }
             else
             {
@@ -283,7 +293,7 @@ void tsk_safety(INT stacd, void *exinf)
                 {
                     flag_clear(EVF_COLLISION);   /* bump while not driving: report only */
                     clear_int1();
-                    (void)post_event("IMPACT", "while not driving");
+                    (void)evt_post0(EVC_IMPACT);   /* "while not driving" */
                 }
                 if ((f & EVF_PROXIMITY) != 0u)
                 {
@@ -296,16 +306,16 @@ void tsk_safety(INT stacd, void *exinf)
         {
             if ((f & EVF_IMU_FAULT) != 0u)
             {
-                enter_error("IMU fault (3 failed I2C recoveries)");
+                enter_error(SR_IMU_FAULT);
             }
             else if ((f & EVF_BATTERY_CRITICAL) != 0u)
             {
                 fault_set(FAULT_BATTERY_CRIT);
-                enter_error("battery critical");
+                enter_error(SR_BATTERY_CRIT);
             }
             else if ((f & EVF_ERROR_REQ) != 0u)
             {
-                enter_error("fault reported (see faults in telemetry)");
+                enter_error(SR_FAULT_REPORTED);
             }
             else
             {
@@ -325,14 +335,14 @@ void tsk_safety(INT stacd, void *exinf)
             {
                 hb_quiet_ms[i] = 0u;
                 fault_set(FAULT_WATCHDOG);
-                enter_estop("watchdog: a control task stopped running");
+                enter_estop(SR_WATCHDOG);
                 st = sys_state();
             }
         }
 
         /* ---- ERROR only because of missing calibration: leave it by itself
                 once the values arrive (SET: or the retained is02/config) ---- */
-        if ((st == SYS_ERROR) && (g_status.faults == FAULT_CONFIG) && config_check(missing, sizeof(missing)))
+        if ((st == SYS_ERROR) && ((st_faults() & FAULT_BASE_MASK) == FAULT_CONFIG) && config_check(missing, sizeof(missing)))
         {
             try_recover();
             st = sys_state();

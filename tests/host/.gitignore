@@ -1,0 +1,6 @@
+build/
+build.log
+.venv/
+js/node_modules/
+__pycache__/
+.hypothesis/

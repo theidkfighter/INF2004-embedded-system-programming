@@ -29,17 +29,19 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "wire_ids.h"
+
 #define NET_TOPIC_TELEMETRY  "is02/telemetry"
 #define NET_TOPIC_STATUS     "is02/status"
 #define NET_TOPIC_EVENT      "is02/event"
 #define NET_TOPIC_ACK        "is02/ack"
 #define NET_TOPIC_CMD        "is02/cmd"
-#define NET_TOPIC_CONFIG     "is02/config"      /* retained "NAME=VALUE" lines */
-#define NET_TOPIC_MAP        "is02/map"         /* retained barcode map, e.g. "F=FWD,K=LEFT,R=RIGHT,U=UTURN" */
+#define NET_TOPIC_CONFIG     "is02/config"      /* retained Config_Frame (wire.h) */
+#define NET_TOPIC_MAP        "is02/map"         /* retained Map_Frame (wire.h) */
 #define NET_BEACON_PORT      (47002u)           /* UDP broker beacon from the laptop tool */
 
-#define NET_FRAME_MAX        (512u)     /* one telemetry frame (~300-450 bytes) */
-#define NET_MSG_MAX          (800u)     /* event / ack / status (GET:PARAMS is the longest) */
+#define NET_FRAME_MAX        (WIRE_TLM_LEN)    /* one Telemetry_Frame: 54 bytes (was 512 for JSON) */
+#define NET_MSG_MAX          (64u)             /* Event 30, Heartbeat 25, Ack <= 63 bytes (was 800) */
 #define NET_FRAME_SLOTS      (64u)
 #define NET_MSG_SLOTS        (8u)
 
@@ -51,8 +53,9 @@ typedef enum
 } net_topic_t;
 
 /* Producers (any task) */
-bool     net_post_frame(const char *p_json, uint32_t len);      /* buffered while offline */
-bool     net_post(net_topic_t topic, const char *p_json);       /* status is dropped while offline */
+bool     net_post_frame(const uint8_t *p_frame, uint32_t len);  /* buffered while offline */
+bool     net_post(net_topic_t topic, const uint8_t *p, uint32_t len);   /* status is dropped while offline */
+bool     net_broker_ip4(uint8_t p_ip[4]);                       /* broker in use, as 4 bytes */
 void     net_set_led(bool b_on);                                /* Pico W on-board LED */
 
 /* Status */
@@ -70,12 +73,13 @@ const char *net_broker_ip(void);            /* broker in use (config or discover
 /* Called by the template's radio-owner task (TM_APP_NET_HOOK) */
 void     app_net_poll(void);
 
-/* Implemented by the application (tsk_telemetry.c): a command arrived on
-   is02/cmd. Runs in the radio-owner task: must not block. */
-void     app_net_command(const char *p_cmd, uint64_t rx_us);
-
-/* Implemented by the application: the retained is02/config message arrived
-   (on every connect). Runs in the radio-owner task: must not block. */
-void     app_net_config(const char *p_text);
+/* Implemented by the application (tsk_telemetry.c). They run in the
+   radio-owner task and must not block. Payloads are binary (wire.h).
+   app_net_command: a Command_Frame arrived on is02/cmd.
+   app_net_config:  the retained Config_Frame (is02/config), at every connect.
+   app_net_map:     the retained Map_Frame (is02/map), at every connect. */
+void     app_net_command(const uint8_t *p, uint32_t len, uint64_t rx_us);
+void     app_net_config(const uint8_t *p, uint32_t len);
+void     app_net_map(const uint8_t *p, uint32_t len);
 
 #endif /* APP_NET_H */

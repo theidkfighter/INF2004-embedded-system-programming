@@ -21,9 +21,11 @@
 #include <tk/tkernel.h>
 
 #include "os_glue.h"
+#include "status.h"
 #include "imu_logic.h"
 #include "app_params.h"
 #include "hal.h"
+#include "perf.h"
 #include "jfmt.h"
 #include "robot_config.h"
 
@@ -58,18 +60,24 @@ LOCAL bool imu_recover(void)
     return b_ok;
 }
 
-LOCAL void hump_event(const char *p_name, float value_mm)
+/* HUMP_START / HUMP_PEAK / HUMP_END: valid U1, height U14, run max U14
+   (both 0.1 mm, 0..1500.0 mm). b_valid = false: false slope, no height. */
+LOCAL uint32_t mm_u14(float mm)
 {
-    char   text[TLM_EVENT_DETAIL_LEN];
-    jbuf_t jb;
+    float c = (mm * 10.0f) + 0.5f;
 
-    jb_init(&jb, text, sizeof(text));
-    jb_raw(&jb, "height ");
-    jb_fixed(&jb, value_mm, 1u);
-    jb_raw(&jb, " mm, run max ");
-    jb_fixed(&jb, g_status.hump_max_mm, 1u);
-    jb_raw(&jb, " mm");
-    (void)post_event(p_name, text);
+    return (mm != mm) ? 0u : ((c <= 0.0f) ? 0u : ((c >= 15000.0f) ? 15000u : (uint32_t)c));
+}
+
+LOCAL void hump_event(evt_code_t code, bool b_valid, float value_mm)
+{
+    evt_b_t b;
+
+    evt_begin(&b, code);
+    evt_u(&b, b_valid ? 1u : 0u, 1u);
+    evt_u(&b, b_valid ? mm_u14(value_mm) : 0u, 14u);
+    evt_u(&b, mm_u14(st_hump_max_mm()), 14u);
+    (void)evt_post(&b);
 }
 
 void tsk_imu(INT stacd, void *exinf)
@@ -86,7 +94,7 @@ void tsk_imu(INT stacd, void *exinf)
     float         lp[3] = { 0.0f, 0.0f, 1.0f };
     uint32_t      fails = 0u;
     uint32_t      recoveries = 0u;
-    bool          b_dead = ((g_status.faults & FAULT_IMU_DEAD) != 0u);
+    bool          b_dead = ((st_faults() & FAULT_IMU_DEAD) != 0u);
     uint32_t      retry_n = 0u;
     uint32_t      warm = 0u;
 
@@ -113,6 +121,7 @@ void tsk_imu(INT stacd, void *exinf)
         sys_state_t st;
         hump_out_t  ho;
 
+        PERF_CYCLE_END(PERF_TSK_IMU, PERF_LIMIT_20MS_US);      /* end of the previous cycle (also after "continue") */
         (void)tk_slp_tsk(TMO_FEVR);          /* released every 20 ms by the cyclic tick */
         g_hb[HB_IMU]++;
         st = sys_state();
@@ -132,7 +141,14 @@ void tsk_imu(INT stacd, void *exinf)
                     recoveries = 0u;
                     warm       = 0u;
                     fault_clear(FAULT_IMU_DEAD | FAULT_IMU_I2C);
-                    (void)post_event("IMU_OK", hal_imu_chip_name());
+                    {
+                        evt_b_t b;                    /* chip E2, accel address U7 */
+
+                        evt_begin(&b, EVC_IMU_OK);
+                        evt_u(&b, (uint32_t)hal_imu_chip(), 2u);
+                        evt_u(&b, hal_imu_addr(), 7u);
+                        (void)evt_post(&b);
+                    }
                     log_line("[imu] GY-511 answering: hump and collision detection on");
                 }
             }
@@ -146,7 +162,7 @@ void tsk_imu(INT stacd, void *exinf)
             if (fails >= 3u)
             {
                 fails = 0u;
-                (void)post_event("FAULT_IMU_I2C", "I2C1 timeout: bus recovery");
+                (void)evt_post0(EVC_FAULT_IMU_I2C);   /* "I2C1 timeout: bus recovery" */
                 if (imu_recover())
                 {
                     recoveries = 0u;
@@ -158,7 +174,7 @@ void tsk_imu(INT stacd, void *exinf)
                     {
                         b_dead = true;
                         fault_set(FAULT_IMU_DEAD);
-                        (void)post_event("FAULT_IMU", "3 failed recoveries: driving without the IMU");
+                        (void)evt_post0(EVC_FAULT_IMU);       /* "3 failed recoveries: driving without the IMU" */
                         log_line("[imu] GY-511 lost: driving without hump/collision detection");
                     }
                 }
@@ -189,13 +205,13 @@ void tsk_imu(INT stacd, void *exinf)
             hump_reset(&hump);
         }
 
-        if ((g_params.imu_forward_axis < 0.5f) ||
-            ((g_params.imu_forward_sign < 0.5f) && (g_params.imu_forward_sign > -0.5f)))
+        if ((prm_int(PRM_IMU_FORWARD_AXIS) < 1) ||
+            (prm_tri(PRM_IMU_FORWARD_SIGN) == 0))
         {
             continue;                        /* no pitch until test_imu U5 is copied in */
         }
-        raw = imu_pitch_deg(ax, ay, az, (g_params.imu_forward_axis > 1.5f) ? 2 : 1,
-                            (g_params.imu_forward_sign < 0.0f) ? -1 : 1, odo.a_fwd_g);
+        raw = imu_pitch_deg(ax, ay, az, (prm_int(PRM_IMU_FORWARD_AXIS) > 1) ? 2 : 1,
+                            (prm_tri(PRM_IMU_FORWARD_SIGN) < 0) ? -1 : 1, odo.a_fwd_g);
 
         /* mounting offset: re-learnt while idle and still */
         if ((st == SYS_IDLE) && ((odo.v_mm_s < 5.0f) && (odo.v_mm_s > -5.0f)))
@@ -223,33 +239,28 @@ void tsk_imu(INT stacd, void *exinf)
             if (ho.b_start)
             {
                 flag_set(EVF_HUMP_START);
-                hump_event("HUMP_START", 0.0f);
+                hump_event(EVC_HUMP_START, true, 0.0f);
             }
             if (ho.b_peak)
             {
                 flag_set(EVF_HUMP_PEAK);
-                hump_event("HUMP_PEAK", hump.peak_mm);
+                hump_event(EVC_HUMP_PEAK, true, hump.peak_mm);
             }
             if (ho.b_end)
             {
                 if (ho.b_valid)
                 {
-                    g_status.humps++;
-                    if (ho.height_mm > g_status.hump_max_mm)
-                    {
-                        g_status.hump_max_mm = ho.height_mm;
-                    }
-                    g_status.hump_peak_mm = ho.height_mm;
-                    hump_event("HUMP_END", ho.height_mm);
+                    st_hump_done(ho.height_mm);   /* humps + 1, run max (FR22), last peak */
+                    hump_event(EVC_HUMP_END, true, ho.height_mm);
                 }
                 else
                 {
-                    (void)post_event("HUMP_END", "false slope (no height reported)");
+                    hump_event(EVC_HUMP_END, false, 0.0f);   /* false slope: no height */
                 }
                 flag_set(EVF_HUMP_END);
             }
         }
-        else if (hump.state != HUMP_FLAT)
+        else if (hump_state(&hump) != HUMP_FLAT)
         {
             hump_reset(&hump);
             flag_set(EVF_HUMP_END);
@@ -260,14 +271,12 @@ void tsk_imu(INT stacd, void *exinf)
         }
 
         /* Region B: motion events (turn rate from the encoders, DR A10 fallback) */
-        g_status.motion_event  = (uint32_t)mev_step(&mev, b_impact, hump.state, odo.turn_dps,
-                                                    odo.a_fwd_g, odo.v_mm_s, 20u);
-        g_status.turn_rate_dps = odo.turn_dps;
-        g_status.pitch_deg     = pitch;
-        g_status.hump_mm       = hump.h_mm;
-        if (hump.state != HUMP_FLAT)
+        st_set_motion_event(mev_step(&mev, b_impact, hump_state(&hump), odo.turn_dps,
+                                     odo.a_fwd_g, odo.v_mm_s, 20u));
+        st_set_imu(pitch, hump.h_mm, odo.turn_dps);
+        if (hump_state(&hump) != HUMP_FLAT)
         {
-            g_status.hump_peak_mm = hump.peak_mm;
+            st_set_hump_peak(hump.peak_mm);
         }
     }
 }

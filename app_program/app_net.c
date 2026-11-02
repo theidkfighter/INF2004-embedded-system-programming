@@ -13,7 +13,10 @@
 #include "lwip/udp.h"
 
 #include "app_net.h"
+#include "fault_mask.h"
+#include "wire.h"
 #include "hal.h"
+#include "perf.h"
 #include "mqtt_config.h"
 #include "wifi_credentials.h"
 
@@ -23,20 +26,20 @@
 #define CONNECT_TIMEOUT_MS   (5000u)
 #define RSSI_EVERY_MS        (2000u)
 #define PUBLISH_PER_POLL     (4u)
-#define IN_MAX               (1024u)    /* incoming command / config payload */
+#define IN_MAX               (WIRE_CFG_LEN(WIRE_PARAMS_MAX))   /* longest payload in: a full Config_Frame, 263 bytes */
 #define DISCOVERY_FAILS      (2u)       /* failed connects before a beacon may move the broker */
 
 typedef struct
 {
-    uint16_t len;
-    char     data[NET_FRAME_MAX];
+    uint8_t len;              /* bytes used (<= NET_FRAME_MAX) */
+    uint8_t data[NET_FRAME_MAX];
 } frame_slot_t;
 
 typedef struct
 {
-    uint8_t  topic;
-    uint16_t len;
-    char     data[NET_MSG_MAX];
+    uint8_t topic;            /* net_topic_t */
+    uint8_t len;              /* bytes used (<= NET_MSG_MAX) */
+    uint8_t data[NET_MSG_MAX];
 } msg_slot_t;
 
 static frame_slot_t   g_frames[NET_FRAME_SLOTS];
@@ -46,8 +49,25 @@ static msg_slot_t     g_msgs[NET_MSG_SLOTS];
 static uint32_t       g_m_head;
 static uint32_t       g_m_tail;
 
-static volatile bool     g_wifi_up;
-static volatile bool     g_mqtt_up;
+/* Wi-Fi / MQTT link state lives in the Fault_Mask (design D1): bits
+   FAULT_WIFI_LOSS / FAULT_MQTT_LOSS, written only when they change. */
+static inline bool wifi_up(void) { return !fault_has(FAULT_WIFI_LOSS); }
+static inline bool mqtt_up(void) { return !fault_has(FAULT_MQTT_LOSS); }
+
+static void set_link(uint32_t loss_bit, bool b_up)
+{
+    if (b_up == fault_has(loss_bit))      /* bit set means "lost": change only on a difference */
+    {
+        if (b_up)
+        {
+            fault_clear(loss_bit);
+        }
+        else
+        {
+            fault_set(loss_bit);
+        }
+    }
+}
 static volatile bool     g_led;
 static bool              g_led_applied;
 static volatile int32_t  g_rssi = -100;
@@ -70,28 +90,29 @@ static bool              g_join_pending;
 static uint32_t          g_join_backoff = 1000u;
 static uint32_t          g_t_next_join;
 static char              g_in_topic[32];
-static char              g_in[IN_MAX];
+static uint8_t           g_in[IN_MAX];
 static uint32_t          g_in_len;
 static ip_addr_t         g_broker;
 static bool              g_broker_set;
 static char              g_broker_str[16];
 static uint32_t          g_connect_fails;
 static struct udp_pcb   *gp_beacon;
-static char              g_tx_frame[NET_FRAME_MAX];
+static uint8_t           g_tx_frame[NET_FRAME_MAX];
 
 /* ------------------------------------------------------------------------ */
 /* Producers                                                                 */
 /* ------------------------------------------------------------------------ */
 
-bool net_post_frame(const char *p_json, uint32_t len)
+bool net_post_frame(const uint8_t *p_frame, uint32_t len)
 {
     uint32_t irq;
     uint32_t slot;
 
-    if (len >= NET_FRAME_MAX)
+    if ((len == 0u) || (len > NET_FRAME_MAX))
     {
         return false;
     }
+    PERF_BEGIN(t_cs);
     irq = save_and_disable_interrupts();
     if ((g_f_head - g_f_tail) >= NET_FRAME_SLOTS)
     {
@@ -99,33 +120,35 @@ bool net_post_frame(const char *p_json, uint32_t len)
         g_dropped++;
     }
     slot = g_f_head % NET_FRAME_SLOTS;
-    memcpy(g_frames[slot].data, p_json, len);
-    g_frames[slot].len = (uint16_t)len;
+    memcpy(g_frames[slot].data, p_frame, len);
+    g_frames[slot].len = (uint8_t)len;
     g_f_head++;
+    PERF_END(PERF_CS_IRQ, t_cs, PERF_LIMIT_CS_US);
     restore_interrupts(irq);
     return true;
 }
 
-bool net_post(net_topic_t topic, const char *p_json)
+bool net_post(net_topic_t topic, const uint8_t *p, uint32_t len)
 {
-    uint32_t len = (uint32_t)strlen(p_json);
     uint32_t irq;
     uint32_t slot;
 
-    if ((len >= NET_MSG_MAX) || ((topic == NET_T_STATUS) && !g_mqtt_up))
+    if ((len == 0u) || (len > NET_MSG_MAX) || ((topic == NET_T_STATUS) && !mqtt_up()))
     {
         return false;
     }
+    PERF_BEGIN(t_cs);
     irq = save_and_disable_interrupts();
     if ((g_m_head - g_m_tail) >= NET_MSG_SLOTS)
     {
         g_m_tail++;                       /* keep the newest */
     }
     slot = g_m_head % NET_MSG_SLOTS;
-    memcpy(g_msgs[slot].data, p_json, len);
-    g_msgs[slot].len   = (uint16_t)len;
+    memcpy(g_msgs[slot].data, p, len);
+    g_msgs[slot].len   = (uint8_t)len;
     g_msgs[slot].topic = (uint8_t)topic;
     g_m_head++;
+    PERF_END(PERF_CS_IRQ, t_cs, PERF_LIMIT_CS_US);
     restore_interrupts(irq);
     return true;
 }
@@ -135,8 +158,8 @@ void net_set_led(bool b_on)
     g_led = b_on;
 }
 
-bool     net_wifi_up(void)             { return g_wifi_up; }
-bool     net_mqtt_up(void)             { return g_mqtt_up; }
+bool     net_wifi_up(void)             { return wifi_up(); }
+bool     net_mqtt_up(void)             { return mqtt_up(); }
 int32_t  net_rssi(void)                { return g_rssi; }
 uint32_t net_frames_waiting(void)      { return g_f_head - g_f_tail; }
 uint32_t net_frames_dropped(void)      { return g_dropped; }
@@ -144,6 +167,26 @@ uint32_t net_reconnects(void)          { return g_reconnects; }
 uint32_t net_published(void)           { return g_published; }
 uint32_t net_publish_errors(void)      { return g_pub_errors; }
 int32_t  net_last_connect_status(void) { return g_last_status; }
+bool net_broker_ip4(uint8_t p_ip[4])
+{
+    ip_addr_t a;
+
+    if (ipaddr_aton(net_broker_ip(), &a) == 0)
+    {
+        p_ip[0] = 0u; p_ip[1] = 0u; p_ip[2] = 0u; p_ip[3] = 0u;
+        return false;
+    }
+    {
+        uint32_t v = ip4_addr_get_u32(ip_2_ip4(&a));   /* network order in memory */
+
+        p_ip[0] = (uint8_t)(v & 0xFFu);
+        p_ip[1] = (uint8_t)((v >> 8) & 0xFFu);
+        p_ip[2] = (uint8_t)((v >> 16) & 0xFFu);
+        p_ip[3] = (uint8_t)((v >> 24) & 0xFFu);
+    }
+    return true;
+}
+
 const char *net_broker_ip(void)        { return (g_broker_str[0] != '\0') ? g_broker_str : MQTT_BROKER_IP; }
 
 /* ------------------------------------------------------------------------ */
@@ -183,44 +226,30 @@ static void on_in_publish(void *p_arg, const char *p_topic, u32_t tot_len)
 static void on_in_data(void *p_arg, const u8_t *p_data, u16_t len, u8_t flags)
 {
     uint64_t rx_us = hal_time_us();
-    uint32_t room = (IN_MAX - 1u) - g_in_len;
+    uint32_t room = IN_MAX - g_in_len;
     uint32_t n = (len < room) ? len : room;
 
     (void)p_arg;
-    /* a payload can arrive in several pieces: collect until the last one */
+    /* a payload can arrive in several pieces: collect until the last one.
+       Binary payloads: no terminator and no trimming. A payload longer than
+       IN_MAX is cut, and the decoder then rejects it on its length. */
     memcpy(&g_in[g_in_len], p_data, n);
     g_in_len += n;
-    g_in[g_in_len] = '\0';
     if ((flags & MQTT_DATA_FLAG_LAST) == 0u)
     {
         return;
     }
-    while ((g_in_len > 0u) && ((g_in[g_in_len - 1u] == '\r') || (g_in[g_in_len - 1u] == '\n') ||
-                               (g_in[g_in_len - 1u] == ' ')))
-    {
-        g_in_len--;
-        g_in[g_in_len] = '\0';
-    }
     if (strcmp(g_in_topic, NET_TOPIC_CMD) == 0)
     {
-        app_net_command(g_in, rx_us);
+        app_net_command(g_in, g_in_len, rx_us);
     }
     else if (strcmp(g_in_topic, NET_TOPIC_CONFIG) == 0)
     {
-        app_net_config(g_in);
+        app_net_config(g_in, g_in_len);
     }
     else if (strcmp(g_in_topic, NET_TOPIC_MAP) == 0)
     {
-        /* retained map: handled exactly like "MAP:<payload>" on is02/cmd */
-        static char s_map_cmd[100];
-
-        if (g_in_len > 0u)
-        {
-            memcpy(s_map_cmd, "MAP:", 4u);
-            strncpy(&s_map_cmd[4], g_in, sizeof(s_map_cmd) - 5u);
-            s_map_cmd[sizeof(s_map_cmd) - 1u] = '\0';
-            app_net_command(s_map_cmd, rx_us);
-        }
+        app_net_map(g_in, g_in_len);          /* empty = retained map deleted: ignored */
     }
     else
     {
@@ -243,7 +272,7 @@ static void on_beacon(void *p_arg, struct udp_pcb *p_pcb, struct pbuf *p, const 
     n = pbuf_copy_partial(p, text, sizeof(text) - 1u, 0u);
     text[n] = '\0';
     pbuf_free(p);
-    if ((strncmp(text, "IS02_BROKER", 11) != 0) || g_mqtt_up || (g_connect_fails < DISCOVERY_FAILS))
+    if ((strncmp(text, "IS02_BROKER", 11) != 0) || mqtt_up() || (g_connect_fails < DISCOVERY_FAILS))
     {
         return;
     }
@@ -269,7 +298,7 @@ static void on_connect(mqtt_client_t *p_client, void *p_arg, mqtt_connection_sta
             g_reconnects++;
         }
         g_ever_connected = true;
-        g_mqtt_up        = true;
+        set_link(FAULT_MQTT_LOSS, true);
         g_backoff        = 1000u;
         g_connect_fails  = 0u;
         (void)mqtt_subscribe(p_client, NET_TOPIC_CMD, 1u, on_sub_done, NULL);
@@ -279,11 +308,11 @@ static void on_connect(mqtt_client_t *p_client, void *p_arg, mqtt_connection_sta
     else
     {
         /* refused, timed out or disconnected: try again after the back-off */
-        if (!g_mqtt_up)
+        if (!mqtt_up())
         {
             g_connect_fails++;
         }
-        g_mqtt_up = false;
+        set_link(FAULT_MQTT_LOSS, false);
         schedule_retry(hal_time_ms());
     }
 }
@@ -303,8 +332,8 @@ static void manage_wifi(uint32_t now)
     int32_t link = cyw43_wifi_link_status(&cyw43_state, CYW43_ITF_STA);
     struct netif *p_nif = &cyw43_state.netif[CYW43_ITF_STA];
 
-    g_wifi_up = netif_is_up(p_nif) && netif_is_link_up(p_nif) &&
-                !ip4_addr_isany_val(*netif_ip4_addr(p_nif));
+    set_link(FAULT_WIFI_LOSS, netif_is_up(p_nif) && netif_is_link_up(p_nif) &&
+                              !ip4_addr_isany_val(*netif_ip4_addr(p_nif)));
 
     if (link == CYW43_LINK_JOIN)
     {
@@ -363,17 +392,17 @@ static void manage_mqtt(uint32_t now)
         g_ci.keep_alive = 5u;                 /* the broker notices a dead robot in ~7 s */
     }
 
-    if (g_mqtt_up && !mqtt_client_is_connected(gp_client))
+    if (mqtt_up() && !mqtt_client_is_connected(gp_client))
     {
-        g_mqtt_up = false;                    /* connection lost without a callback */
+        set_link(FAULT_MQTT_LOSS, false);                    /* connection lost without a callback */
         schedule_retry(now);
     }
-    if (!g_wifi_up)
+    if (!wifi_up())
     {
-        if (g_mqtt_up || g_connecting)
+        if (mqtt_up() || g_connecting)
         {
             mqtt_disconnect(gp_client);       /* drop the dead TCP session now */
-            g_mqtt_up    = false;
+            set_link(FAULT_MQTT_LOSS, false);
             g_connecting = false;
         }
         return;
@@ -385,7 +414,7 @@ static void manage_mqtt(uint32_t now)
         g_connect_fails++;
         schedule_retry(now);
     }
-    if (!g_mqtt_up && !g_connecting && ((int32_t)(now - g_next_try) >= 0))
+    if (!mqtt_up() && !g_connecting && ((int32_t)(now - g_next_try) >= 0))
     {
         if (g_broker_set &&
             (mqtt_client_connect(gp_client, &g_broker, MQTT_BROKER_PORT, on_connect, NULL, &g_ci) == ERR_OK))
@@ -426,13 +455,15 @@ static void flush(void)
     while ((sent < PUBLISH_PER_POLL) && (g_f_tail != g_f_head))
     {
         frame_slot_t *p;
+        PERF_BEGIN(t_cs);
         uint32_t      irq = save_and_disable_interrupts();
-        uint16_t      len;
+        uint8_t       len;
 
         /* copy out under the lock: a producer may overwrite the oldest slot */
         p   = &g_frames[g_f_tail % NET_FRAME_SLOTS];
         len = p->len;
         memcpy(g_tx_frame, p->data, len);
+        PERF_END(PERF_CS_IRQ, t_cs, PERF_LIMIT_CS_US);
         restore_interrupts(irq);
 
         if (mqtt_publish(gp_client, NET_TOPIC_TELEMETRY, g_tx_frame, len, 0u, 0u,
@@ -440,11 +471,13 @@ static void flush(void)
         {
             return;
         }
+        PERF_BEGIN(t_cs2);
         irq = save_and_disable_interrupts();
         if ((g_f_head - g_f_tail) > 0u)
         {
             g_f_tail++;
         }
+        PERF_END(PERF_CS_IRQ, t_cs2, PERF_LIMIT_CS_US);
         restore_interrupts(irq);
         sent++;
     }
@@ -461,7 +494,7 @@ void app_net_poll(void)
     }
 
     manage_wifi(now);
-    if (g_wifi_up && ((now - g_t_rssi) >= RSSI_EVERY_MS))
+    if (wifi_up() && ((now - g_t_rssi) >= RSSI_EVERY_MS))
     {
         int32_t rssi = 0;
 
@@ -472,7 +505,7 @@ void app_net_poll(void)
         }
     }
     manage_mqtt(now);
-    if (g_mqtt_up)
+    if (mqtt_up())
     {
         flush();
     }

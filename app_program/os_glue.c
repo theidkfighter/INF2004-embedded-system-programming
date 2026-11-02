@@ -7,8 +7,14 @@
 #include <tm/tmonitor.h>
 
 #include "os_glue.h"
+#include "crit.h"
+#include "evt.h"
+#include "status.h"
+#include "msg_codec.h"
+#include "bitpack.h"
 #include "hal.h"
 #include "jfmt.h"
+#include "perf.h"
 
 #define MSG_BLOCKS      (40)
 #define STACK_DEFAULT   (3072)
@@ -24,8 +30,8 @@ IMPORT void tsk_imu(INT stacd, void *exinf);
 IMPORT void tsk_nav(INT stacd, void *exinf);
 IMPORT void tsk_telemetry(INT stacd, void *exinf);
 
-volatile uint32_t g_hb[HB_COUNT];
-volatile uint32_t g_reacq_seq;
+volatile uint8_t g_hb[HB_COUNT];
+volatile uint8_t g_reacq_seq;
 
 ID g_flg_sys;
 ID g_mbx_motion;
@@ -37,9 +43,7 @@ ID g_tsk_safety, g_tsk_motion, g_tsk_line, g_tsk_obstacle, g_tsk_imu, g_tsk_nav,
 
 LOCAL ID                g_mpf_msg;
 LOCAL ID                g_cyc_tick;
-LOCAL volatile uint32_t g_buzz_pattern;
 LOCAL volatile uint32_t g_tick_n;
-LOCAL odometry_t        g_odo;
 
 /* message pool storage: blocks of T_MSG + body, word aligned */
 #define MSG_BLK_WORDS   ((sizeof(app_msg_t) + 3u) / 4u)
@@ -118,14 +122,18 @@ LOCAL void cyc_tick(void *exinf)
 {
     (void)exinf;
     g_tick_n++;
+    perf_release(PERF_TSK_SAFETY);
     (void)tk_wup_tsk(g_tsk_safety);
+    perf_release(PERF_TSK_LINE);
     (void)tk_wup_tsk(g_tsk_line);
     if ((g_tick_n & 1u) == 0u)
     {
+        perf_release(PERF_TSK_MOTION);
         (void)tk_wup_tsk(g_tsk_motion);
     }
     else
     {
+        perf_release(PERF_TSK_IMU);
         (void)tk_wup_tsk(g_tsk_imu);
     }
 }
@@ -225,7 +233,7 @@ bool post_motion(const motion_cmd_t *p_cmd)
     {
         return false;
     }
-    p_msg->body.motion = *p_cmd;
+    msg_motion_pack(p_cmd, &p_msg->body.motion);
     return send(g_mbx_motion, p_msg);
 }
 
@@ -237,8 +245,13 @@ bool post_nav(nav_event_type_t type, char code)
     {
         return false;
     }
-    p_msg->body.nav.type = (uint8_t)type;
-    p_msg->body.nav.code = code;
+    {
+        nav_event_t e;
+
+        e.type = (uint8_t)type;
+        e.code = code;
+        msg_nav_pack(&e, &p_msg->body.nav);
+    }
     return send(g_mbx_nav, p_msg);
 }
 
@@ -250,11 +263,11 @@ bool post_obstacle(const obstacle_profile_t *p_prof)
     {
         return false;
     }
-    p_msg->body.obstacle = *p_prof;
+    msg_obst_pack(p_prof, &p_msg->body.obstacle);
     return send(g_mbx_obstacle, p_msg);
 }
 
-bool post_event(const char *p_name, const char *p_detail)
+bool post_evt(const evt_msg_t *p_m)
 {
     app_msg_t *p_msg = msg_alloc();
 
@@ -262,9 +275,13 @@ bool post_event(const char *p_name, const char *p_detail)
     {
         return false;
     }
-    jf_copy(p_msg->body.event.name, p_name, TLM_EVENT_NAME_LEN);
-    jf_copy(p_msg->body.event.detail, p_detail, TLM_EVENT_DETAIL_LEN);
+    p_msg->body.event = *p_m;
     return send(g_mbx_tlm, p_msg);
+}
+
+uint32_t evt_now_ms(void)
+{
+    return hal_time_ms();
 }
 
 /* ------------------------------------------------------------------------ */
@@ -307,16 +324,10 @@ bool flag_take(uint32_t bits, uint32_t *p_got)
 
 void buzzer_request(uint32_t pattern)
 {
-    g_buzz_pattern = pattern;
-    flag_set(EVF_BUZZER_REQ);
-}
-
-uint32_t buzzer_pattern_take(void)
-{
-    uint32_t p = g_buzz_pattern;
-
-    g_buzz_pattern = BUZZ_NONE;
-    return p;
+    if (buzz_put(pattern))
+    {
+        flag_set(EVF_BUZZER_REQ);
+    }
 }
 
 bool sys_set_state(sys_state_t state, bool b_safety)
@@ -324,14 +335,15 @@ bool sys_set_state(sys_state_t state, bool b_safety)
     sys_state_t old;
     bool        b_ok = false;
 
-    (void)tk_dis_dsp();
-    old = (sys_state_t)g_status.state;
+    /* compare and set of the state field (status.h sys unit), one section */
+    crit_dsp_enter();
+    old = (sys_state_t)BP_GET(g_status.sys, ST_SH_STATE, ST_W_STATE);
     if (b_safety || ((old != SYS_ESTOP) && (old != SYS_ERROR)))
     {
-        g_status.state = (uint32_t)state;
+        g_status.sys = BP_PUT(g_status.sys, ST_SH_STATE, ST_W_STATE, (uint32_t)state);
         b_ok = true;
     }
-    (void)tk_ena_dsp();
+    crit_dsp_exit();
 
     if (b_ok && (old != state))
     {
@@ -339,45 +351,237 @@ bool sys_set_state(sys_state_t state, bool b_safety)
 
         tm_sprintf((UB *)line, (UB *)"[state] %s -> %s", sys_state_name(old), sys_state_name(state));
         log_line(line);
-        (void)post_event("STATE", sys_state_name(state));
+        (void)evt_post1(EVC_STATE, (uint32_t)state, 3u);
     }
     return b_ok;
 }
 
 sys_state_t sys_state(void)
 {
-    return (sys_state_t)g_status.state;
+    return st_state();
 }
 
 void fault_set(uint32_t fault_bits)
 {
-    (void)tk_dis_dsp();
-    g_status.faults |= fault_bits;
-    (void)tk_ena_dsp();
+    st_fault_set(fault_bits);
 }
 
 void fault_clear(uint32_t fault_bits)
 {
+    st_fault_clear(fault_bits);
+}
+
+/* ------------------------------------------------------------------------ */
+/* Critical_Section with dispatch disabled and Saturation_Counter (crit.h)   */
+/* ------------------------------------------------------------------------ */
+
+#if APP_PERF
+/* Start of the open dispatch-disabled section. Sections do not nest and
+   interrupt handlers never use them, so one variable is enough: it is written
+   only while dispatch is disabled, by the task that owns the section. */
+LOCAL uint32_t g_cs_dsp_t0;
+#endif
+
+/* Saturation_Counter: 0 at boot (.bss), written only inside sat_note(). */
+LOCAL volatile uint16_t g_sat_count;
+
+void crit_dsp_enter(void)
+{
     (void)tk_dis_dsp();
-    g_status.faults &= ~fault_bits;
+#if APP_PERF
+    g_cs_dsp_t0 = hal_time_us32();
+#endif
+}
+
+void crit_dsp_exit(void)
+{
+    /* probe recorded while dispatch is still disabled (perf.h) */
+    PERF_END(PERF_CS_DSP, g_cs_dsp_t0, PERF_LIMIT_CS_US);
     (void)tk_ena_dsp();
 }
 
-void odometry_get(odometry_t *p_out)
+void sat_note(uint32_t n)
 {
-    (void)tk_dis_dsp();
-    *p_out = g_odo;
-    (void)tk_ena_dsp();
+    uint32_t v;
+
+    if (n == 0u)
+    {
+        return;
+    }
+    crit_dsp_enter();
+    v = (uint32_t)g_sat_count;
+    v = (n > (SAT_COUNT_MAX - v)) ? SAT_COUNT_MAX : (v + n);   /* holds at 65,535 */
+    g_sat_count = (uint16_t)v;
+    crit_dsp_exit();
 }
 
-void odometry_put(const odometry_t *p_in)
+uint16_t sat_count(void)
 {
-    (void)tk_dis_dsp();
-    g_odo = *p_in;
-    (void)tk_ena_dsp();
+    return g_sat_count;
 }
 
 void log_line(const char *p_text)
 {
     tm_printf((UB *)"%s\n", p_text);
 }
+
+/* ------------------------------------------------------------------------ */
+/* Timing probes (perf.h), APP_PERF = 1 only                                 */
+/* ------------------------------------------------------------------------ */
+
+#if APP_PERF
+
+#define PERF_BARRIER()   __asm__ volatile ("" ::: "memory")   /* compiler barrier */
+#define PERF_REL_FIRST   ((uint32_t)PERF_TSK_SAFETY)          /* the four task ids are consecutive */
+#define PERF_REL_TASKS   (4u)
+#define PERF_REL_SLOTS   (4u)                                 /* power of 2 */
+
+perf_stat_t g_perf[PERF_COUNT];
+
+/* Release timestamps of one periodic task: a single-producer single-consumer
+   ring. cyc_tick pushes one per release, the task pops the oldest at the end
+   of each cycle, so a cycle that overruns into the next release is still
+   measured from its own release. A wake-up without a release (INT1 wakes
+   the safety monitor) finds the ring empty and records nothing. */
+typedef struct
+{
+    uint32_t          t_us[PERF_REL_SLOTS];
+    volatile uint32_t head;          /* cyc_tick */
+    volatile uint32_t tail;          /* the task */
+    volatile uint32_t lost;          /* cyc_tick: ring full, timestamp dropped */
+    uint32_t          lost_seen;     /* the task */
+} perf_rel_t;
+
+LOCAL perf_rel_t g_perf_rel[PERF_REL_TASKS];
+
+LOCAL const char * const PERF_NAMES[PERF_COUNT] =
+{
+    "isr_gpio", "isr_timer", "tsk_safety", "tsk_line", "tsk_motion", "tsk_imu",
+    "tlm_encode", "cs_dsp", "cs_irq"
+};
+
+void perf_add(uint32_t id, uint32_t us, uint32_t limit_us)
+{
+    perf_stat_t *p_s;
+
+    if (id >= (uint32_t)PERF_COUNT)
+    {
+        return;
+    }
+    p_s = &g_perf[id];
+    p_s->n++;
+    if (us > p_s->max_us)
+    {
+        p_s->max_us = us;
+    }
+    p_s->sum_us = (us > (0xFFFFFFFFu - p_s->sum_us)) ? 0xFFFFFFFFu : (p_s->sum_us + us);
+    if (us > limit_us)
+    {
+        p_s->over++;
+    }
+}
+
+void perf_release(uint32_t id)
+{
+    uint32_t    k = id - PERF_REL_FIRST;
+    perf_rel_t *p_r;
+    uint32_t    head;
+
+    if (k >= PERF_REL_TASKS)
+    {
+        return;
+    }
+    p_r  = &g_perf_rel[k];
+    head = p_r->head;
+    if ((head - p_r->tail) < PERF_REL_SLOTS)
+    {
+        p_r->t_us[head & (PERF_REL_SLOTS - 1u)] = hal_time_us32();
+        PERF_BARRIER();                       /* entry before the index */
+        p_r->head = head + 1u;
+    }
+    else
+    {
+        p_r->lost++;
+    }
+}
+
+void perf_cycle_end(uint32_t id, uint32_t limit_us)
+{
+    uint32_t    now = hal_time_us32();
+    uint32_t    k = id - PERF_REL_FIRST;
+    perf_rel_t *p_r;
+    uint32_t    tail;
+
+    if (k >= PERF_REL_TASKS)
+    {
+        return;
+    }
+    p_r  = &g_perf_rel[k];
+    tail = p_r->tail;
+    if (tail != p_r->head)
+    {
+        uint32_t t_rel = p_r->t_us[tail & (PERF_REL_SLOTS - 1u)];
+
+        PERF_BARRIER();                       /* entry before the index */
+        p_r->tail = tail + 1u;
+        perf_add(id, now - t_rel, limit_us);
+    }
+    else if (p_r->lost != p_r->lost_seen)
+    {
+        /* this cycle served a release whose timestamp was dropped because
+           PERF_REL_SLOTS releases were still pending: count it as late */
+        p_r->lost_seen++;
+        perf_add(id, limit_us + 1u, limit_us);
+    }
+    else
+    {
+        /* woken without a release: not a periodic cycle */
+    }
+}
+
+void perf_reset(void)
+{
+    UW imask;
+
+    DI(imask);                                /* no probe updates part-way */
+    for (uint32_t i = 0u; i < (uint32_t)PERF_COUNT; i++)
+    {
+        g_perf[i].n      = 0u;
+        g_perf[i].max_us = 0u;
+        g_perf[i].sum_us = 0u;
+        g_perf[i].over   = 0u;
+    }
+    PERF_BARRIER();
+    EI(imask);
+}
+
+void perf_report(void)
+{
+    for (uint32_t i = 0u; i < (uint32_t)PERF_COUNT; i++)
+    {
+        perf_stat_t s;
+        char        line[96];
+        jbuf_t      jb;
+        UW          imask;
+
+        DI(imask);                            /* one consistent copy of the probe */
+        s = g_perf[i];
+        PERF_BARRIER();
+        EI(imask);
+
+        jb_init(&jb, line, sizeof(line));
+        jb_raw(&jb, "[perf] ");
+        jb_raw(&jb, PERF_NAMES[i]);
+        jb_raw(&jb, " n=");
+        jb_uint(&jb, s.n);
+        jb_raw(&jb, " max=");
+        jb_uint(&jb, s.max_us);
+        jb_raw(&jb, " avg=");
+        jb_fixed(&jb, (s.n > 0u) ? ((float)s.sum_us / (float)s.n) : 0.0f, 1u);
+        jb_raw(&jb, " over=");
+        jb_uint(&jb, s.over);
+        log_line(line);
+    }
+}
+
+#endif /* APP_PERF */
