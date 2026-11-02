@@ -21,8 +21,9 @@
 #      P<n> <title> | <payload type or Storage_Unit> | cases=<n> | failed=<n> | seed=<s>
 #    and, for a failure, the property, payload type or Storage_Unit, input and
 #    seed (Requirements 18.8, 18.9).
-#    The static structure checks (test_static.sh) run after the property
-#    tests; each check is counted under "other tests".
+#    The static structure checks (test_static.sh) and the compile-fail test
+#    (test_compile_fail.sh) run after the property tests; each check is
+#    counted under "other tests".
 # 4. Exits non-zero if anything failed.
 #
 # Environment: PYTHON (default .venv/bin/python if present, else python3),
@@ -162,12 +163,19 @@ if [ "$SELFCHECK" -eq 0 ]; then
         show_log test_static.sh "$RES/static.log" "$rc"
         STATUS=1
     fi
+    IS02_RESULTS="$RES/compile_fail.jsonl" bash ./test_compile_fail.sh > "$RES/compile_fail.log" 2>&1
+    rc=$?
+    if [ "$rc" -ne 0 ]; then
+        show_log test_compile_fail.sh "$RES/compile_fail.log" "$rc"
+        STATUS=1
+    fi
 fi
 
 # ---- 5. summary ---------------------------------------------------------------
 echo
 IS02_RERUN="$RERUN" \
-    "$PYTHON" summary.py "$SEED" "$RES/py.jsonl" "$RES/js.jsonl" "$RES/static.jsonl" || STATUS=1
+    "$PYTHON" summary.py "$SEED" "$RES/py.jsonl" "$RES/js.jsonl" "$RES/static.jsonl" \
+        "$RES/compile_fail.jsonl" || STATUS=1
 
 if [ "$SELFCHECK" -eq 1 ]; then
     if [ "$STATUS" -eq 0 ]; then

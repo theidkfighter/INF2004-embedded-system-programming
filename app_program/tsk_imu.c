@@ -260,7 +260,7 @@ void tsk_imu(INT stacd, void *exinf)
                 flag_set(EVF_HUMP_END);
             }
         }
-        else if (hump.state != HUMP_FLAT)
+        else if (hump_state(&hump) != HUMP_FLAT)
         {
             hump_reset(&hump);
             flag_set(EVF_HUMP_END);
@@ -271,10 +271,10 @@ void tsk_imu(INT stacd, void *exinf)
         }
 
         /* Region B: motion events (turn rate from the encoders, DR A10 fallback) */
-        st_set_motion_event(mev_step(&mev, b_impact, hump.state, odo.turn_dps,
+        st_set_motion_event(mev_step(&mev, b_impact, hump_state(&hump), odo.turn_dps,
                                      odo.a_fwd_g, odo.v_mm_s, 20u));
         st_set_imu(pitch, hump.h_mm, odo.turn_dps);
-        if (hump.state != HUMP_FLAT)
+        if (hump_state(&hump) != HUMP_FLAT)
         {
             st_set_hump_peak(hump.peak_mm);
         }

@@ -157,7 +157,7 @@ const char *motion_event_name(motion_event_t ev);
  * (the unpacked struct was 156 bytes). */
 typedef struct
 {
-    volatile uint32_t sys;      /* state E3, faults U13, stop reason E4, motion event E3 */
+    volatile uint32_t sys;      /* state E3, faults U16, stop reason E4, motion event E3 */
     volatile uint32_t mot_a;    /* spd_l S15, spd_r S15 */
     volatile uint32_t mot_b;    /* duty_l S11, duty_r S11, speed_scale U7 */
     volatile uint32_t mot_c;    /* enc_l S24 */

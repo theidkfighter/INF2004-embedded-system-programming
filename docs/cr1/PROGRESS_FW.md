@@ -75,14 +75,14 @@ Commit column: `Wei-En` means the work now in `cr1/laptop` (`5393d66` or earlier
 
 | Task | Status | Commit | Note |
 |---|---|---|---|
-| 6.1 status.h | partly | Wei-En | 60 B; units grouped differently from the D2 table (internal only). The enum-width and field-fit `_Static_assert`s are missing (Requirement 2.13) |
+| 6.1 status.h | done | Wei-En, session 2 | 60 B; units grouped differently from the D2 table (internal only). Session 2 added the size, enum-width and field-fit `_Static_assert`s (Requirement 2.13), and `app_status.c` now uses the same named shifts and widths |
 | 6.2 accessors in app_status.c | done | Wei-En | every writer uses a dispatch-disabled section |
 | 6.3 convert writers and readers | done | Wei-En | |
 | 6.4 Property 4 | partly | | example checks in `test_status_snapshot.py`, no 1,000-sequence property |
 | 6.5 Property 5 (invalid discrete writes) | skipped (minimum scope) | | Discrete fields come from enums and fixed call sites, so out-of-range input is not reachable at run time |
 | 6.6 Property 6 (saturating counters) | skipped (minimum scope) | | All counters use the one helper `bp_sat_inc`, and `test_status_snapshot.py` shows them holding at the limit |
 | 6.7 Property 8 (line sensor codes) | skipped (minimum scope) | | One line of polarity logic, checked on the car by line following |
-| 6.8 compile-fail test for narrow enums | skipped (minimum scope) | | The enums are fixed for CR1, so none can outgrow its field; the test also needs the asserts 6.1 lacks |
+| 6.8 compile-fail test for narrow enums | done | session 2 | `tests/host/test_compile_fail.sh`, run by `run_all.sh`: 7 edited header sets each fail with the field's name, and the unchanged headers compile |
 | checkpoint 7 (bench) | car-open | | **needs the car** |
 
 ### Step 4: shared scalars, odometry, done word, mailboxes
@@ -105,10 +105,10 @@ Commit column: `Wei-En` means the work now in `cr1/laptop` (`5393d66` or earlier
 | Task | Status | Commit | Note |
 |---|---|---|---|
 | 10.1 line contexts and `tsk_line.c` flags | partly | Wei-En | barcode part only; `line_ctx_t`, `search_ctx_t`, `g_searching`, `g_det_on` aren't packed |
-| 10.2 IMU contexts | todo | | |
+| 10.2 IMU contexts | done | session 2 | `hump_ctx_t.f` 16-bit, `mev_ctx_t.f` 8-bit, range-checked get/set in `imu_logic.h`; continuous members unchanged (D16) |
 | 10.3 obstacle and motion contexts | skipped (minimum scope) | | Private to one task, so no race risk, and leaving them keeps the obstacle code unchanged |
-| 10.4 Property 15 (hump) | todo | | |
-| 10.5 Property 14 (obstacle planning) | todo | | |
+| 10.4 Property 15 (hump) | done | session 2 | `test_prop15_hump.py`, 2,000 cases against `libbase.so`; also the counters, `mev_step` and every setter's range |
+| 10.5 Property 14 (obstacle planning) | done | session 2 | `test_prop14_obstacle.py`, 2,000 cases against `libbase.so`, bit for bit. Covers `obstacle_logic.c`; the task-side planner in `tsk_obstacle.c` is kernel code, so its diff was read by hand |
 | 10.6 Property 13 (barcode) | done | Wei-En | `test_diff_barcode.py` |
 | 10.7 field independence for contexts | skipped (minimum scope) | | Extends a test to contexts that are not all packed; `bitpack.h` itself is tested |
 | 10.8 Parameter_Store | done | Wei-En | D15 |
@@ -191,6 +191,8 @@ All done: see `PROGRESS_LT.md` (14.1 to 14.18). Checkpoint 15 is `car-open` ther
 - `g_done`: the one store sits inside a dispatch-disabled section. D3.5 says no section is needed; the session task asked for every update of it to be inside one. Readers still use one load with no section.
 - `buzzer_pattern_take`, `odometry_t`, `odometry_get`, `odometry_put` and the `BUZZ_*` constants moved from `os_glue.c/.h` to the plain `shared.h` / `app_shared.c`, so the host tests run the same code. `os_glue.h` includes `shared.h`, so callers didn't change.
 - `g_estop_rx_us` holds the low 32 bits of the time, and `estop_pending` replaces the old "0 = none" convention (D3).
+- The Status_Snapshot type is still `robot_status_t` (spec: `status_snapshot_t`). The 60-byte assert and the field asserts apply to it.
+- `mev_ctx_t.still_ms` stays `uint32_t` as in the Baseline_Build (D5 says int32).
 
 ## Car checks waiting
 
@@ -198,12 +200,30 @@ All done: see `PROGRESS_LT.md` (14.1 to 14.18). Checkpoint 15 is `car-open` ther
 |---|---|---|---|
 | Baseline measurements (`APP_PERF=1`, `docs/evidence/README.md` procedures) | FW-00 | no | |
 | Session 1 build: boot, START, line following, ESTOP + BTN1 recovery, one barcode turn. Console and dashboard should look as before; the ESTOP ack's `pwm_off_us` should be a small number | FW session 1 | no | |
+| Session 2 build: one hump (START, PEAK, END events, hump count and height in telemetry; a short slope gives a false-slope END), motion events on the dashboard as before, one obstacle bypass | FW session 2 | no | |
 | S5 met: FW-09 builds may be flashed (LT-05 merged: the tools send binary by default). After flashing, run `robot_params.py` and send the map once so the retained `is02/config` and `is02/map` are binary | LT-05 | no | |
 
 ## Session log
 
 Newest first. One entry per session: date, tool, commit, gate results (host totals, `arm-none-eabi-size` line), open issues, car checks for the user.
 
+- **2026-11-02, minimum CR1 session 2 (Claude Code, local clone, Opus 5.5).** Branch `cr1/fw-rest`, commit `CR1 FW session 2: IMU contexts, Properties 14 and 15, status asserts`.
+  - **Done:** 10.2, 10.4, 10.5, 6.1, and 6.8 (it was quick). No item from `REVIEW_FLAGS.md` applied. R8 did not arise: `obstacle_logic.c/.h` and `imu_logic.c/.h` matched the Baseline_Build exactly before this session.
+  - **Gate (WSL, `PICO_SDK_PATH=$HOME/pico/pico-sdk`), all passed:**
+    - `tools/evidence/build_check.sh -- -j8`: PASS, 0 warnings.
+    - `APP_PERF=1`, `APP_LEGACY_TEXT_CMD=1`, `APP_SELFTEST=1`: each PASS with 0 warnings (through `build_check.sh`).
+    - `rm -rf tests/host/build && PYTHON=~/is02venv/bin/python bash tests/host/run_all.sh --seed 12345`: `Host_Test_Suite: PASSED (seed=12345)`; properties=543 failed=0, other tests passed=1238 failed=0 skipped=0. Before this session: 539 and 1212.
+    - Property 14: 2,000 cases (1,000 free scans, 1,000 shaped scans), 0 failed. Property 15: 2,000 cases (1,000 held pitch runs, 1,000 free samples), 0 failed. No failure, so nothing to trace in the harness or the code.
+  - **`arm-none-eabi-size`:** text 409616, data 2796, bss 60184, dec 472596. Before this session: 409356 / 2796 / 60184. `.bss` doesn't move because both contexts are locals of `tsk_imu`, so the saving is on its stack (host sizes: `hump_ctx_t` 28 to 16 bytes, `mev_ctx_t` 16 to 8).
+  - **Test strength:** 24 mutants of `imu_logic.c/.h` and `obstacle_logic.c` were run against the two new test files. 23 were caught. The other, a state setter limit of 7, is equivalent: `bp_set_checked` still refuses anything above the 2-bit field.
+  - **Counters:** no event sequence can show a counter wrap, because the thresholds are met first, so Property 15 also compares each packed counter with `min(baseline, 5)`.
+  - **`app_status.c`:** the literal shifts became the `ST_SH_*` / `ST_W_*` constants, so the asserts check the real layout. The object code for the Cortex-M0+ is identical to the previous commit (`objdump -d` compared).
+  - **`status.h`:** now includes `line_logic.h` and `wire_ids.h` for `LINE_LOST` and `STOP_REASON_COUNT`, both plain headers. The stale `faults U13` comments there and in `app_types.h` were corrected.
+  - **Added beyond the list, to check 10.2:** `stubs/imu_export.c`, the `mev_step` differential and the setter range tests (Requirements 2.11, 2.12).
+  - **Open issues:**
+    - Property 14 does not run `side_view()` or the leg logic in `tsk_obstacle.c`, which are kernel code. The diff from the Baseline_Build there is events, status accessors, parameter reads and `o.dist_mm`; `st_*` values are only written, never read back into the planner.
+    - The task reads `o.dist_mm` from the odometry record, quantized to 0.01 mm (Wei-En work, D3.4), where the Baseline_Build averaged two floats. It feeds the bypass dead reckoning. Not changed here, and small against the 0.081 mm per count.
+  - **Car check (nothing above ran on a robot):** one hump, motion events, one obstacle bypass; see "Car checks waiting".
 - **2026-11-02, minimum CR1 session 1 (Claude Code, local clone, Opus 5.5).** Branch `cr1/fw-rest`, commit `CR1 FW session 1: shared scalars, done word, Property 18`.
   - **Done:** this ledger rebuilt; 8.2; motion done word; 8.7. No item from `REVIEW_FLAGS.md` applied (R2: `g_estop_reported` left as it is; R3: pool unchanged).
   - **Gate (WSL, `PICO_SDK_PATH=$HOME/pico/pico-sdk`), all passed:**

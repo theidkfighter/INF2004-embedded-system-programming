@@ -120,16 +120,18 @@ void st_set_motion_event(motion_event_t ev)
 static uint32_t enc24(int32_t c)
 {
     c = (c > 8388607) ? 8388607 : ((c < -8388607) ? -8388607 : c);
-    return bp_tc(c, 24u);
+    return bp_tc(c, ST_W_ENC);
 }
 
 void st_set_motion(float spd_l, float spd_r, float duty_l, float duty_r,
                    int32_t enc_l, int32_t enc_r, float dist_mm, float speed_scale)
 {
     uint32_t n = 0u;
-    uint32_t a = BP_PUT(BP_PUT(0u, 0u, 15u, qz(spd_l, &Q_SPD, &n)), 15u, 15u, qz(spd_r, &Q_SPD, &n));
-    uint32_t b = BP_PUT(BP_PUT(BP_PUT(0u, 0u, 11u, qz(duty_l, &Q_DUTY, &n)), 11u, 11u,
-                               qz(duty_r, &Q_DUTY, &n)), 22u, 7u, qz(speed_scale, &Q_SCALE, &n));
+    uint32_t a = BP_PUT(BP_PUT(0u, ST_SH_SPD_L, ST_W_SPD, qz(spd_l, &Q_SPD, &n)),
+                        ST_SH_SPD_R, ST_W_SPD, qz(spd_r, &Q_SPD, &n));
+    uint32_t b = BP_PUT(BP_PUT(BP_PUT(0u, ST_SH_DUTY_L, ST_W_DUTY, qz(duty_l, &Q_DUTY, &n)),
+                               ST_SH_DUTY_R, ST_W_DUTY, qz(duty_r, &Q_DUTY, &n)),
+                        ST_SH_SCALE, ST_W_SCALE, qz(speed_scale, &Q_SCALE, &n));
     uint32_t e = qz(dist_mm, &Q_DIST, &n);
 
     /* motion units have one writer (TSK_MOTION_CTRL) and are whole-word
@@ -148,10 +150,10 @@ void st_set_motion(float spd_l, float spd_r, float duty_l, float duty_r,
 void st_set_line(bool b_l, bool b_r, uint32_t ir_adc, uint32_t line_state)
 {
     crit_dsp_enter();
-    g_status.line_a = BP_PUT(BP_PUT(BP_PUT(BP_PUT(g_status.line_a, 0u, 1u, b_l ? 1u : 0u),
-                                           1u, 1u, b_r ? 1u : 0u),
-                                    2u, 12u, (ir_adc > 4095u) ? 4095u : ir_adc),
-                             14u, 3u, line_state);
+    g_status.line_a = BP_PUT(BP_PUT(BP_PUT(BP_PUT(g_status.line_a, ST_SH_LINE_L, ST_W_LINE, b_l ? 1u : 0u),
+                                           ST_SH_LINE_R, ST_W_LINE, b_r ? 1u : 0u),
+                                    ST_SH_IR, ST_W_IR, (ir_adc > 4095u) ? 4095u : ir_adc),
+                             ST_SH_LINE_STATE, ST_W_LINE_STATE, line_state);
     crit_dsp_exit();
 }
 
@@ -160,8 +162,8 @@ void st_set_bc_levels(uint32_t thr_black, uint32_t thr_white, bool b_enabled)
     thr_black = (thr_black > 4095u) ? 4095u : thr_black;
     thr_white = (thr_white > 4095u) ? 4095u : thr_white;
     crit_dsp_enter();
-    g_status.line_b = BP_PUT(BP_PUT(0u, 0u, 12u, thr_black), 12u, 12u, thr_white);
-    g_status.line_a = BP_PUT(g_status.line_a, 23u, 1u, b_enabled ? 1u : 0u);
+    g_status.line_b = BP_PUT(BP_PUT(0u, ST_SH_THR_BLACK, ST_W_THR, thr_black), ST_SH_THR_WHITE, ST_W_THR, thr_white);
+    g_status.line_a = BP_PUT(g_status.line_a, ST_SH_BC_ON, ST_W_BC_ON, b_enabled ? 1u : 0u);
     crit_dsp_exit();
 }
 
@@ -170,8 +172,8 @@ void st_barcode_read(char code)
     uint32_t c6 = ((code > ' ') && (code <= '_')) ? (uint32_t)(code - ' ') : 0u;
 
     crit_dsp_enter();
-    g_status.line_a = BP_PUT(BP_PUT(g_status.line_a, 17u, 6u, c6), 24u, 7u,
-                             bp_sat_inc(BP_GET(g_status.line_a, 24u, 7u), 127u));
+    g_status.line_a = BP_PUT(BP_PUT(g_status.line_a, ST_SH_BARCODE, ST_W_BARCODE, c6), ST_SH_BC_N, ST_W_BC_N,
+                             bp_sat_inc(BP_GET(g_status.line_a, ST_SH_BC_N, ST_W_BC_N), 127u));
     crit_dsp_exit();
 }
 
@@ -183,8 +185,8 @@ void st_set_imu(float pitch_deg, float hump_mm, float turn_dps)
     uint32_t t = qz(turn_dps, &Q_TURN, &n);
 
     crit_dsp_enter();
-    g_status.imu_a = BP_PUT(BP_PUT(0u, 0u, 11u, p), 11u, 15u, h);
-    g_status.imu_c = BP_PUT(g_status.imu_c, 0u, 14u, t);
+    g_status.imu_a = BP_PUT(BP_PUT(0u, ST_SH_PITCH, ST_W_PITCH, p), ST_SH_HUMP_H, ST_W_HUMP_H, h);
+    g_status.imu_c = BP_PUT(g_status.imu_c, ST_SH_TURN, ST_W_TURN, t);
     crit_dsp_exit();
     sat_note(n);
 }
@@ -194,7 +196,7 @@ void st_set_hump_peak(float peak_mm)
     uint32_t n = 0u;
     uint32_t c = qz(peak_mm, &Q_HUMPU, &n);
 
-    put1(&g_status.imu_b, 0u, 14u, c);
+    put1(&g_status.imu_b, ST_SH_HUMP_PEAK, ST_W_HUMP_U, c);
     sat_note(n);
 }
 
@@ -205,10 +207,12 @@ void st_hump_done(float height_mm)
 
     crit_dsp_enter();
     {
-        uint32_t mx = BP_GET(g_status.imu_b, 14u, 14u);
+        uint32_t mx = BP_GET(g_status.imu_b, ST_SH_HUMP_MAX, ST_W_HUMP_U);
 
-        g_status.imu_b = BP_PUT(BP_PUT(g_status.imu_b, 0u, 14u, c), 14u, 14u, (c > mx) ? c : mx);
-        g_status.imu_c = BP_PUT(g_status.imu_c, 14u, 6u, bp_sat_inc(BP_GET(g_status.imu_c, 14u, 6u), 63u));
+        g_status.imu_b = BP_PUT(BP_PUT(g_status.imu_b, ST_SH_HUMP_PEAK, ST_W_HUMP_U, c),
+                                ST_SH_HUMP_MAX, ST_W_HUMP_U, (c > mx) ? c : mx);
+        g_status.imu_c = BP_PUT(g_status.imu_c, ST_SH_HUMPS, ST_W_HUMPS,
+                                bp_sat_inc(BP_GET(g_status.imu_c, ST_SH_HUMPS, ST_W_HUMPS), 63u));
     }
     crit_dsp_exit();
     sat_note(n);
@@ -219,7 +223,7 @@ void st_set_obst_cm(float cm)
     uint32_t n = 0u;
     uint32_t c = q_us(cm, &n);
 
-    put1(&g_status.obs_a, 0u, 13u, c);
+    put1(&g_status.obs_a, ST_SH_OBST, ST_W_US, c);
     sat_note(n);
 }
 
@@ -230,11 +234,11 @@ void st_set_scan(uint32_t i, float cm)
 
     switch (i)
     {
-        case 0u: put1(&g_status.obs_a, 15u, 13u, c); break;
-        case 1u: put1(&g_status.obs_b, 0u, 13u, c);  break;
-        case 2u: put1(&g_status.obs_b, 13u, 13u, c); break;
-        case 3u: put1(&g_status.obs_c, 0u, 13u, c);  break;
-        case 4u: put1(&g_status.obs_c, 13u, 13u, c); break;
+        case 0u: put1(&g_status.obs_a, ST_SH_SCAN0, ST_W_US, c); break;
+        case 1u: put1(&g_status.obs_b, ST_SH_SCAN1, ST_W_US, c); break;
+        case 2u: put1(&g_status.obs_b, ST_SH_SCAN2, ST_W_US, c); break;
+        case 3u: put1(&g_status.obs_c, ST_SH_SCAN3, ST_W_US, c); break;
+        case 4u: put1(&g_status.obs_c, ST_SH_SCAN4, ST_W_US, c); break;
         default: break;
     }
     sat_note(n);
@@ -242,28 +246,29 @@ void st_set_scan(uint32_t i, float cm)
 
 void st_set_scan_side(char side)
 {
-    put1(&g_status.obs_a, 13u, 2u, (side == 'L') ? 1u : ((side == 'R') ? 2u : 0u));
+    put1(&g_status.obs_a, ST_SH_SCAN_SIDE, ST_W_SCAN_SIDE, (side == 'L') ? 1u : ((side == 'R') ? 2u : 0u));
 }
 
 void st_obstacle_done(void)
 {
     crit_dsp_enter();
-    g_status.obs_c = BP_PUT(g_status.obs_c, 26u, 6u, bp_sat_inc(BP_GET(g_status.obs_c, 26u, 6u), 63u));
+    g_status.obs_c = BP_PUT(g_status.obs_c, ST_SH_OBSTACLES, ST_W_OBSTACLES,
+                            bp_sat_inc(BP_GET(g_status.obs_c, ST_SH_OBSTACLES, ST_W_OBSTACLES), 63u));
     crit_dsp_exit();
 }
 
 void st_set_vbat(uint32_t mv)
 {
-    put1(&g_status.misc, 0u, 13u, (mv > 8191u) ? 8191u : mv);
+    put1(&g_status.misc, ST_SH_VBAT, ST_W_VBAT, (mv > 8191u) ? 8191u : mv);
 }
 
 void st_run_reset(void)
 {
     crit_dsp_enter();
-    g_status.line_a = BP_PUT(BP_PUT(g_status.line_a, 17u, 6u, 0u), 24u, 7u, 0u);
-    g_status.imu_b  = BP_PUT(g_status.imu_b, 14u, 14u, 0u);
-    g_status.imu_c  = BP_PUT(g_status.imu_c, 14u, 6u, 0u);
-    g_status.obs_c  = BP_PUT(g_status.obs_c, 26u, 6u, 0u);
+    g_status.line_a = BP_PUT(BP_PUT(g_status.line_a, ST_SH_BARCODE, ST_W_BARCODE, 0u), ST_SH_BC_N, ST_W_BC_N, 0u);
+    g_status.imu_b  = BP_PUT(g_status.imu_b, ST_SH_HUMP_MAX, ST_W_HUMP_U, 0u);
+    g_status.imu_c  = BP_PUT(g_status.imu_c, ST_SH_HUMPS, ST_W_HUMPS, 0u);
+    g_status.obs_c  = BP_PUT(g_status.obs_c, ST_SH_OBSTACLES, ST_W_OBSTACLES, 0u);
     crit_dsp_exit();
 }
 
@@ -275,23 +280,23 @@ sys_state_t    st_state(void)        { return (sys_state_t)BP_GET(g_status.sys, 
 uint32_t       st_faults(void)       { return BP_GET(g_status.sys, ST_SH_FAULTS, ST_W_FAULTS); }
 uint32_t       st_stop(void)         { return BP_GET(g_status.sys, ST_SH_STOP, ST_W_STOP); }
 motion_event_t st_motion_event(void) { return (motion_event_t)BP_GET(g_status.sys, ST_SH_MEV, ST_W_MEV); }
-float          st_dist_mm(void)      { return deq_u(g_status.mot_e, 0u, 20u, 10); }
-bool           st_line_l(void)       { return BP_GET(g_status.line_a, 0u, 1u) != 0u; }
-bool           st_line_r(void)       { return BP_GET(g_status.line_a, 1u, 1u) != 0u; }
-uint32_t       st_ir_adc(void)       { return BP_GET(g_status.line_a, 2u, 12u); }
-uint32_t       st_bc_thr_black(void) { return BP_GET(g_status.line_b, 0u, 12u); }
-uint32_t       st_bc_thr_white(void) { return BP_GET(g_status.line_b, 12u, 12u); }
-bool           st_bc_enabled(void)   { return BP_GET(g_status.line_a, 23u, 1u) != 0u; }
-uint32_t       st_barcodes_read(void){ return BP_GET(g_status.line_a, 24u, 7u); }
-float          st_pitch_deg(void)    { return deq_s(g_status.imu_a, 0u, 11u, 10); }
-float          st_hump_max_mm(void)  { return deq_u(g_status.imu_b, 14u, 14u, 10); }
-uint32_t       st_humps(void)        { return BP_GET(g_status.imu_c, 14u, 6u); }
-uint32_t       st_obstacles(void)    { return BP_GET(g_status.obs_c, 26u, 6u); }
-uint32_t       st_vbat(void)         { return BP_GET(g_status.misc, 0u, 13u); }
+float          st_dist_mm(void)      { return deq_u(g_status.mot_e, ST_SH_DIST, ST_W_DIST, 10); }
+bool           st_line_l(void)       { return BP_GET(g_status.line_a, ST_SH_LINE_L, ST_W_LINE) != 0u; }
+bool           st_line_r(void)       { return BP_GET(g_status.line_a, ST_SH_LINE_R, ST_W_LINE) != 0u; }
+uint32_t       st_ir_adc(void)       { return BP_GET(g_status.line_a, ST_SH_IR, ST_W_IR); }
+uint32_t       st_bc_thr_black(void) { return BP_GET(g_status.line_b, ST_SH_THR_BLACK, ST_W_THR); }
+uint32_t       st_bc_thr_white(void) { return BP_GET(g_status.line_b, ST_SH_THR_WHITE, ST_W_THR); }
+bool           st_bc_enabled(void)   { return BP_GET(g_status.line_a, ST_SH_BC_ON, ST_W_BC_ON) != 0u; }
+uint32_t       st_barcodes_read(void){ return BP_GET(g_status.line_a, ST_SH_BC_N, ST_W_BC_N); }
+float          st_pitch_deg(void)    { return deq_s(g_status.imu_a, ST_SH_PITCH, ST_W_PITCH, 10); }
+float          st_hump_max_mm(void)  { return deq_u(g_status.imu_b, ST_SH_HUMP_MAX, ST_W_HUMP_U, 10); }
+uint32_t       st_humps(void)        { return BP_GET(g_status.imu_c, ST_SH_HUMPS, ST_W_HUMPS); }
+uint32_t       st_obstacles(void)    { return BP_GET(g_status.obs_c, ST_SH_OBSTACLES, ST_W_OBSTACLES); }
+uint32_t       st_vbat(void)         { return BP_GET(g_status.misc, ST_SH_VBAT, ST_W_VBAT); }
 
 char st_barcode(void)
 {
-    uint32_t c = BP_GET(g_status.line_a, 17u, 6u);
+    uint32_t c = BP_GET(g_status.line_a, ST_SH_BARCODE, ST_W_BARCODE);
 
     return (c == 0u) ? '\0' : (char)(c + ' ');
 }
@@ -303,25 +308,25 @@ static float us_value(uint32_t code)
 
 float st_obst_cm(void)
 {
-    return us_value(BP_GET(g_status.obs_a, 0u, 13u));
+    return us_value(BP_GET(g_status.obs_a, ST_SH_OBST, ST_W_US));
 }
 
 float st_scan_cm(uint32_t i)
 {
     switch (i)
     {
-        case 0u: return us_value(BP_GET(g_status.obs_a, 15u, 13u));
-        case 1u: return us_value(BP_GET(g_status.obs_b, 0u, 13u));
-        case 2u: return us_value(BP_GET(g_status.obs_b, 13u, 13u));
-        case 3u: return us_value(BP_GET(g_status.obs_c, 0u, 13u));
-        case 4u: return us_value(BP_GET(g_status.obs_c, 13u, 13u));
+        case 0u: return us_value(BP_GET(g_status.obs_a, ST_SH_SCAN0, ST_W_US));
+        case 1u: return us_value(BP_GET(g_status.obs_b, ST_SH_SCAN1, ST_W_US));
+        case 2u: return us_value(BP_GET(g_status.obs_b, ST_SH_SCAN2, ST_W_US));
+        case 3u: return us_value(BP_GET(g_status.obs_c, ST_SH_SCAN3, ST_W_US));
+        case 4u: return us_value(BP_GET(g_status.obs_c, ST_SH_SCAN4, ST_W_US));
         default: return -1.0f;
     }
 }
 
 char st_scan_side(void)
 {
-    uint32_t s = BP_GET(g_status.obs_a, 13u, 2u);
+    uint32_t s = BP_GET(g_status.obs_a, ST_SH_SCAN_SIDE, ST_W_SCAN_SIDE);
 
     return (s == 1u) ? 'L' : ((s == 2u) ? 'R' : '\0');
 }

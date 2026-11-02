@@ -8,9 +8,9 @@
  *
  *   unit   bits    field (resolution, range)                         writer
  *   sys    0..2    state E3 (sys_state_t)                            nav / safety
- *          3..15   faults U13 (FAULT_* bits)                         any task
- *          16..19  stop reason E4 (stop_reason_t)                    safety
- *          20..22  motion event E3 (motion_event_t)                  imu
+ *          3..18   faults U16 (Fault_Mask, fault_mask.h)             any task
+ *          19..22  stop reason E4 (stop_reason_t)                    safety
+ *          23..25  motion event E3 (motion_event_t)                  imu
  *   mot_a  0..14   spd_l S15 (0.1 mm/s, +-1000.0)                    motion
  *          15..29  spd_r S15
  *   mot_b  0..10   duty_l S11 (0.1 %, +-100.0)                       motion
@@ -60,6 +60,9 @@
 #include <stdint.h>
 
 #include "app_types.h"
+#include "bitpack.h"
+#include "line_logic.h"
+#include "wire_ids.h"
 
 /* ---- writers ---------------------------------------------------------------- */
 void st_set_state(sys_state_t state);
@@ -111,15 +114,128 @@ uint32_t       st_obstacles(void);
 uint32_t       st_vbat(void);
 
 /* ---- field layout (also used by the telemetry frame fill) ---------------------- */
-#define ST_SH_STATE   (0u)
-#define ST_W_STATE    (3u)
-#define ST_SH_FAULTS  (3u)
-#define ST_W_FAULTS   (16u)       /* Fault_Mask, design D1 */
-#define ST_SH_STOP    (19u)
-#define ST_W_STOP     (4u)
-#define ST_SH_MEV     (23u)
-#define ST_W_MEV      (3u)
+/* sys */
+#define ST_SH_STATE      (0u)
+#define ST_W_STATE       (3u)
+#define ST_SH_FAULTS     (3u)
+#define ST_W_FAULTS      (16u)     /* Fault_Mask, design D1 */
+#define ST_SH_STOP       (19u)
+#define ST_W_STOP        (4u)
+#define ST_SH_MEV        (23u)
+#define ST_W_MEV         (3u)
+/* mot_a */
+#define ST_SH_SPD_L      (0u)
+#define ST_SH_SPD_R      (15u)
+#define ST_W_SPD         (15u)
+/* mot_b */
+#define ST_SH_DUTY_L     (0u)
+#define ST_SH_DUTY_R     (11u)
+#define ST_W_DUTY        (11u)
+#define ST_SH_SCALE      (22u)
+#define ST_W_SCALE       (7u)
+/* mot_c, mot_d */
+#define ST_SH_ENC        (0u)
+#define ST_W_ENC         (24u)
+/* mot_e */
+#define ST_SH_DIST       (0u)
+#define ST_W_DIST        (20u)
+/* line_a */
+#define ST_SH_LINE_L     (0u)
+#define ST_SH_LINE_R     (1u)
+#define ST_W_LINE        (1u)
+#define ST_SH_IR         (2u)
+#define ST_W_IR          (12u)
+#define ST_SH_LINE_STATE (14u)
+#define ST_W_LINE_STATE  (3u)
+#define ST_SH_BARCODE    (17u)
+#define ST_W_BARCODE     (6u)
+#define ST_SH_BC_ON      (23u)
+#define ST_W_BC_ON       (1u)
+#define ST_SH_BC_N       (24u)
+#define ST_W_BC_N        (7u)
+/* line_b */
+#define ST_SH_THR_BLACK  (0u)
+#define ST_SH_THR_WHITE  (12u)
+#define ST_W_THR         (12u)
+/* imu_a */
+#define ST_SH_PITCH      (0u)
+#define ST_W_PITCH       (11u)
+#define ST_SH_HUMP_H     (11u)
+#define ST_W_HUMP_H      (15u)
+/* imu_b */
+#define ST_SH_HUMP_PEAK  (0u)
+#define ST_SH_HUMP_MAX   (14u)
+#define ST_W_HUMP_U      (14u)
+/* imu_c */
+#define ST_SH_TURN       (0u)
+#define ST_W_TURN        (14u)
+#define ST_SH_HUMPS      (14u)
+#define ST_W_HUMPS       (6u)
+/* obs_a */
+#define ST_SH_OBST       (0u)
+#define ST_W_US          (13u)     /* every ultrasonic reading */
+#define ST_SH_SCAN_SIDE  (13u)
+#define ST_W_SCAN_SIDE   (2u)
+#define ST_SH_SCAN0      (15u)
+/* obs_b */
+#define ST_SH_SCAN1      (0u)
+#define ST_SH_SCAN2      (13u)
+/* obs_c */
+#define ST_SH_SCAN3      (0u)
+#define ST_SH_SCAN4      (13u)
+#define ST_SH_OBSTACLES  (26u)
+#define ST_W_OBSTACLES   (6u)
+/* misc */
+#define ST_SH_VBAT       (0u)
+#define ST_W_VBAT        (13u)
 
-#define ST_US_NONE    (8191u)
+#define ST_US_NONE       (8191u)
+
+/* ---- compile-time checks (Requirement 2.13); test_compile_fail.sh ------------- */
+#define ST_UNIT_BITS     (32u)
+#define ST_FITS(sh, w)   (((sh) + (w)) <= ST_UNIT_BITS)
+
+BP_STATIC_ASSERT(sizeof(robot_status_t) == 60u, "status: robot_status_t must be 60 bytes");
+
+BP_STATIC_ASSERT((uint32_t)SYS_STATE_COUNT <= (1u << ST_W_STATE), "status.sys.state too narrow");
+BP_STATIC_ASSERT((uint32_t)STOP_REASON_COUNT <= (1u << ST_W_STOP), "status.sys.stop_reason too narrow");
+BP_STATIC_ASSERT((uint32_t)MEV_COUNT <= (1u << ST_W_MEV), "status.sys.mev too narrow");
+BP_STATIC_ASSERT((uint32_t)LINE_LOST < (1u << ST_W_LINE_STATE), "status.line_a.line_state too narrow");
+
+BP_STATIC_ASSERT(ST_FITS(ST_SH_STATE, ST_W_STATE), "status.sys.state does not fit its unit");
+BP_STATIC_ASSERT(ST_FITS(ST_SH_FAULTS, ST_W_FAULTS), "status.sys.faults does not fit its unit");
+BP_STATIC_ASSERT(ST_FITS(ST_SH_STOP, ST_W_STOP), "status.sys.stop_reason does not fit its unit");
+BP_STATIC_ASSERT(ST_FITS(ST_SH_MEV, ST_W_MEV), "status.sys.mev does not fit its unit");
+BP_STATIC_ASSERT(ST_FITS(ST_SH_SPD_L, ST_W_SPD), "status.mot_a.spd_l does not fit its unit");
+BP_STATIC_ASSERT(ST_FITS(ST_SH_SPD_R, ST_W_SPD), "status.mot_a.spd_r does not fit its unit");
+BP_STATIC_ASSERT(ST_FITS(ST_SH_DUTY_L, ST_W_DUTY), "status.mot_b.duty_l does not fit its unit");
+BP_STATIC_ASSERT(ST_FITS(ST_SH_DUTY_R, ST_W_DUTY), "status.mot_b.duty_r does not fit its unit");
+BP_STATIC_ASSERT(ST_FITS(ST_SH_SCALE, ST_W_SCALE), "status.mot_b.speed_scale does not fit its unit");
+BP_STATIC_ASSERT(ST_FITS(ST_SH_ENC, ST_W_ENC), "status.mot_c.enc_l, mot_d.enc_r do not fit their units");
+BP_STATIC_ASSERT(ST_FITS(ST_SH_DIST, ST_W_DIST), "status.mot_e.dist does not fit its unit");
+BP_STATIC_ASSERT(ST_FITS(ST_SH_LINE_L, ST_W_LINE), "status.line_a.line_l does not fit its unit");
+BP_STATIC_ASSERT(ST_FITS(ST_SH_LINE_R, ST_W_LINE), "status.line_a.line_r does not fit its unit");
+BP_STATIC_ASSERT(ST_FITS(ST_SH_IR, ST_W_IR), "status.line_a.ir does not fit its unit");
+BP_STATIC_ASSERT(ST_FITS(ST_SH_LINE_STATE, ST_W_LINE_STATE), "status.line_a.line_state does not fit its unit");
+BP_STATIC_ASSERT(ST_FITS(ST_SH_BARCODE, ST_W_BARCODE), "status.line_a.barcode does not fit its unit");
+BP_STATIC_ASSERT(ST_FITS(ST_SH_BC_ON, ST_W_BC_ON), "status.line_a.bc_enabled does not fit its unit");
+BP_STATIC_ASSERT(ST_FITS(ST_SH_BC_N, ST_W_BC_N), "status.line_a.barcodes_read does not fit its unit");
+BP_STATIC_ASSERT(ST_FITS(ST_SH_THR_BLACK, ST_W_THR), "status.line_b.bc_thr_black does not fit its unit");
+BP_STATIC_ASSERT(ST_FITS(ST_SH_THR_WHITE, ST_W_THR), "status.line_b.bc_thr_white does not fit its unit");
+BP_STATIC_ASSERT(ST_FITS(ST_SH_PITCH, ST_W_PITCH), "status.imu_a.pitch does not fit its unit");
+BP_STATIC_ASSERT(ST_FITS(ST_SH_HUMP_H, ST_W_HUMP_H), "status.imu_a.hump_h does not fit its unit");
+BP_STATIC_ASSERT(ST_FITS(ST_SH_HUMP_PEAK, ST_W_HUMP_U), "status.imu_b.hump_peak does not fit its unit");
+BP_STATIC_ASSERT(ST_FITS(ST_SH_HUMP_MAX, ST_W_HUMP_U), "status.imu_b.hump_max does not fit its unit");
+BP_STATIC_ASSERT(ST_FITS(ST_SH_TURN, ST_W_TURN), "status.imu_c.turn does not fit its unit");
+BP_STATIC_ASSERT(ST_FITS(ST_SH_HUMPS, ST_W_HUMPS), "status.imu_c.humps does not fit its unit");
+BP_STATIC_ASSERT(ST_FITS(ST_SH_OBST, ST_W_US), "status.obs_a.obst_cm does not fit its unit");
+BP_STATIC_ASSERT(ST_FITS(ST_SH_SCAN_SIDE, ST_W_SCAN_SIDE), "status.obs_a.scan_side does not fit its unit");
+BP_STATIC_ASSERT(ST_FITS(ST_SH_SCAN0, ST_W_US), "status.obs_a.scan0 does not fit its unit");
+BP_STATIC_ASSERT(ST_FITS(ST_SH_SCAN1, ST_W_US), "status.obs_b.scan1 does not fit its unit");
+BP_STATIC_ASSERT(ST_FITS(ST_SH_SCAN2, ST_W_US), "status.obs_b.scan2 does not fit its unit");
+BP_STATIC_ASSERT(ST_FITS(ST_SH_SCAN3, ST_W_US), "status.obs_c.scan3 does not fit its unit");
+BP_STATIC_ASSERT(ST_FITS(ST_SH_SCAN4, ST_W_US), "status.obs_c.scan4 does not fit its unit");
+BP_STATIC_ASSERT(ST_FITS(ST_SH_OBSTACLES, ST_W_OBSTACLES), "status.obs_c.obstacles does not fit its unit");
+BP_STATIC_ASSERT(ST_FITS(ST_SH_VBAT, ST_W_VBAT), "status.misc.vbat does not fit its unit");
 
 #endif /* STATUS_H */

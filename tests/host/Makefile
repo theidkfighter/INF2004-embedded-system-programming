@@ -44,6 +44,8 @@ STUB_SRCS := crit_stub.c sat_stub.c os_stub.c
 # app_program/bitpack.h is header-only (static inline): bitpack_export.c gives
 # its helpers out-of-line bpx_* symbols for ctypes (task 3.1).
 STUB_SRCS += bitpack_export.c
+# Same for the context setters of imu_logic.h (task 10.2).
+STUB_SRCS += imu_export.c
 # Wire_Codec (task 3.9); wire_export.c gives struct sizes for py/wire_ctypes.py.
 LIB_SRCS  += wire.c
 STUB_SRCS += wire_export.c
