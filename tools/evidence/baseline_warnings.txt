@@ -1,0 +1,6 @@
+# Baseline_Build warning count, written by tools/evidence/build_check.sh --record-baseline
+commit=bca79643d6f9bdd3938c353fa5f6fe791fc68f94
+warnings=0
+make=make clean -j8 && make APP_ROBOT=1 -j8
+compiler=arm-none-eabi-gcc (15:13.2.rel1-2) 13.2.1 20231009
+date=2026-11-02T02:40:09Z

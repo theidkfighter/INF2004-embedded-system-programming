@@ -520,6 +520,9 @@ LOCAL void frame(void)
    a scratch buffer (nothing is published), each timed on its own. */
 LOCAL void tlm_bench(void)
 {
+    /* Task 16.9: times the Telemetry_Frame build. "fill" = Status_Snapshot
+       copy read through its packed fields (frame_fill) + binary encode;
+       "enc" = wire_enc_telemetry() alone. */
     static robot_status_t s_snap;           /* a copy: the encoder never sees a live update */
     static uint8_t        s_scratch[WIRE_TLM_LEN];
     frame_extra_t         x;
@@ -527,34 +530,47 @@ LOCAL void tlm_bench(void)
     jbuf_t                jb;
     uint32_t              max_us = 0u;
     uint32_t              sum_us = 0u;
-    char                  line[80];
+    uint32_t              enc_max = 0u;
+    uint32_t              enc_sum = 0u;
+    char                  line[96];
 
-    s_snap   = g_status;
+    crit_dsp_enter();
+    s_snap = g_status;                        /* one consistent copy of the 15 units */
+    crit_dsp_exit();
     x.seq    = g_seq;
     x.t_ms   = hal_time_ms();
     x.state  = sys_state();
-    x.ir_min = s_snap.ir_adc;                 /* hal_ir_adc_range() would reset the live range */
-    x.ir_max = s_snap.ir_adc;
+    x.ir_min = st_ir_adc();                   /* hal_ir_adc_range() would reset the live range */
+    x.ir_max = x.ir_min;
     x.rssi   = net_rssi();
     x.buf    = net_frames_waiting();
     for (uint32_t i = 0u; i < TLM_BENCH_N; i++)
     {
         uint32_t t0 = hal_time_us32();
+        uint32_t t1;
         uint32_t us;
 
         frame_fill(&t, &s_snap, &x);
+        t1 = hal_time_us32();
         (void)wire_enc_telemetry(&t, s_scratch);
         us = hal_time_us32() - t0;
-        max_us = (us > max_us) ? us : max_us;
-        sum_us += us;
+        t1 = hal_time_us32() - t1;
+        max_us   = (us > max_us) ? us : max_us;
+        sum_us  += us;
+        enc_max  = (t1 > enc_max) ? t1 : enc_max;
+        enc_sum += t1;
     }
     jb_init(&jb, line, sizeof(line));
     jb_raw(&jb, "[perf] tlm_bench n=");
     jb_uint(&jb, TLM_BENCH_N);
-    jb_raw(&jb, " max=");
+    jb_raw(&jb, " fill+enc max=");
     jb_uint(&jb, max_us);
     jb_raw(&jb, " avg=");
     jb_fixed(&jb, (float)sum_us / (float)TLM_BENCH_N, 1u);
+    jb_raw(&jb, " enc max=");
+    jb_uint(&jb, enc_max);
+    jb_raw(&jb, " avg=");
+    jb_fixed(&jb, (float)enc_sum / (float)TLM_BENCH_N, 1u);
     log_line(line);
 }
 #endif /* APP_PERF */

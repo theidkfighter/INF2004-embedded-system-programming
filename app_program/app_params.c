@@ -145,6 +145,16 @@ static int32_t param_store(uint32_t i, float v)
     return prm_put(PARAMS[i].desc, v) ? 0 : -3;
 }
 
+float params_min(uint32_t id)
+{
+    return (id < PARAM_COUNT) ? PARAMS[id].min : 0.0f;
+}
+
+float params_max(uint32_t id)
+{
+    return (id < PARAM_COUNT) ? PARAMS[id].max : 0.0f;
+}
+
 uint32_t params_store_width(uint32_t id)
 {
     return ((id < PARAM_COUNT) && (PARAMS[id].p_value == (float *)0)) ? ((PARAMS[id].desc >> 5) & 7u) : 32u;
