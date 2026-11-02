@@ -52,6 +52,17 @@ LT-01 to LT-04 are done on `cr1/laptop` (with `origin/Wei-En` merged: S1 and S2 
 
 Newest first. One entry per session: date, guide, tool (Claude chat / Kiro + model), commit, gate results (host totals), open issues, what the user must check.
 
+- **2026-11-02, Integration: merged `Wei-En` `5393d66` into `cr1/laptop` (Claude Code, local clone, Sonnet 5.5).**
+  - **Merge:** `git merge origin/Wei-En` reported "Already up to date": `5393d66` was already in `cr1/laptop` through `aa2fab7`. No conflicts, no firmware-track file edited.
+  - **Gate (WSL), all passed:**
+    - `rm -rf tests/host/build && PYTHON=~/is02venv/bin/python bash tests/host/run_all.sh --seed 12345`: `Host_Test_Suite: PASSED (seed=12345)`; properties=533 failed=0, other tests passed=1202 failed=0 skipped=0.
+    - `python3 -m py_compile MQTT/*.py`: exit 0.
+    - `node -e "require('./MQTT/is02_codec.js')"`: exit 0.
+    - `tools/evidence/build_check.sh -- -j8` (with `PICO_SDK_PATH=$HOME/pico/pico-sdk`, which `~/.bashrc` sets but the non-interactive shell didn't load): build ok, warnings 0, `PASS`.
+  - **S3 (tools merged)** is met once this reaches `Poh-Loon`.
+  - **Checkpoints 15 and 19 still need the car.** Nothing has run on a robot yet.
+  - **The robot firmware accepts binary commands only** (`APP_LEGACY_TEXT_CMD` isn't implemented), so the old JSON tools can't command a `Poh-Loon` build. Use the tools in `MQTT/` from this branch.
+
 - **2026-11-02, LT-05 (Claude Code, local clone, Sonnet 5.5).** Commit `CR1 LT-05: tools send binary by default` on `cr1/laptop`, on top of `CR1 LT-04`.
   - **S4 treated as met, confirmed in the firmware (read only):** `app_net.c` decodes with `wire_dec_cmd` and `wire_dec_map` (and the Config frame); `tsk_telemetry.c` handles the one-byte E-stop fast path (`(WIRE_FORMAT_VERSION << 4) | WCMD_ESTOP`) and the queued binary commands; `APP_LEGACY_TEXT_CMD` defaults to 0 in `build_make/robot_defaults.mk` and `docs/CR1_FW_STATUS.md` says the robot accepts binary only. No firmware-track file was touched.
   - **Gate: passed.** `rm -rf tests/host/build && PYTHON=~/is02venv/bin/python bash tests/host/run_all.sh --seed 12345` (WSL): `properties=533 failed=0 | other tests passed=1201 failed=0`, `Host_Test_Suite: PASSED`. `python3 -m py_compile MQTT/*.py` and `node -e "require('./MQTT/is02_codec.js')"` passed.
