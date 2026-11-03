@@ -129,7 +129,7 @@
     (LINE_BASE_MM_S > LINE_BASE_SAFE_MAX_MM_S)
 #error "keep LINE_BASE_SAFE_MIN_MM_S <= LINE_BASE_MM_S <= LINE_BASE_SAFE_MAX_MM_S <= 60 % of SPEED_MAX_MM_S"
 #endif
-#define HUMP_SPEED_PCT            (60)          /* DR A2: speed limit on a hump */
+#define HUMP_SPEED_PCT            (80)          /* DR A2: speed limit on a hump (3 Nov: 80, was 60; at 60 % the motors could not climb the course hump) */
 #define ENC_LOSS_DUTY             (0.30f)       /* DR 5: duty above this ... */
 #define ENC_LOSS_MS               (200)         /* ... with no ticks for this long = encoder loss */
 
