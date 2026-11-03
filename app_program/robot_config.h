@@ -189,6 +189,22 @@
 #define HUMP_MIN_HEIGHT_MM        (15.0f)
 #define HUMP_START_SAMPLES        (3)
 #define HUMP_END_SAMPLES          (5)
+/* Agreed by the team 3 Nov (Buddy 4): HUMP_TILT_DETECT 1 = tilt hump
+   detector (imu_logic.h), for the one-sided hump under the right rear wheel.
+   0 = the DR 6.3 pitch detector with the HUMP_* values above. */
+#define HUMP_TILT_DETECT          (1)
+#define HUMP_TILT_START_DEG       (2.5f)        /* tilt above this for HUMP_START_SAMPLES starts a hump */
+#define HUMP_TILT_LEVEL_DEG       (1.5f)        /* tilt below this for HUMP_END_SAMPLES ends it (1.0 left too little margin over driving vibration) */
+#define HUMP_TILT_MIN_MM          (7.0f)        /* smallest lift that counts as a hump (3 Nov: real 1 cm hump 10.2 mm, a false one 6.0 mm) */
+#define HUMP_TILT_MAX_TURN_DPS    (20.0f)       /* only pitch counts while turning faster (curve pull reads as tilt) */
+#define HUMP_TILT_ALPHA           (0.1f)        /* low-pass on the gravity VECTOR before the tilt angle
+                                                   (filtering the angle itself keeps vibration as a
+                                                   positive bias: the hump never ended, 3 Nov runs) */
+#define HUMP_TILT_BASE_ALPHA      (0.01f)       /* driving-posture baseline, ~2 s time constant; frozen in a hump */
+#define HUMP_TILT_BLANK_MS        (400u)       /* no hump detection this long after driving starts
+                                                   (the course hump starts about 1 s in, so keep this short) */
+#define HUMP_TILT_LEVER_MM        (100.0f)      /* raised wheel to tipping line; calibrated 3 Nov:
+                                                   1 cm hump 5.8 deg, 3 cm box 17.7 deg -> 99 / 100 mm */
 #define IMU_EMA_ALPHA             (0.3f)        /* DR 6.3: alpha = 0.3 */
 #define IMPACT_G                  (2.0f)        /* FR23 software backup threshold */
 #define TURNING_DPS               (30.0f)

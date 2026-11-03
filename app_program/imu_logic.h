@@ -203,4 +203,50 @@ motion_event_t mev_step(mev_ctx_t *p_m, bool b_impact, hump_state_t hump, float 
 /* EMA low-pass: y += alpha * (x - y) */
 float          ema(float y, float x, float alpha);
 
+/* ---- tilt hump detector ------------------------------------------------------
+ * The course hump sits under the right REAR drive wheel only: the robot tips
+ * about the line from the left wheel to the front caster and never climbs
+ * nose-up, so hump_step() cannot see it. This detector uses the size of the
+ * tilt in any direction (angle between gravity now and the level gravity
+ * vector learnt in IDLE, so any IMU mounting works):
+ *   start: tilt >= start_deg for start_samples; end: tilt <= level_deg for
+ *   end_samples; valid when the lift reached min_height_mm.
+ *   lift = max(lever_mm x sin(tilt)      one wheel raised (one-sided hump),
+ *              sum of sin(pitch) x ds)   both wheels raised (full-width hump)
+ * lever_mm = distance from the raised wheel to the tipping line, calibrated
+ * on the car (HUMP_TILT_LEVER_MM: 1 cm hump 5.8 deg, 3 cm box 17.7 deg ->
+ * about 100 mm).
+ * The caller passes |pitch| instead of the tilt while the robot turns,
+ * because the sideways pull of a curve reads as tilt. */
+float imu_tilt_deg(const float p_g[3], const float p_g0[3]);   /* 0 until g0 is learnt */
+float imu_lift_mm(float lever_mm, float tilt_deg);             /* lever_mm x sin(|tilt|) */
+
+/* Packed state (Change Requirement 1: minimum bits), one byte:
+   on F1 @0, peak_sent F1 @1, n_tilt U3 @2 (saturates at 7), n_level U3 @5. */
+#define TH_SH_ON        (0u)
+#define TH_SH_PEAK      (1u)
+#define TH_SH_N_TILT    (2u)
+#define TH_SH_N_LEVEL   (5u)
+#define TH_W_N          (3u)
+BP_STATIC_ASSERT((TH_SH_N_LEVEL + TH_W_N) <= 8u, "tilt_hump.f does not fit one byte");
+BP_STATIC_ASSERT(HUMP_N_MAX <= 7u, "tilt_hump n_tilt / n_level too narrow");
+
+typedef struct
+{
+    uint8_t f;                /* packed flags and counters (above) */
+    float   h_pitch_mm;       /* calculation variables (D16) */
+    float   lift_mm;
+    float   peak_mm;
+    float   len_mm;
+} tilt_hump_t;
+
+static inline bool tilt_hump_on(const tilt_hump_t *p_t)
+{
+    return BP_GET(p_t->f, TH_SH_ON, 1u) != 0u;
+}
+
+void       tilt_hump_reset(tilt_hump_t *p_t);
+hump_out_t tilt_hump_step(tilt_hump_t *p_t, const hump_params_t *p_par, float pitch_deg,
+                          float tilt_deg, float lever_mm, float ds_mm);
+
 #endif /* IMU_LOGIC_H */
