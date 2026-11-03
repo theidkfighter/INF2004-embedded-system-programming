@@ -194,3 +194,116 @@ motion_event_t mev_step(mev_ctx_t *p_m, bool b_impact, hump_state_t hump, float 
     }
     return mev_current(p_m);
 }
+
+/* ---- tilt hump detector (see imu_logic.h) ---------------------------------------- */
+
+float imu_tilt_deg(const float p_g[3], const float p_g0[3])
+{
+    float dot = (p_g[0] * p_g0[0]) + (p_g[1] * p_g0[1]) + (p_g[2] * p_g0[2]);
+    float n   = sqrtf(((p_g[0] * p_g[0]) + (p_g[1] * p_g[1]) + (p_g[2] * p_g[2])) *
+                      ((p_g0[0] * p_g0[0]) + (p_g0[1] * p_g0[1]) + (p_g0[2] * p_g0[2])));
+    float c;
+
+    if (n < 0.25f)
+    {
+        return 0.0f;                          /* no reference yet */
+    }
+    c = dot / n;
+    c = (c > 1.0f) ? 1.0f : ((c < -1.0f) ? -1.0f : c);
+    return acosf(c) * RAD_TO_DEG;
+}
+
+float imu_lift_mm(float lever_mm, float tilt_deg)
+{
+    return lever_mm * sinf(fabsf(tilt_deg) * DEG_TO_RAD);
+}
+
+static uint32_t th_get(const tilt_hump_t *p_t, uint32_t sh, uint32_t w)
+{
+    return BP_GET(p_t->f, sh, w);
+}
+
+static void th_put(tilt_hump_t *p_t, uint32_t sh, uint32_t w, uint32_t v)
+{
+    p_t->f = (uint8_t)BP_PUT(p_t->f, sh, w, v);
+}
+
+void tilt_hump_reset(tilt_hump_t *p_t)
+{
+    p_t->f          = 0u;
+    p_t->h_pitch_mm = 0.0f;
+    p_t->lift_mm    = 0.0f;
+    p_t->peak_mm    = 0.0f;
+    p_t->len_mm     = 0.0f;
+}
+
+static void th_end(tilt_hump_t *p_t, hump_out_t *p_out, bool b_valid)
+{
+    p_out->b_end     = true;
+    p_out->b_valid   = b_valid;
+    p_out->height_mm = b_valid ? p_t->peak_mm : 0.0f;
+    p_out->len_mm    = p_t->len_mm;
+    th_put(p_t, TH_SH_ON, 1u, 0u);
+    p_t->lift_mm = 0.0f;
+}
+
+hump_out_t tilt_hump_step(tilt_hump_t *p_t, const hump_params_t *p_par, float pitch_deg,
+                          float tilt_deg, float lever_mm, float ds_mm)
+{
+    hump_out_t out = { false, false, false, false, 0.0f, 0.0f };
+    uint32_t   n_tilt  = th_get(p_t, TH_SH_N_TILT, TH_W_N);
+    uint32_t   n_level = th_get(p_t, TH_SH_N_LEVEL, TH_W_N);
+
+    if (ds_mm < 0.0f)
+    {
+        ds_mm = -ds_mm;
+    }
+    n_tilt  = (tilt_deg >= p_par->start_deg) ? bp_sat_inc(n_tilt, 7u) : 0u;
+    n_level = (tilt_deg <= p_par->level_deg) ? bp_sat_inc(n_level, 7u) : 0u;
+    th_put(p_t, TH_SH_N_TILT, TH_W_N, n_tilt);
+    th_put(p_t, TH_SH_N_LEVEL, TH_W_N, n_level);
+
+    if (!tilt_hump_on(p_t))
+    {
+        if (n_tilt >= p_par->start_samples)
+        {
+            p_t->h_pitch_mm = 0.0f;
+            p_t->lift_mm    = 0.0f;
+            p_t->peak_mm    = 0.0f;
+            p_t->len_mm     = 0.0f;
+            th_put(p_t, TH_SH_ON, 1u, 1u);
+            th_put(p_t, TH_SH_PEAK, 1u, 0u);
+            out.b_start = true;
+        }
+        return out;
+    }
+    p_t->h_pitch_mm += sinf(pitch_deg * DEG_TO_RAD) * ds_mm;
+    p_t->len_mm     += ds_mm;
+    {
+        float tilt_lift = imu_lift_mm(lever_mm, tilt_deg);
+
+        p_t->lift_mm = (tilt_lift > p_t->h_pitch_mm) ? tilt_lift : p_t->h_pitch_mm;
+    }
+    if (p_t->lift_mm > p_t->peak_mm)
+    {
+        p_t->peak_mm = p_t->lift_mm;
+    }
+    if ((th_get(p_t, TH_SH_PEAK, 1u) == 0u) && (p_t->peak_mm >= p_par->min_height_mm))
+    {
+        th_put(p_t, TH_SH_PEAK, 1u, 1u);
+        out.b_peak = true;
+    }
+    if (p_t->len_mm > p_par->max_len_mm)
+    {
+        th_end(p_t, &out, false);             /* too long for a hump: no height */
+    }
+    else if (n_level >= p_par->end_samples)
+    {
+        th_end(p_t, &out, p_t->peak_mm >= p_par->min_height_mm);
+    }
+    else
+    {
+        /* still on the hump */
+    }
+    return out;
+}
