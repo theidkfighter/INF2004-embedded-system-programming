@@ -27,7 +27,7 @@
 #define ENC_DIRECTION_CONFIRMED   (1)   /* PLACEHOLDER: assumed */   /* 1 once E1 and E4 pass on both wheels */
 #define ENC_A_EDGES_PER_REV       (1260)   /* PLACEHOLDER: 21 Oct E1 hand turn (right); run E2 */   /* test_encoders E2 (A edges per wheel turn) */
 #define WHEEL_DIAMETER_MM         (65)     /* PLACEHOLDER: measure (E5) */   /* test_encoders E5 (ruler) */
-#define TRACK_WIDTH_MM            (130)    /* PLACEHOLDER: measure with a ruler */   /* ruler: tyre centre to tyre centre */
+#define TRACK_WIDTH_MM            (115)    /* measured 3 Nov (ruler, tyre centre to tyre centre; was 130 placeholder): right turns exact, left 3-5 deg over */
 
 /* ---- From full_tests: ft_speed_pid P1 ---- */
 #define SPEED_FF_DEADBAND_PCT     (6)      /* PLACEHOLDER until ft_speed_pid P1. Was 20; the 26 Oct telemetry shows
@@ -57,8 +57,8 @@
                                                    a flat board square ahead: shortest reading at 0 */
 
 /* ---- From part_tests: test_imu U5 ---- */
-#define IMU_FORWARD_AXIS          (1)      /* PLACEHOLDER: spec 5 says X forward; test_imu U5 */   /* 1 = X forward (spec 5 says X), 2 = Y */
-#define IMU_FORWARD_SIGN          (1)      /* PLACEHOLDER: test_imu U5 */           /* +1 or -1, 0 = not set */
+#define IMU_FORWARD_AXIS          (1)      /* confirmed 3 Nov ramp test (+13.0 / -13.3 deg vs 13.5 true) */   /* 1 = X forward (spec 5 says X), 2 = Y */
+#define IMU_FORWARD_SIGN          (1)      /* confirmed 3 Nov ramp test */          /* +1 or -1, 0 = not set */
 
 /* ---- Geometry (ruler on the assembled car) ---- */
 #define IR_TO_AXLE_MM             (60)          /* [P] IR sensor row ahead of the wheel axle */
