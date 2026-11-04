@@ -154,6 +154,11 @@
                                                    A standoff that does not fit aborts, a rescan is shortened. 0 = off */
 #define OBST_LEGACY               (0)           /* [P] 1 = the main-branch behaviour: side with more clearance first, and
                                                    look-before-turning + second trail even after the side was seen to end */
+#define OBST_DYNAMIC_TURN         (1)           /* [P] 1 = scaled reverse + dynamic first turn angle, 0 = the original
+                                                   45 deg behaviour. Also off when OBST_LEGACY = 1 */
+#define OBST_REVERSE_SCALE        (0.5f)        /* dynamic turn: fraction of the 45 deg standoff reverse to drive */
+#define OBST_TURN_MIN_DEG         (30.0f)       /* dynamic turn: smallest first turn angle */
+#define OBST_TURN_MAX_DEG         (70.0f)       /* dynamic turn: largest first turn angle */
 #define OBST_EDGE_PAD_MM          (20)          /* [P] added to each measured obstacle edge: a flat face stops echoing
                                                    past about 25 deg incidence, so the 19.9 cm container read 15-17 cm
                                                    wide at 12-17 cm (31 Oct). 0 = off */
@@ -172,6 +177,7 @@
 #define OBST_RETURN_PAST_MM       (80)          /* return: drive this far (sideways) past the original path before
                                                    deciding the line was missed */
 #define OBST_US_AHEAD_MM          (80)          /* PLACEHOLDER: ultrasonic sensor ahead of the wheel axle (measure) */
+                                                /* 80 mm placeholder used by the pivot-swing guard: measure on the car (larger of axle-to-sensor, axle-to-front) */
 #define OBST_SIDE_MAX_MM          (1000)        /* parallel leg follows the obstacle's side at most this far */
 #define OBST_SIDE_STEP_MM         (100)         /* look-before-turning: drive on this far while the side is still there */
 #define OBST_TURN_LOOK_STEPS      (8)           /* ... at most this many times */

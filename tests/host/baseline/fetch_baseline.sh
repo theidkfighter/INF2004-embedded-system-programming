@@ -145,8 +145,18 @@ $OBJCOPY --redefine-syms="$OBJ/undefined.map" "$OBJ/base_pfx.o"
 $CC -shared -Wl,--no-undefined -o build/libbase.so "$OBJ/base_pfx.o" -lm
 
 # ---- 5. check -----------------------------------------------------------------
-bad="$($NM -D --defined-only build/libbase.so | awk -v p="$PREFIX" \
-        '$3 != "" && index($3, p) != 1 && $3 !~ /^_(init|fini|edata|end|_bss_start)$/ { print $3 }')"
+# exported names: nm -D on ELF; the PE export table (objdump -p) on Windows
+exports() {
+    case "$(uname -s)" in
+        MINGW*|MSYS*|CYGWIN*)
+            "${OBJDUMP:-objdump}" -p build/libbase.so \
+                | sed -nE 's/^.*\][[:space:]]+[0-9a-f]{4}[[:space:]]+([A-Za-z_][A-Za-z0-9_]*)[[:space:]]*$/\1/p' ;;
+        *)
+            $NM -D --defined-only build/libbase.so | awk '$3 != "" { print $3 }' ;;
+    esac
+}
+bad="$(exports | awk -v p="$PREFIX" \
+        'index($1, p) != 1 && $1 !~ /^_(init|fini|edata|end|_bss_start)$/ { print $1 }')"
 if [ -n "$bad" ]; then
     echo "fetch_baseline.sh: symbols without the $PREFIX prefix in libbase.so:" >&2
     echo "$bad" | sed 's/^/    /' >&2
@@ -154,7 +164,7 @@ if [ -n "$bad" ]; then
 fi
 for sym in hump_step bc_edge bcm_sample obstacle_choose_side params_set bh_motion_turn \
            bh_param_get bh_hump_params; do
-    if ! $NM -D --defined-only build/libbase.so | awk '{ print $3 }' | grep -qx "$PREFIX$sym"; then
+    if ! exports | grep -qx "$PREFIX$sym"; then
         echo "fetch_baseline.sh: $PREFIX$sym missing from libbase.so" >&2
         exit 1
     fi

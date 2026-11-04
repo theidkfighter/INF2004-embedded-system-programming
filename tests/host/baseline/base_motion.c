@@ -30,7 +30,7 @@
 #include "tsk_motion.c"
 
 /* ---- host replacements for the kernel / os_glue / hal symbols ---------- */
-volatile uint32_t g_hb[HB_COUNT];
+volatile uint8_t  g_hb[HB_COUNT];
 ID                g_flg_sys;
 ID                g_mbx_motion;
 
@@ -53,6 +53,10 @@ void        fault_set(uint32_t bits)  { g_bh_faults |= bits; }
 app_msg_t  *msg_recv(ID mbxid, TMO tmo) { (void)mbxid; (void)tmo; return NULL; }
 void        msg_free(app_msg_t *p_msg)  { (void)p_msg; }
 void        odometry_put(const odometry_t *p_in) { (void)p_in; }
+void        motion_done_put(uint16_t id, motion_result_t result) { (void)id; (void)result; }
+void        crit_dsp_enter(void)      { }
+void        crit_dsp_exit(void)       { }
+void        sat_note(uint32_t n)      { (void)n; }
 
 uint64_t hal_time_us(void)                       { return 0u; }
 uint32_t hal_time_ms(void)                       { return 0u; }

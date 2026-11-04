@@ -50,6 +50,12 @@
  *   the line and turn parallel to the path. Not seen: reverse back onto the
  *   path, turn parallel, and line following's search finds the line
  *   (instead of the DR's 300 mm abort) -> EVF_BYPASS_COMPLETE.
+ * OBST_DYNAMIC_TURN = 1 (and OBST_LEGACY = 0): standoff_dyn() reverses only
+ *   OBST_REVERSE_SCALE of the standoff and picks the smallest first-turn
+ *   angle in [OBST_TURN_MIN_DEG, OBST_TURN_MAX_DEG] that clears the corner
+ *   (obstacle_dyn_standoff), reversing more only when no angle does;
+ *   bypass_plan_dyn() and obstacle_leg_for_shift() size legs 1 / 2 and the
+ *   sidestep for that angle. OBST_DYNAMIC_TURN = 0: the original path.
  * Anything failing -> AVOIDANCE_ABORT: stop, EVF_BYPASS_ABORT (-> ERROR).
  */
 #include <tk/tkernel.h>
@@ -322,6 +328,7 @@ LOCAL float       g_backed_mm;          /* standoff + rescan reversed so far in 
 LOCAL float       g_rev_total_mm;       /* every straight reverse of this avoidance (odometry) */
 LOCAL float       g_rev_cap;            /* OBST_REVERSE_MAX_MM, read at the start of avoid() */
 LOCAL bool        g_legacy;             /* OBST_LEGACY, read at the start of avoid() */
+LOCAL bool        g_dyn;                /* OBST_DYNAMIC_TURN and not OBST_LEGACY, read at the start of avoid() */
 LOCAL float       g_ext_mm[2];          /* how far obstacle_apply_min_width moved the left / right edge */
 LOCAL float       g_seen_extra_mm;      /* ... on the side being passed: widens the seen / beside limits */
 LOCAL float       g_half_obs;           /* half width on the side facing the obstacle (ROBOT_LEFT_HALF_MM
@@ -847,7 +854,8 @@ LOCAL leg_res_t run_bypass(const bypass_plan_t *p_plan, float gap_mm, float marg
                 return LEG_FAILED;
             }
             if (((r = leg_turn(p_plan->turn1_deg)) != LEG_OK) ||
-                ((r = leg_move(out / 0.7071068f, ws, 0u, &hit)) != LEG_OK) ||
+                ((r = leg_move(g_dyn ? obstacle_leg_for_shift(out, (float)p_plan->side * p_plan->turn1_deg)   /* OBST_DYNAMIC_TURN */
+                                     : (out / 0.7071068f), ws, 0u, &hit)) != LEG_OK) ||
                 ((r = leg_turn(-g_pose.h_deg)) != LEG_OK))
             {
                 return r;
@@ -1061,6 +1069,62 @@ LOCAL standoff_res_t standoff(char side, float margin_mm)
     return STANDOFF_OK;
 }
 
+/* ---- OBST_DYNAMIC_TURN (ultrasonic-reverse-turn-refinement): begin ---- */
+/* The scaled standoff + first-turn angle (obstacle_dyn_standoff), driven as
+   one reverse checked once against the reverse budget. 'base_margin_mm' is
+   the margin without the retry extra (the pivot-swing gap). An invalid plan
+   falls back to standoff() with theta = 45. */
+LOCAL standoff_res_t standoff_dyn(char side, float margin_mm, float base_margin_mm, float *p_theta)
+{
+    obst_dyn_cfg_t  cfg;
+    obst_dyn_plan_t dp;
+    float           t;
+    float           allowed;
+
+    cfg.scale           = OBST_REVERSE_SCALE;
+    cfg.min_deg         = OBST_TURN_MIN_DEG;
+    cfg.max_deg         = OBST_TURN_MAX_DEG;
+    cfg.cap_mm          = (float)OBST_BACKOFF_MAX_MM;
+    cfg.us_ahead_mm     = (float)OBST_US_AHEAD_MM;
+    cfg.swing_margin_mm = base_margin_mm;
+    if (!obstacle_dyn_standoff(&g_prof, side, g_half_obs, margin_mm, &cfg, &dp))
+    {
+        *p_theta = 45.0f;
+        return standoff(side, margin_mm);
+    }
+    t = dp.reverse_mm;
+    if (t > 0.0f)
+    {
+        if (obstacle_reverse_budget(t, g_backed_mm, g_rev_cap, false, &allowed) == OBST_REV_REFUSED)
+        {
+            if (t >= 5.0f)
+            {
+                rev_cap_event(0u, t);
+                return STANDOFF_CAPPED;
+            }
+            t = 0.0f;              /* skip, keep theta: shortfall < 5 mm, as the original skip */
+        }
+    }
+    if (t > 0.0f)
+    {
+        /* OBSTACLE_BACKOFF: same format as standoff() */
+        evt_b_t b;
+
+        evt_begin(&b, EVC_OBSTACLE_BACKOFF);
+        evt_u(&b, mm_u(t), 8u);
+        evt_u(&b, (side == 'L') ? 0u : 1u, 1u);
+        (void)evt_post(&b);
+        if (!reverse_mm(t))
+        {
+            return STANDOFF_FAILED;
+        }
+        g_prof.r_min_cm += t / 10.0f;
+    }
+    *p_theta = dp.theta_deg;
+    return STANDOFF_OK;
+}
+/* ---- OBST_DYNAMIC_TURN (ultrasonic-reverse-turn-refinement): end ---- */
+
 /* The rescan reverse (OBST_RESCAN_REVERSE_MM), within the reverse budget:
    shortened to what is left (OBST_REVERSE_CAP), or skipped when less than
    OBST_REVERSE_MIN_MM is left (OBST_REVERSE_CAP, AVOIDANCE_ABORT, no
@@ -1170,9 +1234,11 @@ LOCAL void avoid(void)
     float         half = g_params.robot_half_width_mm;
     float         margin = g_params.obst_margin_mm;
     char          side = 0;
+    float         theta = 45.0f;              /* OBST_DYNAMIC_TURN: first-turn angle of this attempt */
 
     /* a SET during an avoidance takes effect at the next obstacle */
     g_legacy       = prm_flag(PRM_OBST_LEGACY);
+    g_dyn          = !g_legacy && (OBST_DYNAMIC_TURN != 0);   /* OBST_DYNAMIC_TURN */
     g_rev_cap      = g_params.obst_reverse_max_mm;
     g_backed_mm    = 0.0f;
     g_rev_total_mm = 0.0f;
@@ -1268,11 +1334,13 @@ LOCAL void avoid(void)
         {
             extra[si] = (float)OBST_RETRY_WIDER_MM;    /* after a rescan: a blocked side only goes wider */
         }
+        theta = 45.0f;                             /* OBST_DYNAMIC_TURN */
         {
             standoff_res_t so;
 
             g_half_obs = (!g_legacy && (side == 'R')) ? left_half_mm() : half;   /* the half facing the obstacle */
-            so = standoff(side, margin + extra[si]);
+            so = g_dyn ? standoff_dyn(side, margin + extra[si], margin, &theta)   /* OBST_DYNAMIC_TURN */
+                       : standoff(side, margin + extra[si]);
 
             if (so == STANDOFF_CAPPED)
             {
@@ -1285,7 +1353,9 @@ LOCAL void avoid(void)
                 return;
             }
         }
-        if (!bypass_plan(&g_prof, g_half_obs, margin + extra[si], g_params.obst_depth_mm, (float)REACQ_MAX_LATERAL_MM, &plan))
+        if (!(g_dyn ? bypass_plan_dyn(&g_prof, g_half_obs, margin + extra[si], g_params.obst_depth_mm,   /* OBST_DYNAMIC_TURN */
+                                      (float)REACQ_MAX_LATERAL_MM, theta, (float)OBST_SIDE_MAX_MM, &plan)
+                    : bypass_plan(&g_prof, g_half_obs, margin + extra[si], g_params.obst_depth_mm, (float)REACQ_MAX_LATERAL_MM, &plan)))
         {
             abort_avoidance(ABR_NO_PLAN);
             return;

@@ -483,3 +483,191 @@ float obstacle_side_trail90_mm(float gap_mm, float us_ahead_mm, float robot_half
 
     return (d < 50.0f) ? 50.0f : d;
 }
+
+/* ---- OBST_DYNAMIC_TURN (ultrasonic-reverse-turn-refinement): begin ---- */
+float obstacle_turn_clearance_mm(float theta_deg, float y_mm, float e_mm)
+{
+    float t = theta_deg * DEG_TO_RAD;
+
+    return (y_mm * sinf(t)) - (e_mm * cosf(t));
+}
+
+float obstacle_swing_reach_mm(float theta_deg, float half_mm, float us_ahead_mm)
+{
+    float w = half_mm;
+    float a = us_ahead_mm;
+    float t = theta_deg * DEG_TO_RAD;
+
+    if (t >= atan2f(w, a))
+    {
+        return sqrtf((w * w) + (a * a)) - a;
+    }
+    return ((w * sinf(t)) + (a * cosf(t))) - a;
+}
+
+/* valid(theta, T): leg 1 clears the corner and, above 45, the swing clears */
+static bool dyn_valid(float th, float t_mm, float y0, float e, float h, float half,
+                      const obst_dyn_cfg_t *p_cfg)
+{
+    if (obstacle_turn_clearance_mm(th, y0 + t_mm, e) < (h - OBST_DYN_EPS_MM))
+    {
+        return false;
+    }
+    if (th <= 45.0f)
+    {
+        return true;
+    }
+    return (y0 + t_mm) >= ((obstacle_swing_reach_mm(th, half, p_cfg->us_ahead_mm)
+                            + p_cfg->swing_margin_mm) - OBST_DYN_EPS_MM);
+}
+
+/* next whole-degree candidate after th: floor(th) + 1, then max_deg */
+static float dyn_next(float th, float max_deg)
+{
+    float n = floorf(th) + 1.0f;
+
+    if ((n > max_deg) && (th < max_deg))
+    {
+        n = max_deg;
+    }
+    return n;
+}
+
+bool obstacle_dyn_standoff(const obstacle_profile_t *p_prof, char side, float robot_half_mm,
+                           float margin_mm, const obst_dyn_cfg_t *p_cfg, obst_dyn_plan_t *p_out)
+{
+    float e;
+    float y0;
+    float h;
+    float need45;
+    float cap;
+    float r1;
+    float th;
+    float best_th = 45.0f;
+    float best_req = 0.0f;
+    bool  b_best_swing = false;
+    bool  b_have = false;
+
+    if ((p_prof == NULL) || (p_cfg == NULL) || (p_out == NULL) || !p_prof->b_valid
+        || ((side != 'L') && (side != 'R'))
+        || !(p_cfg->scale >= 0.0f) || !(p_cfg->scale <= 1.0f)
+        || (p_cfg->min_deg > 45.0f) || (p_cfg->max_deg < 45.0f))
+    {
+        return false;
+    }
+
+    /* 1. original quantities */
+    e      = (side == 'L') ? (-p_prof->x_l_cm * 10.0f) : (p_prof->x_r_cm * 10.0f);
+    y0     = p_prof->r_min_cm * 10.0f;
+    h      = robot_half_mm + margin_mm;
+    need45 = obstacle_standoff_mm(p_prof, side, robot_half_mm, margin_mm) - y0;
+    cap    = p_cfg->cap_mm;
+    p_out->orig_mm = (need45 < OBST_REVERSE_MIN_MM) ? 0.0f : ((need45 < cap) ? need45 : cap);
+
+    /* 2. scaled base reverse */
+    r1 = (need45 > 0.0f) ? need45 : 0.0f;
+    r1 = (r1 < cap) ? r1 : cap;
+    r1 = p_cfg->scale * r1;
+    if (r1 < OBST_REVERSE_MIN_MM)
+    {
+        r1 = 0.0f;
+    }
+    p_out->base_mm = r1;
+
+    /* 4. smallest clearing candidate at r1 */
+    for (th = p_cfg->min_deg; th <= p_cfg->max_deg; th = dyn_next(th, p_cfg->max_deg))
+    {
+        if (dyn_valid(th, r1, y0, e, h, robot_half_mm, p_cfg))
+        {
+            p_out->theta_deg  = th;
+            p_out->reverse_mm = r1;
+            p_out->kind       = OBST_DYN_CLEAR;
+            p_out->clear_mm   = obstacle_turn_clearance_mm(th, y0 + r1, e);
+            return true;
+        }
+    }
+
+    /* 5. fallback: argmin of req(theta), ties to the larger theta */
+    for (th = p_cfg->min_deg; th <= p_cfg->max_deg; th = dyn_next(th, p_cfg->max_deg))
+    {
+        float t   = th * DEG_TO_RAD;
+        float yr  = ((h + (e * cosf(t))) / sinf(t)) - y0;
+        float sw  = (th > 45.0f) ? ((obstacle_swing_reach_mm(th, robot_half_mm, p_cfg->us_ahead_mm)
+                                     + p_cfg->swing_margin_mm) - y0) : 0.0f;
+        float req = r1;
+        bool  b_sw = false;
+
+        if (yr > req)
+        {
+            req = yr;
+        }
+        if ((th > 45.0f) && (sw > req))
+        {
+            req  = sw;
+            b_sw = true;
+        }
+        if (!b_have || (req <= (best_req + OBST_DYN_EPS_MM)))
+        {
+            best_th      = th;
+            best_req     = req;
+            b_best_swing = b_sw;
+            b_have       = true;
+        }
+    }
+
+    p_out->theta_deg = best_th;
+    if (best_req > (cap + OBST_DYN_EPS_MM))
+    {
+        p_out->reverse_mm = cap;
+        p_out->kind       = OBST_DYN_CAPPED;
+    }
+    else
+    {
+        p_out->reverse_mm = best_req;
+        p_out->kind       = b_best_swing ? OBST_DYN_SWING : OBST_DYN_EXTRA;
+    }
+    p_out->clear_mm = obstacle_turn_clearance_mm(best_th, y0 + p_out->reverse_mm, e);
+    return true;
+}
+
+bool bypass_plan_dyn(const obstacle_profile_t *p_prof, float robot_half_mm, float margin_mm,
+                     float depth_mm, float max_lateral_mm, float theta_deg, float side_max_mm,
+                     bypass_plan_t *p_plan)
+{
+    bool  ok = bypass_plan(p_prof, robot_half_mm, margin_mm, depth_mm, max_lateral_mm, p_plan);
+    float s;
+    float t;
+    float d2;
+
+    if (!ok || (theta_deg == 45.0f))
+    {
+        return ok;
+    }
+    s = (float)p_plan->side;
+    t = theta_deg * DEG_TO_RAD;
+    p_plan->turn1_deg = s * theta_deg;
+    p_plan->d1_mm     = p_plan->shift_mm / sinf(t);
+    p_plan->turn2_deg = -s * theta_deg;
+    d2 = ((p_prof->r_min_cm * 10.0f) + depth_mm + robot_half_mm + margin_mm)
+         - (p_plan->shift_mm * cosf(t) / sinf(t));
+    if (d2 < 50.0f)
+    {
+        d2 = 50.0f;
+    }
+    if (d2 > side_max_mm)
+    {
+        d2 = side_max_mm;
+    }
+    p_plan->d2_mm = d2;
+    return true;
+}
+
+float obstacle_leg_for_shift(float shift_mm, float theta_deg)
+{
+    if (theta_deg == 45.0f)
+    {
+        return shift_mm / 0.7071068f;
+    }
+    return shift_mm / sinf(theta_deg * DEG_TO_RAD);
+}
+/* ---- OBST_DYNAMIC_TURN (ultrasonic-reverse-turn-refinement): end ---- */

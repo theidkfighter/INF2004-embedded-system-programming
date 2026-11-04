@@ -183,4 +183,61 @@ void  obstacle_apply_min_width(obstacle_profile_t *p_prof, float min_width_mm, f
 void  obstacle_pose_advance(float *p_x, float *p_y, float h_prev_deg, float h_deg, float ds_mm);
 float obstacle_sin_deg(float deg);
 
+/* ---- OBST_DYNAMIC_TURN (ultrasonic-reverse-turn-refinement): begin ---- */
+/* Scaled standoff reverse + the smallest whole-degree first-turn angle in
+   [min_deg, max_deg] whose leg 1 passes the near corner by half + margin
+   (and, above 45 deg, whose pivot swing clears the face). See design.md. */
+#define OBST_DYN_EPS_MM (0.01f)
+
+typedef enum
+{
+    OBST_DYN_CLEAR = 0,     /* a candidate clears after the scaled reverse */
+    OBST_DYN_EXTRA,         /* fallback: extra reverse for leg-1 clearance */
+    OBST_DYN_SWING,         /* fallback: the pivot-swing term binds */
+    OBST_DYN_CAPPED         /* fallback needs more than cap_mm: T = cap_mm */
+} obst_dyn_kind_t;
+
+typedef struct
+{
+    float scale;            /* fraction of the original reverse, [0, 1] */
+    float min_deg;          /* <= 45 */
+    float max_deg;          /* >= 45 */
+    float cap_mm;           /* OBST_BACKOFF_MAX_MM */
+    float us_ahead_mm;      /* A: sensor / body front ahead of the axle */
+    float swing_margin_mm;  /* m0 */
+} obst_dyn_cfg_t;
+
+typedef struct
+{
+    float           theta_deg;   /* first-turn angle (magnitude) */
+    float           reverse_mm;  /* total reverse T */
+    float           base_mm;     /* scaled reverse r1 */
+    float           orig_mm;     /* what the original would reverse */
+    float           clear_mm;    /* d(theta, y0 + T) */
+    obst_dyn_kind_t kind;
+} obst_dyn_plan_t;
+
+/* d(theta, y) = y sin(theta) - e cos(theta): leg-1 clearance to the corner */
+float obstacle_turn_clearance_mm(float theta_deg, float y_mm, float e_mm);
+
+/* S(theta): forward reach gained by the front corner (-w, A) during a pivot
+   of theta; peaks at sqrt(w^2 + A^2) - A beyond phi* = atan2(w, A) */
+float obstacle_swing_reach_mm(float theta_deg, float half_mm, float us_ahead_mm);
+
+/* Plans theta and the total reverse for 'side'. False: invalid profile,
+   side not 'L'/'R', scale outside [0, 1], min_deg > 45 or max_deg < 45. */
+bool  obstacle_dyn_standoff(const obstacle_profile_t *p_prof, char side, float robot_half_mm,
+                            float margin_mm, const obst_dyn_cfg_t *p_cfg, obst_dyn_plan_t *p_out);
+
+/* bypass_plan() with legs 1/2 sized for theta; theta == 45.0f returns the
+   bypass_plan() result untouched. */
+bool  bypass_plan_dyn(const obstacle_profile_t *p_prof, float robot_half_mm, float margin_mm,
+                      float depth_mm, float max_lateral_mm, float theta_deg, float side_max_mm,
+                      bypass_plan_t *p_plan);
+
+/* Leg length that reaches 'shift_mm' sideways at theta: shift / 0.7071068f
+   at 45.0f (bit-identical to run_bypass), shift / sin(theta) otherwise. */
+float obstacle_leg_for_shift(float shift_mm, float theta_deg);
+/* ---- OBST_DYNAMIC_TURN (ultrasonic-reverse-turn-refinement): end ---- */
+
 #endif /* OBSTACLE_LOGIC_H */
