@@ -891,10 +891,32 @@ LOCAL leg_res_t run_bypass(const bypass_plan_t *p_plan, float gap_mm, float marg
         s    = obstacle_sin_deg((g_pose.h_deg < 0.0f) ? -g_pose.h_deg : g_pose.h_deg);
         s    = (s < 0.3f) ? 0.3f : s;
         dist = (((g_pose.x_mm < 0.0f) ? -g_pose.x_mm : g_pose.x_mm) + (float)OBST_RETURN_PAST_MM) / s;
-        g_reacq_seq++;                                  /* TSK_LINE: fresh line watch */
-        (void)tk_dly_tsk(30);
-        flag_clear(EVF_LINE_FOUND);
-        r = leg_move(dist, ws, EVF_LINE_FOUND, &hit);
+        r    = LEG_OK;
+        if (g_dyn)                                      /* OBST_DYNAMIC_TURN: return gate */
+        {
+            /* 4 Nov: a dark mark early on the return was taken as the line.
+               Drive (watching for obstacles, not for the line) until the
+               dead-reckoned offset is within the gate window, then re-arm
+               the line watch for the rest of the leg. */
+            float ax  = (g_pose.x_mm < 0.0f) ? -g_pose.x_mm : g_pose.x_mm;
+            float win = OBST_RETURN_GATE_FRAC * ax;
+            float blind;
+
+            win   = (win < (float)OBST_RETURN_GATE_MIN_MM) ? (float)OBST_RETURN_GATE_MIN_MM : win;
+            blind = (ax > win) ? ((ax - win) / s) : 0.0f;
+            if (blind > 1.0f)
+            {
+                r     = leg_move(blind, ws, 0u, &hit);
+                dist -= blind;
+            }
+        }
+        if (r == LEG_OK)
+        {
+            g_reacq_seq++;                              /* TSK_LINE: fresh line watch */
+            (void)tk_dly_tsk(30);
+            flag_clear(EVF_LINE_FOUND);
+            r = leg_move(dist, ws, EVF_LINE_FOUND, &hit);
+        }
         if ((r == LEG_BLOCKED) && !g_legacy && (n_ret < OBST_SIDESTEP_MAX))
         {
             bypass_extend_event(1u, g_block_cm);   /* "return blocked (X cm): back to the turn, 100 mm further" */
@@ -922,6 +944,40 @@ LOCAL leg_res_t run_bypass(const bypass_plan_t *p_plan, float gap_mm, float marg
         {
             g_why = ABR_REALIGN;
             return LEG_FAILED;
+        }
+        if (g_dyn && (OBST_REACQ_SWEEP_DEG > 0.0f))   /* OBST_DYNAMIC_TURN: confirm the line */
+        {
+            (void)tk_dly_tsk(30);
+            /* 4 Nov logs: on this car the left sensor reports 1 when it is NOT
+               on the line (0 while it rides the line edge), so search on 1 */
+            if (st_line_l())
+            {
+                /* 4 Nov: parallel but off the line. Pivot towards the path
+                   side first (the usual miss is short), then the other way;
+                   stop where a sensor finds the line and leave the small
+                   angle to line following. Nothing: back to parallel. */
+                static const float SWEEP[2] = { 1.0f, -2.0f };
+
+                hit = 0u;
+                for (uint32_t k = 0u; (k < 2u) && ((hit & EVF_LINE_FOUND) == 0u); k++)
+                {
+                    g_reacq_seq++;                  /* TSK_LINE: fresh line watch */
+                    (void)tk_dly_tsk(30);
+                    flag_clear(EVF_LINE_FOUND);
+                    if (step(motion_start_turn(SWEEP[k] * toward * OBST_REACQ_SWEEP_DEG, g_params.turn_mm_s, SRC_OBSTACLE),
+                             false, 0.0f, EVF_LINE_FOUND, &hit) != LEG_OK)
+                    {
+                        g_why = ABR_REALIGN;
+                        return LEG_FAILED;
+                    }
+                }
+                if (((hit & EVF_LINE_FOUND) == 0u) &&
+                    (step(motion_start_turn(-g_pose.h_deg, g_params.turn_mm_s, SRC_OBSTACLE), false, 0.0f, 0u, &hit) != LEG_OK))
+                {
+                    g_why = ABR_REALIGN;
+                    return LEG_FAILED;
+                }
+            }
         }
         return LEG_OK;
     }

@@ -156,7 +156,14 @@
                                                    look-before-turning + second trail even after the side was seen to end */
 #define OBST_DYNAMIC_TURN         (1)           /* [P] 1 = scaled reverse + dynamic first turn angle, 0 = the original
                                                    45 deg behaviour. Also off when OBST_LEGACY = 1 */
-#define OBST_REVERSE_SCALE        (0.5f)        /* dynamic turn: fraction of the 45 deg standoff reverse to drive */
+#define OBST_REVERSE_SCALE        (0.75f)       /* dynamic turn: fraction of the 45 deg standoff reverse to drive
+                                                   (4 Nov: 0.5 gave 57-59 deg turns; 0.75 gives about 51 deg) */
+#define OBST_RETURN_GATE_MIN_MM   (50)          /* dynamic turn: the return leg ignores the line until the car is
+                                                   within max(this, OBST_RETURN_GATE_FRAC x the distance out) of the path */
+#define OBST_RETURN_GATE_FRAC     (0.25f)
+#define OBST_REACQ_SWEEP_DEG      (25.0f)       /* dynamic turn: parallel again but the LEFT sensor (the one line
+                                                   following tracks) sees no line: pivot this far towards the path
+                                                   side, then the other way, stopping on the line. 0 = off */
 #define OBST_TURN_MIN_DEG         (30.0f)       /* dynamic turn: smallest first turn angle */
 #define OBST_TURN_MAX_DEG         (70.0f)       /* dynamic turn: largest first turn angle */
 #define OBST_EDGE_PAD_MM          (20)          /* [P] added to each measured obstacle edge: a flat face stops echoing
@@ -176,8 +183,8 @@
 #define OBST_RESCAN_REVERSE_MM    (100)         /* reverse before a rescan */
 #define OBST_RETURN_PAST_MM       (80)          /* return: drive this far (sideways) past the original path before
                                                    deciding the line was missed */
-#define OBST_US_AHEAD_MM          (80)          /* PLACEHOLDER: ultrasonic sensor ahead of the wheel axle (measure) */
-                                                /* 80 mm placeholder used by the pivot-swing guard: measure on the car (larger of axle-to-sensor, axle-to-front) */
+#define OBST_US_AHEAD_MM          (80)          /* PLACEHOLDER: ultrasonic sensor ahead of the wheel axle (measure;
+                                                   also the pivot-swing guard of OBST_DYNAMIC_TURN) */
 #define OBST_SIDE_MAX_MM          (1000)        /* parallel leg follows the obstacle's side at most this far */
 #define OBST_SIDE_STEP_MM         (100)         /* look-before-turning: drive on this far while the side is still there */
 #define OBST_TURN_LOOK_STEPS      (8)           /* ... at most this many times */
