@@ -130,6 +130,9 @@ td:last-child { text-align: right; }
       <span style="width:10px"></span>
       <button id="bPing">Ping</button>
       <span id="pingTxt" class="note" style="margin:0"></span>
+      <span style="width:10px"></span>
+      <button id="bClip" title="plays clip.mp3 (next to this file) in 5 s or less">Play clip</button>
+      <audio id="clip" src="clip.mp3" preload="auto"></audio>
     </div>
     <div class="note">After an E-stop the robot only recovers with BTN1 on the robot (RESUME over MQTT is refused by design).
       Send barcode = remote override (FR19) for bench tests: the robot performs the mapped movement <b>at once</b>
@@ -457,6 +460,31 @@ $("bPing").onclick = () => {
   pings[id] = performance.now(); send(id);
 };
 $("bGetParams").onclick = () => send("GET:PARAMS");
+
+/* --- Play clip: the whole of clip.mp3 (put your own file next to this page)
+   within CLIP_MAX_S, sped up when it is longer (pitch kept); laptop only, the
+   robot is not involved. --- */
+const CLIP_MAX_S = 5;
+let clipTimer = null;
+$("bClip").onclick = async () => {
+  const a = $("clip");
+  if (!(a.duration > 0)) {
+    try {
+      await new Promise((ok, fail) => {
+        a.onloadedmetadata = ok; a.onerror = fail; a.load();
+      });
+    } catch (e) { log("err", "Play clip: no clip.mp3 next to dashboard.html (or the browser cannot play it)"); return; }
+  }
+  a.pause();
+  a.currentTime = 0;
+  a.preservesPitch = true;
+  a.playbackRate = Math.min(16, Math.max(1, a.duration / CLIP_MAX_S));
+  try { await a.play(); } catch (e) { log("err", "Play clip: " + e.message); return; }
+  clearTimeout(clipTimer);
+  clipTimer = setTimeout(() => a.pause(), CLIP_MAX_S * 1000 + 200);
+  log("sent", "PLAY   clip.mp3: " + a.duration.toFixed(1) + " s at " + a.playbackRate.toFixed(2) + "x = " +
+      (a.duration / a.playbackRate).toFixed(1) + " s");
+};
 $("bOverride").onclick = () => {
   const c = $("ovrChar").value.trim().toUpperCase();
   if (!/^[A-Z]$/.test(c)) { log("err", "type one letter A-Z first"); return; }

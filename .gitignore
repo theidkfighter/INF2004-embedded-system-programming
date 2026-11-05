@@ -42,3 +42,5 @@ is02_mosquitto.db
 # DO NOT push import leftovers
 /pico_sdk_import.cmake
 /build/
+# dashboard Play clip audio: your own local file, not committed (copyright)
+MQTT/clip.mp3
