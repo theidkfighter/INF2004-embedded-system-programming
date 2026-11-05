@@ -235,7 +235,7 @@ The formats above show the JSON shape the tools display. On the wire, every mess
 1. `py robot_params.py --broker <laptop IP>`: the CONFIG ack must show `applied` = the number of active lines and `rejected` 0.
 2. Send the map once (`py robot_map.py --broker <laptop IP> K=LEFT Q=RIGHT X=FWD M=UTURN`, `is02_tool.py map ...`, or the dashboard's Barcode mapping panel).
 
-**Play clip (dashboard):** plays `MQTT/clip.mp3` on the laptop, the whole file within 5 s (sped up when longer, up to 16x, pitch kept). Put your own audio file there under that name; it is in `.gitignore` and is not committed. The robot is not involved.
+**Play clip (dashboard):** plays `MQTT/clip.mp3` on the laptop, the whole file within 5 s (sped up when longer, up to 16x, pitch kept). The slider next to it sets the volume (default 30 %, remembered in that browser). Put your own audio file there under that name; it is in `.gitignore` and is not committed. The robot is not involved.
 
 **Dependencies:** Python 3 and `paho-mqtt` for the tools. The dashboard needs nothing: no build step and no server, only `is02_codec.js` next to `dashboard.html`, and it runs from `file://`.
 
