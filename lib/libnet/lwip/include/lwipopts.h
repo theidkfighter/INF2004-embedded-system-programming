@@ -19,13 +19,13 @@
 #define LWIP_IPV4                       1
 #define LWIP_IPV6                       0
 #define LWIP_ARP                        1
-#define LWIP_ICMP                       (TM_WIFI_STATIC || TM_WIFI_DHCP)
-#define LWIP_RAW                        (TM_WIFI_STATIC || TM_WIFI_DHCP)
+#define LWIP_ICMP                       TM_WIFI_DHCP
+#define LWIP_RAW                        TM_WIFI_DHCP
 #define LWIP_UDP                        TM_WIFI_DHCP
 #ifndef TM_APP_MQTT
 #define TM_APP_MQTT                     0
 #endif
-#define LWIP_TCP                        (TM_WIFI_TCP || TM_APP_MQTT)
+#define LWIP_TCP                        TM_APP_MQTT
 /* The altcp shim is only needed by application protocols written against it
  * Nothing in this tree uses it; turn it on here if you add something that
  * does. */
@@ -35,7 +35,7 @@
 #define LWIP_AUTOIP                     0
 #define LWIP_DNS                        TM_WIFI_DHCP
 #define LWIP_IGMP                       0
-#define ARP_QUEUEING                    (TM_WIFI_STATIC || TM_WIFI_DHCP)
+#define ARP_QUEUEING                    TM_WIFI_DHCP
 
 #define LWIP_TIMERS                     1
 #define LWIP_NETIF_HOSTNAME             1
@@ -44,7 +44,7 @@
 #define LWIP_NETIF_EXT_STATUS_CALLBACK  0
 
 #define MEM_ALIGNMENT                   4
-#if TM_WIFI_TCP || TM_APP_MQTT
+#if TM_APP_MQTT
 #define MEM_SIZE                        (12 * 1024)
 #else
 #define MEM_SIZE                        (8 * 1024)
@@ -58,20 +58,15 @@
 #define PBUF_POOL_SIZE                  8
 #define PBUF_POOL_BUFSIZE               1600
 
-/* Phase 7 opens exactly one outbound connection and never listens.  The
- * send window stays small on purpose: the gate is stop-and-wait, so a large
- * window would only cost RAM the kernel qualification also needs. */
 #if TM_APP_MQTT
 /* IS-02 MQTT client (lwIP apps/mqtt): one TCP connection to the broker. */
 #define MQTT_OUTPUT_RINGBUF_SIZE        2048
 #define MQTT_VAR_HEADER_BUFFER_LEN      128
 #define MQTT_REQ_MAX_IN_FLIGHT          8
 #endif
-#if TM_WIFI_TCP || TM_APP_MQTT
-/* Each finished connection lingers in TIME_WAIT for 2MSL while still holding
- * a pool entry, and the cumulative image now opens two connections in
- * sequence (Phase 7, then Phase 8).  Two entries would force lwIP to
- * start reaping to make room. */
+#if TM_APP_MQTT
+/* One MQTT connection; a reconnect leaves the old pcb in TIME_WAIT for 2MSL
+ * while still holding a pool entry, so keep a few spare. */
 #define MEMP_NUM_TCP_PCB                6
 #define MEMP_NUM_TCP_PCB_LISTEN         1
 #define MEMP_NUM_TCP_SEG                16

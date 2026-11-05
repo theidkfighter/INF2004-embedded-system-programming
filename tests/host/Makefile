@@ -18,7 +18,6 @@ BUILD    := build
 OBJ      := $(BUILD)/obj
 
 # Firmware build switches (build_make/robot_defaults.mk), same defaults.
-APP_LEGACY_TEXT_CMD ?= 0
 APP_PERF            ?= 0
 APP_SELFTEST        ?= 0
 
@@ -26,7 +25,6 @@ APP_SELFTEST        ?= 0
 WARN     := -Wall -Wextra -Wshadow -Wdouble-promotion -Wno-unused-parameter -Werror
 
 HOST_CFLAGS := -std=gnu11 -fPIC -O2 -g $(WARN) \
-               -DAPP_LEGACY_TEXT_CMD=$(APP_LEGACY_TEXT_CMD) \
                -DAPP_PERF=$(APP_PERF) -DAPP_SELFTEST=$(APP_SELFTEST) \
                -I$(APP) -Istubs
 HOST_LDFLAGS := -shared
@@ -62,7 +60,7 @@ STUB_SRCS += evt_stub.c
 LIB_OBJS  := $(addprefix $(OBJ)/app/,$(LIB_SRCS:.c=.o)) \
              $(addprefix $(OBJ)/stubs/,$(STUB_SRCS:.c=.o))
 
-# Rebuild everything when the flags change (for example APP_LEGACY_TEXT_CMD=1).
+# Rebuild everything when the flags change (for example APP_PERF=1).
 FLAGS_STAMP := $(BUILD)/cflags.stamp
 $(shell mkdir -p $(BUILD) && (echo '$(HOST_CC) $(HOST_CFLAGS)' | cmp -s - $(FLAGS_STAMP) \
         || echo '$(HOST_CC) $(HOST_CFLAGS)' > $(FLAGS_STAMP)))

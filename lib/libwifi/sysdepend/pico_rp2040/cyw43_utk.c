@@ -19,20 +19,8 @@
 #include "lwip/dhcp.h"
 #include "lwip/dns.h"
 #endif
-#if TM_WIFI_UDP
-#include "lwip_utk_udp.h"
-#endif
-#if TM_WIFI_TCP
-#include "lwip_utk_tcp.h"
-#endif
-#if TM_WIFI_TCPBULK
-#include "lwip_utk_tcpbulk.h"
-#endif
-#if TM_WIFI_STATIC || TM_WIFI_DHCP
+#if TM_WIFI_DHCP
 #include "lwip_utk_ipv4.h"
-#endif
-#if TM_WIFI_STATIC
-#include "network_config.h"
 #endif
 
 #define CYW43_POLL_MS        2
@@ -88,22 +76,6 @@ static T_CYW43_UTK_STATUS radio_status = {
     .dns_enabled = TM_WIFI_DNS,
     .dns_request_result = -5,
     .dns_result = -3,
-    .udp_enabled = TM_WIFI_UDP,
-    .udp_init_result = -6,
-    .udp_send_result = -6,
-    .udp_result = -3,
-    .tcp_enabled = TM_WIFI_TCP,
-    .tcp_init_result = -6,
-    .tcp_connect_result = -6,
-    .tcp_send_result = -6,
-    .tcp_close_result = -6,
-    .tcp_result = -3,
-    .bulk_enabled = TM_WIFI_TCPBULK,
-    .bulk_init_result = -6,
-    .bulk_connect_result = -6,
-    .bulk_send_result = -6,
-    .bulk_close_result = -6,
-    .bulk_result = -3,
     .ipv4_config_result = -6,
     .ping_send_result = -6,
     .ping_result = -3,
@@ -139,147 +111,6 @@ static void update_netif_status(void)
         radio_status.netif_mac[i] = netif->hwaddr[i];
     }
     radio_status.link_up = radio_status.netif_link_up;
-}
-#endif
-
-#if TM_WIFI_UDP
-/* The mirror in cyw43_utk.h duplicates the ring geometry, because that header
-   is included by code that cannot see the lwIP headers.  Catch any drift here
-   rather than silently truncating echoes. */
-typedef char cyw43_ring_size_matches[
-	(LWIP_UTK_UDP_RING == CYW43_UDP_RING
-	 && LWIP_UTK_UDP_PAYLOAD_SIZE == CYW43_UDP_PAYLOAD) ? 1 : -1];
-
-static void update_udp_status(void)
-{
-    int i;
-    T_LWIP_UTK_UDP_STATUS status;
-
-    lwip_utk_udp_get_status(&status);
-    radio_status.udp_init_result = status.init_result;
-    radio_status.udp_initialized = status.initialized;
-    radio_status.udp_started = status.started;
-    radio_status.udp_complete = status.complete;
-    radio_status.udp_closed = status.closed;
-    radio_status.udp_send_result = status.send_result;
-    radio_status.udp_result = status.result;
-    radio_status.udp_expected_packets = status.expected_packets;
-    radio_status.udp_payload_size = status.payload_size;
-    radio_status.udp_packets_sent = status.packets_sent;
-    radio_status.udp_packets_received = status.packets_received;
-    radio_status.udp_packets_matched = status.packets_matched;
-    radio_status.udp_retries = status.retries;
-    radio_status.udp_send_errors = status.send_errors;
-    radio_status.udp_corrupt = status.corrupt;
-    radio_status.udp_unexpected = status.unexpected;
-    radio_status.udp_elapsed_ms = status.elapsed_ms;
-    radio_status.udp_port = status.port;
-    /* Only touch the ring when it has actually advanced.  This runs on the
-       2 ms poll cadence, and the ring is ~900 bytes -- copying it every time
-       would be pure waste. */
-    if(status.write_seq != radio_status.udp_write_seq) {
-        int slot, b;
-        for(slot = 0; slot < (int)LWIP_UTK_UDP_RING; slot++) {
-            radio_status.udp_ring_seq[slot] = status.ring_seq[slot];
-            radio_status.udp_ring_len[slot] = status.ring_len[slot];
-            for(b = 0; b < (int)LWIP_UTK_UDP_PAYLOAD_SIZE; b++) {
-                radio_status.udp_ring_payload[slot][b] =
-                    status.ring_payload[slot][b];
-            }
-        }
-        radio_status.udp_write_seq = status.write_seq;
-    }
-    radio_status.udp_session_count = status.session_count;
-    (void)i;
-    for(unsigned int i = 0; i < sizeof(status.target); i++) {
-        radio_status.udp_target[i] = status.target[i];
-    }
-}
-#endif
-
-#if TM_WIFI_TCP
-static void update_tcp_status(void)
-{
-    T_LWIP_UTK_TCP_STATUS status;
-
-    lwip_utk_tcp_get_status(&status);
-    radio_status.tcp_init_result = status.init_result;
-    radio_status.tcp_connect_result = status.connect_result;
-    radio_status.tcp_send_result = status.send_result;
-    radio_status.tcp_close_result = status.close_result;
-    radio_status.tcp_result = status.result;
-    radio_status.tcp_fatal_error = status.fatal_error;
-    radio_status.tcp_initialized = status.initialized;
-    radio_status.tcp_started = status.started;
-    radio_status.tcp_connected = status.connected;
-    radio_status.tcp_complete = status.complete;
-    radio_status.tcp_fin_sent = status.fin_sent;
-    radio_status.tcp_peer_fin = status.peer_fin;
-    radio_status.tcp_closed = status.closed;
-    radio_status.tcp_aborted = status.aborted;
-    radio_status.tcp_expected_records = status.expected_records;
-    radio_status.tcp_record_size = status.record_size;
-    radio_status.tcp_records_sent = status.records_sent;
-    radio_status.tcp_records_matched = status.records_matched;
-    radio_status.tcp_bytes_sent = status.bytes_sent;
-    radio_status.tcp_bytes_acked = status.bytes_acked;
-    radio_status.tcp_bytes_received = status.bytes_received;
-    radio_status.tcp_segments_received = status.segments_received;
-    radio_status.tcp_short_segments = status.short_segments;
-    radio_status.tcp_corrupt = status.corrupt;
-    radio_status.tcp_send_errors = status.send_errors;
-    radio_status.tcp_poll_calls = status.poll_calls;
-    radio_status.tcp_guard_blocked = status.guard_blocked;
-    radio_status.tcp_start_delay_ms = status.start_delay_ms;
-    radio_status.tcp_connect_ms = status.connect_ms;
-    radio_status.tcp_close_ms = status.close_ms;
-    radio_status.tcp_elapsed_ms = status.elapsed_ms;
-    radio_status.tcp_port = status.port;
-    for(unsigned int i = 0; i < sizeof(status.target); i++) {
-        radio_status.tcp_target[i] = status.target[i];
-    }
-}
-#endif
-
-#if TM_WIFI_TCPBULK
-static void update_bulk_status(void)
-{
-    T_LWIP_UTK_TCPBULK_STATUS status;
-
-    lwip_utk_tcpbulk_get_status(&status);
-    radio_status.bulk_init_result = status.init_result;
-    radio_status.bulk_connect_result = status.connect_result;
-    radio_status.bulk_send_result = status.send_result;
-    radio_status.bulk_close_result = status.close_result;
-    radio_status.bulk_result = status.result;
-    radio_status.bulk_fatal_error = status.fatal_error;
-    radio_status.bulk_initialized = status.initialized;
-    radio_status.bulk_started = status.started;
-    radio_status.bulk_connected = status.connected;
-    radio_status.bulk_complete = status.complete;
-    radio_status.bulk_fin_sent = status.fin_sent;
-    radio_status.bulk_peer_fin = status.peer_fin;
-    radio_status.bulk_closed = status.closed;
-    radio_status.bulk_aborted = status.aborted;
-    radio_status.bulk_total_bytes = status.total_bytes;
-    radio_status.bulk_bytes_sent = status.bytes_sent;
-    radio_status.bulk_bytes_acked = status.bytes_acked;
-    radio_status.bulk_bytes_received = status.bytes_received;
-    radio_status.bulk_mismatches = status.mismatches;
-    radio_status.bulk_first_mismatch = status.first_mismatch;
-    radio_status.bulk_segments_received = status.segments_received;
-    radio_status.bulk_max_segment = status.max_segment;
-    radio_status.bulk_min_segment = status.min_segment;
-    radio_status.bulk_split_boundaries = status.split_boundaries;
-    radio_status.bulk_write_retries = status.write_retries;
-    radio_status.bulk_connect_ms = status.connect_ms;
-    radio_status.bulk_close_ms = status.close_ms;
-    radio_status.bulk_elapsed_ms = status.elapsed_ms;
-    radio_status.bulk_throughput_bps = status.throughput_bps;
-    radio_status.bulk_port = status.port;
-    for(unsigned int i = 0; i < sizeof(status.target); i++) {
-        radio_status.bulk_target[i] = status.target[i];
-    }
 }
 #endif
 
@@ -344,7 +175,7 @@ static void update_dns_status(void)
 #endif
 
 
-#if TM_WIFI_STATIC || TM_WIFI_DHCP
+#if TM_WIFI_DHCP
 static void update_ipv4_status(void)
 {
     T_LWIP_UTK_IPV4_STATUS status;
@@ -487,13 +318,6 @@ void cyw43_utk_task(int32_t stacd, void *exinf)
 #if TM_WIFI_NETIF
     update_netif_status();
 #endif
-#if TM_WIFI_STATIC
-    radio_status.ipv4_config_result = lwip_utk_ipv4_configure(
-            &cyw43_state.netif[CYW43_ITF_STA],
-            UTK_IPV4_ADDRESS, UTK_IPV4_NETMASK, UTK_IPV4_GATEWAY,
-            UTK_IPV4_PING_TARGET);
-    update_ipv4_status();
-#endif
 
     radio_status.init_result = result;
     radio_status.ready = (result == 0);
@@ -526,31 +350,7 @@ void cyw43_utk_task(int32_t stacd, void *exinf)
 #if TM_WIFI_DNS
         update_dns_status();
 #endif
-#if TM_WIFI_UDP
-        if(radio_status.dns_complete && radio_status.dns_result == ERR_OK) {
-            lwip_utk_udp_poll(&cyw43_state.netif[CYW43_ITF_STA]);
-        }
-        update_udp_status();
-#endif
-#if TM_WIFI_TCP
-        /* Sequenced after UDP so one capture never overlaps two traffic
-         * patterns, but deliberately not gated on the UDP *result*: TCP shares
-         * no state with it, and a missing UDP peer must not hide the TCP
-         * verdict behind an unrelated failure. */
-        if(radio_status.udp_complete) {
-            lwip_utk_tcp_poll(&cyw43_state.netif[CYW43_ITF_STA]);
-        }
-        update_tcp_status();
-#endif
-#if TM_WIFI_TCPBULK
-        /* Sequenced after the Phase-7 session so the peer script is serving
-         * one connection at a time, and again not gated on its result. */
-        if(radio_status.tcp_complete) {
-            lwip_utk_tcpbulk_poll(&cyw43_state.netif[CYW43_ITF_STA]);
-        }
-        update_bulk_status();
-#endif
-#if TM_WIFI_STATIC || TM_WIFI_DHCP
+#if TM_WIFI_DHCP
         lwip_utk_ipv4_poll(&cyw43_state.netif[CYW43_ITF_STA]);
         update_ipv4_status();
 #endif

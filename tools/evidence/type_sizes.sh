@@ -30,8 +30,7 @@
 #
 # Set CROSS to use another tool prefix (default arm-none-eabi-), TS_CFLAGS
 # to replace the target flags (default -mcpu=cortex-m0plus -mthumb, as in
-# build_make/pico_rp2040.mk) and APP_LEGACY_TEXT_CMD (default 0) to match
-# the build options.
+# build_make/pico_rp2040.mk).
 
 set -u
 set -o pipefail
@@ -103,7 +102,7 @@ fi
 obj="$tmp/type_sizes.o"
 # shellcheck disable=SC2086  # TS_CFLAGS is a list of flags
 cflags=($TS_CFLAGS -std=gnu11 -O2 -ffreestanding -fno-common
-        "-DAPP_LEGACY_TEXT_CMD=${APP_LEGACY_TEXT_CMD:-0}" -DAPP_PERF=0 -DAPP_SELFTEST=0
+        -DAPP_PERF=0 -DAPP_SELFTEST=0
         -I "$app_dir")
 if ! "$GCC" "${cflags[@]}" -c "$SCRIPT_DIR/type_sizes.c" -o "$obj" 2>"$tmp/cc.log"; then
     cat "$tmp/cc.log" >&2

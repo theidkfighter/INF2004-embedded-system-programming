@@ -55,22 +55,6 @@ ifneq ($(filter $(WIFI_NETIF),0 1),$(WIFI_NETIF))
 $(error Unknown WIFI_NETIF '$(WIFI_NETIF)'; use 0 or 1)
 endif
 
-# Phase-3 gate: static IPv4, next-hop ARP resolution and an ICMP echo.  Network
-# values are local configuration because choosing an address without knowing
-# the user's LAN can create a duplicate-IP conflict.
-WIFI_STATIC ?= 0
-ifneq ($(filter $(WIFI_STATIC),0 1),$(WIFI_STATIC))
-$(error Unknown WIFI_STATIC '$(WIFI_STATIC)'; use 0 or 1)
-endif
-ifeq ($(WIFI_STATIC),1)
-ifneq ($(WIFI_NETIF),1)
-$(error WIFI_STATIC=1 requires WIFI_NETIF=1)
-endif
-ifeq ($(wildcard ../config/network_config.h),)
-$(error WIFI_STATIC=1 needs config/network_config.h; copy it from config/network_config.example.h and choose an unused LAN address)
-endif
-endif
-
 # Phase-4 gate: acquire an IPv4 address, netmask, gateway and DNS server by
 # DHCP, then re-run the Phase-3 ARP and ICMP traffic checks with that lease.
 WIFI_DHCP ?= 0
@@ -80,9 +64,6 @@ endif
 ifeq ($(WIFI_DHCP),1)
 ifneq ($(WIFI_NETIF),1)
 $(error WIFI_DHCP=1 requires WIFI_NETIF=1)
-endif
-ifeq ($(WIFI_STATIC),1)
-$(error WIFI_DHCP=1 and WIFI_STATIC=1 are mutually exclusive)
 endif
 endif
 
@@ -95,51 +76,6 @@ endif
 ifeq ($(WIFI_DNS),1)
 ifneq ($(WIFI_DHCP),1)
 $(error WIFI_DNS=1 requires WIFI_DHCP=1)
-endif
-endif
-
-# Phase-6 gate: send a deterministic series through lwIP's raw UDP API to a
-# LAN echo peer and require every payload to return intact. The endpoint is a
-# local ignored file because the Windows host address varies by network.
-WIFI_UDP ?= 0
-ifneq ($(filter $(WIFI_UDP),0 1),$(WIFI_UDP))
-$(error Unknown WIFI_UDP '$(WIFI_UDP)'; use 0 or 1)
-endif
-ifeq ($(WIFI_UDP),1)
-ifneq ($(WIFI_DNS),1)
-$(error WIFI_UDP=1 requires WIFI_DNS=1)
-endif
-ifeq ($(wildcard ../config/udp_test_config.h),)
-$(error WIFI_UDP=1 needs config/udp_test_config.h; copy it from config/udp_test_config.example.h and set the Windows echo-server address)
-endif
-endif
-
-# Phase-7 gate: connect an lwIP raw-TCP client to a LAN echo peer, exchange a
-# deterministic record series over the byte stream, and prove an orderly
-# bidirectional close with the pcb released.
-WIFI_TCP ?= 0
-ifneq ($(filter $(WIFI_TCP),0 1),$(WIFI_TCP))
-$(error Unknown WIFI_TCP '$(WIFI_TCP)'; use 0 or 1)
-endif
-ifeq ($(WIFI_TCP),1)
-ifneq ($(WIFI_UDP),1)
-$(error WIFI_TCP=1 requires WIFI_UDP=1)
-endif
-ifeq ($(wildcard ../config/tcp_test_config.h),)
-$(error WIFI_TCP=1 needs config/tcp_test_config.h; copy it from config/tcp_test_config.example.h and set the Windows echo-server address)
-endif
-endif
-
-# Phase-8 gate: pipelined bulk transfer over the same TCP peer, proving the
-# receive path reassembles a byte stream across arbitrary segment boundaries.
-# Phase 7 could not: its stop-and-wait records each arrived as one segment.
-WIFI_TCPBULK ?= 0
-ifneq ($(filter $(WIFI_TCPBULK),0 1),$(WIFI_TCPBULK))
-$(error Unknown WIFI_TCPBULK '$(WIFI_TCPBULK)'; use 0 or 1)
-endif
-ifeq ($(WIFI_TCPBULK),1)
-ifneq ($(WIFI_TCP),1)
-$(error WIFI_TCPBULK=1 requires WIFI_TCP=1)
 endif
 endif
 
@@ -165,23 +101,11 @@ endif
 ifeq ($(WIFI_NETIF),1)
 WIFI_SUFFIX := _wifi_netif
 endif
-ifeq ($(WIFI_STATIC),1)
-WIFI_SUFFIX := _wifi_static
-endif
 ifeq ($(WIFI_DHCP),1)
 WIFI_SUFFIX := _wifi_dhcp
 endif
 ifeq ($(WIFI_DNS),1)
 WIFI_SUFFIX := _wifi_dns
-endif
-ifeq ($(WIFI_UDP),1)
-WIFI_SUFFIX := _wifi_udp
-endif
-ifeq ($(WIFI_TCP),1)
-WIFI_SUFFIX := _wifi_tcp
-endif
-ifeq ($(WIFI_TCPBULK),1)
-WIFI_SUFFIX := _wifi_tcpbulk
 endif
 endif
 
@@ -268,7 +192,7 @@ endif
 # before any recipe executes.
 ################################################################################
 
-PROFILE_ID := smp$(SMP)-$(CONSOLE)-wifi$(WIFI)-join$(WIFI_JOIN)-netif$(WIFI_NETIF)-static$(WIFI_STATIC)-dhcp$(WIFI_DHCP)-dns$(WIFI_DNS)-udp$(WIFI_UDP)-tcp$(WIFI_TCP)-bulk$(WIFI_TCPBULK)
+PROFILE_ID := smp$(SMP)-$(CONSOLE)-wifi$(WIFI)-join$(WIFI_JOIN)-netif$(WIFI_NETIF)-dhcp$(WIFI_DHCP)-dns$(WIFI_DNS)
 PROFILE_FILE := .build_profile
 
 ifneq ($(strip $(shell cat $(PROFILE_FILE) 2>/dev/null)),$(PROFILE_ID))
@@ -394,17 +318,8 @@ LWIP_SRCS := core/init.c core/def.c core/dns.c core/inet_chksum.c \
              netif/ethernet.c
 LWIP_OBJS := $(addprefix ./mtkernel_3/lwip/,$(LWIP_SRCS:.c=.o))
 LWIP_PORT_OBJS := ./mtkernel_3/lib/libnet/lwip/lwip_utk.o
-ifneq ($(filter 1,$(WIFI_STATIC) $(WIFI_DHCP)),)
+ifeq ($(WIFI_DHCP),1)
 LWIP_PORT_OBJS += ./mtkernel_3/lib/libnet/lwip/lwip_utk_ipv4.o
-endif
-ifeq ($(WIFI_UDP),1)
-LWIP_PORT_OBJS += ./mtkernel_3/lib/libnet/lwip/lwip_utk_udp.o
-endif
-ifeq ($(WIFI_TCP),1)
-LWIP_PORT_OBJS += ./mtkernel_3/lib/libnet/lwip/lwip_utk_tcp.o
-endif
-ifeq ($(WIFI_TCPBULK),1)
-LWIP_PORT_OBJS += ./mtkernel_3/lib/libnet/lwip/lwip_utk_tcpbulk.o
 endif
 endif
 
@@ -443,9 +358,7 @@ endif
 
 CFLAGS += -DTM_WIFI_CYW43=1 -DTM_WIFI_JOIN=$(WIFI_JOIN) \
           -DTM_WIFI_NETIF=$(WIFI_NETIF) -DCYW43_LWIP=$(WIFI_NETIF) \
-          -DTM_WIFI_STATIC=$(WIFI_STATIC) -DTM_WIFI_DHCP=$(WIFI_DHCP) \
-          -DTM_WIFI_DNS=$(WIFI_DNS) -DTM_WIFI_UDP=$(WIFI_UDP) \
-          -DTM_WIFI_TCP=$(WIFI_TCP) -DTM_WIFI_TCPBULK=$(WIFI_TCPBULK) \
+          -DTM_WIFI_DHCP=$(WIFI_DHCP) -DTM_WIFI_DNS=$(WIFI_DNS) \
           -DCYW43_ENABLE_BLUETOOTH=0 \
           -DCYW43_USE_OTP_MAC=1 -DPICO_CYW43_LOGGING_ENABLED=0 \
           -DPICO_RP2040=1 -DPICO_32BIT=1 -DPICO_ON_DEVICE=1 -DPICO_BUILD=1 \

@@ -6,7 +6,7 @@
 #   - Pico SDK hardware drivers: ADC, I2C (+ its timeout helper), PWM headers
 #     (GPIO and PIO are already compiled by the Wi-Fi profile)
 #   - lwIP's MQTT client (apps/mqtt), run in the radio-owner task
-#   - the robot configuration flags described in README_ROBOT.md
+#   - the robot configuration flags (APP_PERF, APP_SELFTEST, see robot_defaults.mk)
 ################################################################################
 
 ifeq ($(APP_ROBOT),1)
@@ -20,18 +20,10 @@ endif
 ifneq ($(WIFI_DHCP),1)
 $(error The robot needs WIFI=cyw43 WIFI_JOIN=1 WIFI_NETIF=1 WIFI_DHCP=1 for MQTT)
 endif
-ifneq ($(WIFI_UDP)$(WIFI_TCP)$(WIFI_TCPBULK),000)
-ifneq ($(WIFI_UDP)$(WIFI_TCP)$(WIFI_TCPBULK),)
-$(error WIFI_UDP/WIFI_TCP/WIFI_TCPBULK run the template's echo tests; leave them at 0 for the robot)
-endif
-endif
 ifeq ($(wildcard ../config/mqtt_config.h),)
 $(error The robot needs config/mqtt_config.h: copy it from config/mqtt_config.example.h and set the broker IP)
 endif
 
-ifneq ($(filter $(APP_LEGACY_TEXT_CMD),0 1),$(APP_LEGACY_TEXT_CMD))
-$(error Unknown APP_LEGACY_TEXT_CMD '$(APP_LEGACY_TEXT_CMD)'; use 0 or 1)
-endif
 ifneq ($(filter $(APP_PERF),0 1),$(APP_PERF))
 $(error Unknown APP_PERF '$(APP_PERF)'; use 0 or 1)
 endif
@@ -51,7 +43,7 @@ EXE_FILE := is02_robot_smp$(SMP)
 # recipe.
 ################################################################################
 
-ROBOT_OPTS_ID := legacy$(APP_LEGACY_TEXT_CMD)-perf$(APP_PERF)-self$(APP_SELFTEST)
+ROBOT_OPTS_ID := perf$(APP_PERF)-self$(APP_SELFTEST)
 ROBOT_OPTS_FILE := .robot_opts
 
 ifneq ($(strip $(shell cat $(ROBOT_OPTS_FILE) 2>/dev/null)),$(ROBOT_OPTS_ID))
@@ -71,7 +63,7 @@ ROBOT_LWIP_OBJS := ./mtkernel_3/lwip/apps/mqtt/mqtt.o
 CFLAGS += -DTM_APP_MQTT=1 -DTM_APP_NET_HOOK=1 \
           -DTM_CONSOLE_UART=0 -DBOARD_LED_PIN=19 -DUSE_SDEV_DRV=0 \
           -DCYW43_TASK_PRIORITY=9 \
-          -DAPP_LEGACY_TEXT_CMD=$(APP_LEGACY_TEXT_CMD) -DAPP_PERF=$(APP_PERF) \
+          -DAPP_PERF=$(APP_PERF) \
           -DAPP_SELFTEST=$(APP_SELFTEST) \
           -I"$(SDK_SRC)/rp2_common/hardware_adc/include" \
           -I"$(SDK_SRC)/rp2_common/hardware_i2c/include" \

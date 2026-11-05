@@ -43,7 +43,6 @@ LINE_DO_BLACK_HIGH=0               # line following sense (tuned on 0; 1 lost th
 # LINE_STEER_RAMP=3.0
 # BARCODE_AT_JUNCTION=1   (1 = act at the next junction, the demo rule)
 # JUNCTION_MIN_MM=4       (both line sensors black this far = a junction; 0 = first reading, the old behaviour)
-# JUNCTION_BLANK_MM=0     (ignore junctions this far after a barcode; 0 = off; keep below the barcode-to-cross gap)
 # JUNCTION_MAX_TURN_DEG=30 (a junction only counts if the car turned less than this over the last 40 mm; stops bends counting; 0 = off)
 # TURN_SNAP=1             (finish barcode turns on the line, then sweep back if it was missed; 0 = encoder angle only)
 # JUNCTION_BLACK_HIGH=1   (junction check only: 1 = DO HIGH over black, true on this car)

@@ -171,8 +171,8 @@ def _range(enc):
 
 
 def test_table_crc_and_names(ps):
-    assert ps.params_count() == 61
-    names = [ps.params_name(i).decode() for i in range(61)]
+    assert ps.params_count() == 60
+    names = [ps.params_name(i).decode() for i in range(60)]
     assert names == wire_spec.param_names() and set(D15) <= set(names)
     assert ps.params_table_crc() == wire_spec.table_crc(names)
 

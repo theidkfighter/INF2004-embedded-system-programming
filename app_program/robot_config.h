@@ -96,14 +96,10 @@
 
 /* ---- Barcodes (DR 6.1, FR5-FR8) ---- */
 #define BARCODE_AT_JUNCTION       (1)           /* [P] 1 = store, act at the next cross-junction (demo brief), 0 = act at once */
-#define BARCODE_TURN_DEG          (90)
 #define JUNCTION_MIN_MM           (4)           /* [P] both line sensors must stay black this far before it counts as a
                                                    junction (a real 18 mm cross passes; a one-reading flicker of one
                                                    sensor while the other is on the line does not). 0 = first reading,
                                                    the old behaviour */
-#define JUNCTION_BLANK_MM         (0)           /* [P] ignore junctions this far after a barcode is decoded. 0 = off.
-                                                   Keep it below the real barcode-to-cross gap, or the turn waits for
-                                                   the next junction */
 #define JUNCTION_MAX_TURN_DEG     (30)          /* [P] a junction only counts if the car turned less than this over the
                                                    last 40 mm (a cross is on a straight; on a 70-90 mm bend the car
                                                    turns about 25-35 deg in 40 mm). 0 = off */

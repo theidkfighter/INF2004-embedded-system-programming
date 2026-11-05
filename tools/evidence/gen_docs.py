@@ -99,7 +99,7 @@ def run_probe():
         obj = Path(td) / "pv.o"
         src.write_text(PROBE_C)
         cmd = [CROSS + "gcc", "-mcpu=cortex-m0plus", "-mthumb", "-std=gnu11", "-O2", "-ffreestanding",
-               "-fno-common", "-DAPP_LEGACY_TEXT_CMD=0", "-DAPP_PERF=0", "-DAPP_SELFTEST=0",
+               "-fno-common", "-DAPP_PERF=0", "-DAPP_SELFTEST=0",
                "-I", str(APP), "-c", str(src), "-o", str(obj)]
         r = subprocess.run(cmd, capture_output=True, text=True)
         if r.returncode:

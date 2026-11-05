@@ -234,7 +234,6 @@ PARAMS = [
     ("ROBOT_LEFT_HALF_MM", "F32", 0.0, 250.0),
     ("IR_TO_AXLE_MM", "F32", 0.0, 200.0),
     ("JUNCTION_MIN_MM", "F32", 0.0, 30.0),
-    ("JUNCTION_BLANK_MM", "F32", 0.0, 1000.0),
     ("JUNCTION_MAX_TURN_DEG", "F32", 0.0, 90.0),
     ("JUNCTION_BLACK_HIGH", "F1", 0.0, 1.0),
     ("TURN_PAUSE_MS", "F32", 0.0, 1000.0),

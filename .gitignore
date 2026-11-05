@@ -15,9 +15,6 @@ build_make/.robot_opts
 # Local Wi-Fi credentials. Copy config/wifi_credentials.example.h to this
 # path and edit it; never commit the populated file.
 config/wifi_credentials.h
-config/network_config.h
-config/udp_test_config.h
-config/tcp_test_config.h
 
 # Python
 __pycache__/

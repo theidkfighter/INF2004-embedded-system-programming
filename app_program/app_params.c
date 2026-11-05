@@ -75,7 +75,6 @@ static const param_def_t PARAMS[] =
     { "ROBOT_LEFT_HALF_MM",    &g_params.robot_left_half_mm,  0.0f,   250.0f, 0u },
     { "IR_TO_AXLE_MM",         &g_params.ir_to_axle_mm,       0.0f,   200.0f, 0u },
     { "JUNCTION_MIN_MM",       &g_params.junction_min_mm,     0.0f,   30.0f, 0u },
-    { "JUNCTION_BLANK_MM",     &g_params.junction_blank_mm,   0.0f,   1000.0f, 0u },
     { "JUNCTION_MAX_TURN_DEG", &g_params.junction_max_turn_deg, 0.0f, 90.0f, 0u },
     { "JUNCTION_BLACK_HIGH", (float *)0, 0.0f, 1.0f, PRM_JUNCTION_BLACK_HIGH },
     { "TURN_PAUSE_MS",         &g_params.turn_pause_ms,       0.0f,   1000.0f, 0u },
@@ -244,7 +243,6 @@ void params_init(void)
     g_params.robot_left_half_mm  = (float)ROBOT_LEFT_HALF_MM;
     g_params.ir_to_axle_mm       = (float)IR_TO_AXLE_MM;
     g_params.junction_min_mm     = (float)JUNCTION_MIN_MM;
-    g_params.junction_blank_mm   = (float)JUNCTION_BLANK_MM;
     g_params.junction_max_turn_deg = (float)JUNCTION_MAX_TURN_DEG;
     (void)prm_put(PRM_JUNCTION_BLACK_HIGH, (float)JUNCTION_BLACK_HIGH);
     g_params.turn_pause_ms       = (float)TURN_PAUSE_MS;

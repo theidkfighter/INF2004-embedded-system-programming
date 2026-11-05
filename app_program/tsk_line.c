@@ -39,12 +39,9 @@ LOCAL line_ctx_t   g_line;
 LOCAL search_ctx_t g_search;
 LOCAL bool         g_searching;
 /* junction check (patch/junction_check): distance since the last decoded
-   barcode, for JUNCTION_BLANK_MM. g_junc_exempt: the car was already on a
-   both-black stretch (junction sense) when the barcode was decoded, so that
-   stretch is not blanked. */
+   barcode, shown in the console junction lines */
 LOCAL bool         g_bc_seen;
 LOCAL float        g_since_bc_mm;
-LOCAL bool         g_junc_exempt;
 LOCAL junc_ctx_t   g_junc;         /* junction check, JUNCTION_BLACK_HIGH sense */
 LOCAL turn_win_t   g_turn_win;     /* heading over the last 40 mm (JUNCTION_MAX_TURN_DEG) */
 LOCAL float        g_heading;      /* encoder heading, summed from dheading */
@@ -134,7 +131,6 @@ LOCAL void report_barcode(bc_result_t res, char code, bool b_rev)
             buzzer_request(BUZZ_BARCODE);
             g_bc_seen     = true;
             g_since_bc_mm = 0.0f;
-            g_junc_exempt = g_junc.b_both;     /* a stretch already under way is not blanked */
         }
         (void)evt_post(&b);
         log_line(text);
@@ -420,13 +416,11 @@ LOCAL void follow(bool b_l, bool b_r, bool b_jl, bool b_jr, float ds_mm, float d
     {
         char   text[80];
         jbuf_t jb;
-        float  turned  = turn_win_change(&g_turn_win, g_heading);
-        bool   b_bend  = (g_params.junction_max_turn_deg > 0.0f) && (turned > g_params.junction_max_turn_deg);
-        bool   b_blank = g_bc_seen && !g_junc_exempt && (g_since_bc_mm < g_params.junction_blank_mm);
+        float  turned = turn_win_change(&g_turn_win, g_heading);
+        bool   b_bend = (g_params.junction_max_turn_deg > 0.0f) && (turned > g_params.junction_max_turn_deg);
 
         jb_init(&jb, text, sizeof(text));
-        jb_raw(&jb, b_bend ? "[line] bend, not a junction (turned " :
-                    (b_blank ? "[line] junction ignored (JUNCTION_BLANK_MM): " : "[line] junction: "));
+        jb_raw(&jb, b_bend ? "[line] bend, not a junction (turned " : "[line] junction: ");
         if (b_bend)
         {
             jb_fixed(&jb, turned, 0u);
@@ -442,7 +436,7 @@ LOCAL void follow(bool b_l, bool b_r, bool b_jl, bool b_jr, float ds_mm, float d
             jb_raw(&jb, "no barcode yet");
         }
         log_line(text);
-        if (!b_blank && !b_bend)
+        if (!b_bend)
         {
             /* the cross width goes to the planner in 2 mm steps (letter
                field, 0..50 mm) so it can pivot on the cross centre */
@@ -453,10 +447,6 @@ LOCAL void follow(bool b_l, bool b_r, bool b_jl, bool b_jr, float ds_mm, float d
         }
     }
     turn_win_step(&g_turn_win, ds_mm, g_heading);
-    if (!g_junc.b_both)
-    {
-        g_junc_exempt = false;                 /* that stretch has ended */
-    }
     if (out.b_lost)
     {
         g_searching = true;
@@ -550,7 +540,6 @@ void tsk_line(INT stacd, void *exinf)
                 line_reset(&g_line);
                 g_searching = false;
                 g_bc_seen     = false;
-                g_junc_exempt = false;
                 turn_win_reset(&g_turn_win);   /* the turn or bypass itself is not "turning" on the line */
                 junction_reset(&g_junc);
                 barcode_arm();

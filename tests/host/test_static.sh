@@ -262,7 +262,7 @@ for h in "${ACCESSOR_HEADERS[@]}"; do
         for p in 0 1; do
             if ! out="$(printf '#include "%s"\n' "$h" |
                         "$HOST_CC" -std=gnu11 -fsyntax-only "${WARN[@]}" \
-                            -DAPP_PERF="$p" -DAPP_LEGACY_TEXT_CMD=0 -DAPP_SELFTEST=0 \
+                            -DAPP_PERF="$p" -DAPP_SELFTEST=0 \
                             -I"$APP" -x c - 2>&1)"; then
                 add_problem "$h does not compile on its own with $HOST_CC (APP_PERF=$p):"$'\n'"$out"
             fi
