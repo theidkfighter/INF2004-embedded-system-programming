@@ -948,9 +948,10 @@ LOCAL leg_res_t run_bypass(const bypass_plan_t *p_plan, float gap_mm, float marg
         if (g_dyn && (OBST_REACQ_SWEEP_DEG > 0.0f))   /* OBST_DYNAMIC_TURN: confirm the line */
         {
             (void)tk_dly_tsk(30);
-            /* 4 Nov logs: on this car the left sensor reports 1 when it is NOT
-               on the line (0 while it rides the line edge), so search on 1 */
-            if (st_line_l())
+            /* 4 Nov logs: with LINE_DO_BLACK_HIGH 0 (inverted on this car) the
+               left sensor reported 1 when it was NOT on the line. Since 5 Nov
+               the sense is right (LINE_DO_BLACK_HIGH 1): 0 = not on the line */
+            if (!st_line_l())
             {
                 /* 4 Nov: parallel but off the line. Pivot towards the path
                    side first (the usual miss is short), then the other way;

@@ -199,8 +199,8 @@ test("CRC-16/CCITT-FALSE check value", () => {
 
 test("table sizes and the parameter table version", () => {
     assert.equal(codec.EVENTS.length, 45);
-    assert.equal(codec.PARAMS.length, 59);
-    assert.deepEqual(codec.paramTableVersion(), [59, codec.PARAM_CRC]);
+    assert.equal(codec.PARAMS.length, 60);
+    assert.deepEqual(codec.paramTableVersion(), [60, codec.PARAM_CRC]);
     const names = codec.PARAMS.map((p) => p[0]);
     [names[0], names[1]] = [names[1], names[0]];
     assert.notEqual(codec.paramTableVersion(names)[1], codec.PARAM_CRC);
@@ -722,7 +722,7 @@ test("encodeConfig reports every bad line", () => {
         assert.ok(e.message.includes("line 3: NOPE") && e.message.includes("line 6: LINE_STEER"));
         return true;
     });
-    throwsCodec(() => codec.encodeConfig(new Array(60).fill("LINE_STEER=0.5")), /at most 59/);
+    throwsCodec(() => codec.encodeConfig(new Array(61).fill("LINE_STEER=0.5")), /at most 60/);
 });
 
 // ---------------- jbFixed ----------------

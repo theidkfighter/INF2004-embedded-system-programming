@@ -60,7 +60,7 @@ def test_dump_tables_match_design(dump):
     assert [c["code"] for c in dump["commands"]][:11] == list(range(11))
     assert [(c["cmd_len"]) for c in dump["commands"][:11]] == [1, 1, 1, 1, 2, 4, 1, 1, 3, 6, 1]
     names = [p["name"] for p in dump["params"]]
-    assert len(names) == 59 and dump["param_table_crc"] == wire_spec.table_crc(names)
+    assert len(names) == 60 and dump["param_table_crc"] == wire_spec.table_crc(names)
     assert {names[p["id"]]: p["store_width"] for p in dump["params"] if p["store_width"] != 32} == \
         {n: w for n, (_sh, w, _e) in D15.items()}
     assert [s["text"] for s in dump["stop_reasons"]] == STOP_TEXTS

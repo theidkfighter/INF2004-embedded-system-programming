@@ -217,6 +217,17 @@ LOCAL motion_result_t turn_on_line(float deg)
     return MOTION_OK;
 }
 
+/* TURN_PAUSE_MS: stop and let the car settle (no roll from the move or the
+   pivot) so the next motion starts from where the last one ended. */
+LOCAL void settle(void)
+{
+    if (g_params.turn_pause_ms >= 1.0f)
+    {
+        motion_stop(SRC_NAV);
+        (void)tk_dly_tsk((TMO)g_params.turn_pause_ms);
+    }
+}
+
 /* FR6 / FR8: barcode -> navigation command. At a junction the car first
    drives the sensor-to-axle distance, so it pivots on the crossing point. */
 LOCAL void execute(char code, bool b_at_junction)
@@ -251,8 +262,13 @@ LOCAL void execute(char code, bool b_at_junction)
     }
     if ((res == MOTION_OK) && (sys_state() == SYS_MANEUVER))
     {
+        settle();                              /* stopped on the crossing point before the pivot */
         res = (prm_flag(PRM_TURN_SNAP) && b_at_junction) ? turn_on_line(deg)
                                                                : motion_turn(deg, g_params.turn_mm_s);
+    }
+    if ((res == MOTION_OK) && (sys_state() == SYS_MANEUVER))
+    {
+        settle();                              /* square on the new line before following it */
     }
     if (sys_state() != SYS_MANEUVER)
     {

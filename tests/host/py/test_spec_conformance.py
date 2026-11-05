@@ -171,8 +171,8 @@ def _range(enc):
 
 
 def test_table_crc_and_names(ps):
-    assert ps.params_count() == 59
-    names = [ps.params_name(i).decode() for i in range(59)]
+    assert ps.params_count() == 60
+    names = [ps.params_name(i).decode() for i in range(60)]
     assert names == wire_spec.param_names() and set(D15) <= set(names)
     assert ps.params_table_crc() == wire_spec.table_crc(names)
 
@@ -211,8 +211,8 @@ def test_defaults_equal_baseline(ps, base):
     base.base_params_init()
     ps.params_init()
     # The Baseline_Build has 55; the JUNCTION_* parameters are new. Defaults
-    # changed on purpose since: TRACK_WIDTH_MM (measured 3 Nov), TURN_SNAP (on, 5 Nov).
-    changed = {"TRACK_WIDTH_MM", "TURN_SNAP"}
+    # changed on purpose since: TRACK_WIDTH_MM (measured 3 Nov), TURN_SNAP (on, 5 Nov), LINE_DO_BLACK_HIGH (1, 5 Nov).
+    changed = {"TRACK_WIDTH_MM", "TURN_SNAP", "LINE_DO_BLACK_HIGH"}
     for i in range(55):
         if wire_spec.param_names()[i] in changed:
             continue

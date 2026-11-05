@@ -39,7 +39,8 @@
 #define SPEED_KI                  (0.0100f)     /* [P] duty per mm of error   */
 
 /* ---- From part_tests: test_ir ---- */
-#define LINE_DO_BLACK_HIGH        (0)           /* spec 4: IR DO reads LOW over black */
+#define LINE_DO_BLACK_HIGH        (1)           /* 5 Nov: this car's line sensor DO reads HIGH over black (the spec 4
+                                                   value 0 was inverted: white floor read as black) */
 #define IR_WHITE_ADC              (200)    /* PLACEHOLDER until test_barcode B2 (26 Oct track telemetry: white 160-240) */   /* test_ir I3, barcode sensor over white */
 #define IR_BLACK_ADC              (3900)   /* PLACEHOLDER until test_barcode B2 (was 3000; 26 Oct track telemetry:
                                                black 3800-4095, so the switch level moves from 1600 to ~2050) */   /* test_ir I3, barcode sensor over black */
@@ -94,7 +95,7 @@
 /* ---- Barcodes (DR 6.1, FR5-FR8) ---- */
 #define BARCODE_AT_JUNCTION       (1)           /* [P] 1 = store, act at the next cross-junction (demo brief), 0 = act at once */
 #define BARCODE_TURN_DEG          (90)
-#define JUNCTION_MIN_MM           (6)           /* [P] both line sensors must stay black this far before it counts as a
+#define JUNCTION_MIN_MM           (4)           /* [P] both line sensors must stay black this far before it counts as a
                                                    junction (a real 18 mm cross passes; a one-reading flicker of one
                                                    sensor while the other is on the line does not). 0 = first reading,
                                                    the old behaviour */
@@ -104,10 +105,12 @@
 #define JUNCTION_MAX_TURN_DEG     (15)          /* [P] a junction only counts if the car turned less than this over the
                                                    last 40 mm (a cross is on a straight; on a 70-90 mm bend the car
                                                    turns about 25-35 deg in 40 mm). 0 = off */
-#define JUNCTION_BLACK_HIGH       (1)           /* [P] line sensor level that means black FOR THE JUNCTION CHECK ONLY:
-                                                   1 = DO reads HIGH over black (5 Nov: true on this car; both sensors
-                                                   go HIGH on the cross). Line following and the obstacle code keep
-                                                   LINE_DO_BLACK_HIGH, so their behaviour does not change */
+#define JUNCTION_BLACK_HIGH       (1)           /* [P] line sensor level that means black for the junction check:
+                                                   keep it equal to LINE_DO_BLACK_HIGH (5 Nov: both 1 on this car).
+                                                   0 with LINE_DO_BLACK_HIGH 1 counts "both white" as the junction:
+                                                   it then fires after leaving any black, also on straights */
+#define TURN_PAUSE_MS             (150)         /* [P] barcode turn: stop and settle this long before the pivot and
+                                                   again before line following resumes, so the car does not roll */
 #define BARCODE_MAX_LEN_MM        (400)         /* abandon a window longer than this */
 #define BARCODE_MIN_ELEMENTS      (9)           /* fewer = a stray mark (e.g. a crossing line) */
 #define BARCODE_HYS               (0.05f)       /* [P] switch levels = mid +/- this x (black - white).
