@@ -170,8 +170,8 @@ def _range(enc):
 
 
 def test_table_crc_and_names(ps):
-    assert ps.params_count() == 57
-    names = [ps.params_name(i).decode() for i in range(57)]
+    assert ps.params_count() == 58
+    names = [ps.params_name(i).decode() for i in range(58)]
     assert names == wire_spec.param_names() and set(D15) <= set(names)
     assert ps.params_table_crc() == wire_spec.table_crc(names)
 
@@ -209,5 +209,10 @@ def test_float_params_store_as_f32(ps):
 def test_defaults_equal_baseline(ps, base):
     base.base_params_init()
     ps.params_init()
-    for i in range(55):   # the Baseline_Build has 55; JUNCTION_MIN_MM and JUNCTION_BLANK_MM are new
+    # The Baseline_Build has 55; the JUNCTION_* parameters are new. Defaults
+    # changed on purpose since: TRACK_WIDTH_MM (measured 3 Nov), TURN_SNAP (on, 5 Nov).
+    changed = {"TRACK_WIDTH_MM", "TURN_SNAP"}
+    for i in range(55):
+        if wire_spec.param_names()[i] in changed:
+            continue
         assert _get(ps, i) == base.base_bh_param_get(i), wire_spec.param_names()[i]

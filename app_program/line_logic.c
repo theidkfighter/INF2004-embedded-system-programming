@@ -180,3 +180,46 @@ int8_t search_step(search_ctx_t *p_s, float dheading_deg)
     }
     return p_s->dir;
 }
+
+void turn_win_reset(turn_win_t *p_w)
+{
+    for (uint32_t k = 0u; k < TURN_WIN_SLOTS; k++)
+    {
+        p_w->head[k] = 0.0f;
+    }
+    p_w->acc_mm = 0.0f;
+    p_w->i      = 0u;
+    p_w->n      = 0u;
+}
+
+void turn_win_step(turn_win_t *p_w, float ds_mm, float heading_deg)
+{
+    if (ds_mm < 0.0f)
+    {
+        ds_mm = -ds_mm;
+    }
+    p_w->acc_mm += ds_mm;
+    if ((p_w->n == 0u) || (p_w->acc_mm >= TURN_WIN_STEP_MM))
+    {
+        p_w->acc_mm      = (p_w->n == 0u) ? 0.0f : (p_w->acc_mm - TURN_WIN_STEP_MM);
+        p_w->head[p_w->i] = heading_deg;
+        p_w->i           = (uint8_t)((p_w->i + 1u) % TURN_WIN_SLOTS);
+        if (p_w->n < TURN_WIN_SLOTS)
+        {
+            p_w->n++;
+        }
+    }
+}
+
+float turn_win_change(const turn_win_t *p_w, float heading_deg)
+{
+    float d;
+
+    if (p_w->n == 0u)
+    {
+        return 0.0f;
+    }
+    /* oldest sample: slot i once the window is full, slot 0 before */
+    d = heading_deg - p_w->head[(p_w->n < TURN_WIN_SLOTS) ? 0u : p_w->i];
+    return (d < 0.0f) ? -d : d;
+}

@@ -101,6 +101,9 @@
 #define JUNCTION_BLANK_MM         (0)           /* [P] ignore junctions this far after a barcode is decoded. 0 = off.
                                                    Keep it below the real barcode-to-cross gap, or the turn waits for
                                                    the next junction */
+#define JUNCTION_MAX_TURN_DEG     (15)          /* [P] a junction only counts if the car turned less than this over the
+                                                   last 40 mm (a cross is on a straight; on a 70-90 mm bend the car
+                                                   turns about 25-35 deg in 40 mm). 0 = off */
 #define BARCODE_MAX_LEN_MM        (400)         /* abandon a window longer than this */
 #define BARCODE_MIN_ELEMENTS      (9)           /* fewer = a stray mark (e.g. a crossing line) */
 #define BARCODE_HYS               (0.05f)       /* [P] switch levels = mid +/- this x (black - white).
@@ -128,7 +131,8 @@
 
 /* ---- Motion primitives ---- */
 #define TURN_MM_S                 (90)          /* [P] wheel speed for pivot turns */
-#define TURN_SNAP                 (0)           /* [P] 1 = finish junction turns on the line sensors (test first) */
+#define TURN_SNAP                 (1)           /* [P] 1 = finish junction turns on the line sensors, sweeping back if the
+                                                   line was missed (patch/junction_check, 5 Nov); 0 = encoder angle only */
 #define BYPASS_MM_S               (60)          /* [P] speed for bypass legs (28 Oct: was 100; the leg watch sweeps the
                                                    sensor, one 0 / 30 / 0 / 60 deg cycle takes ~0.65 s = 4 cm at 60 mm/s) */
 #define SPEED_MAX_MM_S            (250)         /* NFR18 speed cap */

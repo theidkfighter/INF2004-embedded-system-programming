@@ -104,3 +104,55 @@ def test_threshold_is_distance_not_readings(ll, ds):
     first_black = 10
     travelled = (hits[0] - first_black) * ds
     assert 6.0 <= travelled < 6.0 + ds + 1e-6
+
+
+# ---- heading window (JUNCTION_MAX_TURN_DEG) ----
+
+TURN_WIN_SLOTS = 8
+
+
+class TurnWin(ctypes.Structure):
+    _fields_ = [("head", F * TURN_WIN_SLOTS), ("acc_mm", F), ("i", ctypes.c_uint8), ("n", ctypes.c_uint8)]
+
+
+@pytest.fixture(scope="module")
+def tw(lib):
+    lib.turn_win_reset.restype, lib.turn_win_reset.argtypes = None, [ctypes.POINTER(TurnWin)]
+    lib.turn_win_step.restype, lib.turn_win_step.argtypes = None, [ctypes.POINTER(TurnWin), F, F]
+    lib.turn_win_change.restype, lib.turn_win_change.argtypes = F, [ctypes.POINTER(TurnWin), F]
+    return lib
+
+
+def drive(tw, path, ds=0.8):
+    """path(distance_mm) -> heading_deg; drives 200 mm and returns the change over the last 40 mm."""
+    w = TurnWin()
+    tw.turn_win_reset(ctypes.byref(w))
+    d = 0.0
+    for _ in range(round(200 / ds)):
+        d += ds
+        tw.turn_win_step(ctypes.byref(w), ds, path(d))
+    return tw.turn_win_change(ctypes.byref(w), path(d))
+
+
+def test_straight_reads_no_turn(tw):
+    assert drive(tw, lambda d: 0.0) == pytest.approx(0.0)
+
+
+def test_line_following_wobble_stays_small(tw):
+    import math
+    # +/-4 deg weave every 60 mm while following a straight line
+    assert drive(tw, lambda d: 4.0 * math.sin(2 * math.pi * d / 60.0)) < 10.0
+
+
+@pytest.mark.parametrize("radius", [70.0, 80.0, 90.0])
+def test_bend_reads_as_turning(tw, radius):
+    import math
+    turned = drive(tw, lambda d: math.degrees(d / radius))      # constant-radius bend
+    assert turned > 15.0                                          # JUNCTION_MAX_TURN_DEG default
+    assert turned == pytest.approx(math.degrees(40.0 / radius), abs=3.0)
+
+
+def test_empty_window_reads_zero(tw):
+    w = TurnWin()
+    tw.turn_win_reset(ctypes.byref(w))
+    assert tw.turn_win_change(ctypes.byref(w), 37.0) == 0.0

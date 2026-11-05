@@ -131,31 +131,37 @@ LOCAL bool ir_black(bool b_level)
    pivoting slowly until the new line is between the two line sensors: the
    leading sensor (right one for a right turn) goes black and then white
    again. Encoder/track-width errors and wheel slip on the foam no longer
-   decide the final heading; the line does. Gives up after SNAP_MAX_DEG. */
+   decide the final heading; the line does.
+   patch/junction_check: if that sweep (SNAP_MAX_DEG) misses the line (the
+   car pivoted early or late, or the encoder part already overshot), it
+   sweeps back the other way up to SNAP_BACK_DEG past the start of the slow
+   sweep, like the obstacle bypass's reacquire sweep (OBST_REACQ_SWEEP_DEG).
+   Still nothing: back to the encoder angle, and line following searches. */
 #define SNAP_EARLY_DEG   (20.0f)
 #define SNAP_MAX_DEG     (45.0f)
+#define SNAP_BACK_DEG    (25.0f)
 #define SNAP_MM_S        (50.0f)
 
-LOCAL motion_result_t turn_on_line(float deg)
+typedef enum
 {
-    float           dir = (deg < 0.0f) ? -1.0f : 1.0f;
-    float           mag = (deg < 0.0f) ? -deg : deg;
-    motion_result_t res = motion_turn(dir * (mag - SNAP_EARLY_DEG), g_params.turn_mm_s);
-    uint16_t        id;
-    bool            b_seen = false;
-    uint32_t        t0;
+    SWEEP_FOUND = 0,
+    SWEEP_MISSED,
+    SWEEP_STOPPED
+} sweep_t;
 
-    if ((res != MOTION_OK) || (sys_state() != SYS_MANEUVER))
-    {
-        return res;
-    }
-    id = motion_start_turn(dir * SNAP_MAX_DEG, SNAP_MM_S, SRC_NAV);
-    t0 = hal_time_ms();
+/* Pivots dir (+1 right, -1 left) up to max_deg at SNAP_MM_S and stops once
+   the line is between the sensors. */
+LOCAL sweep_t snap_sweep(float dir, float max_deg)
+{
+    uint16_t id     = motion_start_turn(dir * max_deg, SNAP_MM_S, SRC_NAV);
+    bool     b_seen = false;
+    uint32_t t0     = hal_time_ms();
+
     for (;;)
     {
         motion_result_t r2;
         uint32_t        other;
-        bool            b_lead = ir_black((dir > 0.0f) ? hal_ir_right_level() : hal_ir_left_level());
+        bool            b_lead  = ir_black((dir > 0.0f) ? hal_ir_right_level() : hal_ir_left_level());
         bool            b_trail = ir_black((dir > 0.0f) ? hal_ir_left_level() : hal_ir_right_level());
 
         if (b_lead)
@@ -165,22 +171,50 @@ LOCAL motion_result_t turn_on_line(float deg)
         if ((b_seen && !b_lead) || (b_seen && b_trail))
         {
             motion_stop(SRC_NAV);              /* line is between the sensors */
-            (void)evt_post1(EVC_TURN_SNAP, 0u, 1u);   /* not_seen 0: "stopped on the line" */
-            return MOTION_OK;
+            return SWEEP_FOUND;
         }
         if (motion_wait(id, 0u, 10u, &r2, &other))
         {
-            /* swept SNAP_MAX_DEG without finding the line: keep the
-               encoder result and let line following / search sort it out */
-            (void)evt_post1(EVC_TURN_SNAP, 1u, 1u);   /* not_seen 1: "line not seen, encoder angle kept" */
-            return (r2 == MOTION_STOPPED) ? MOTION_STOPPED : MOTION_OK;
+            return (r2 == MOTION_STOPPED) ? SWEEP_STOPPED : SWEEP_MISSED;
         }
-        if ((sys_state() != SYS_MANEUVER) || ((hal_time_ms() - t0) > 5000u))
+        if ((sys_state() != SYS_MANEUVER) || ((hal_time_ms() - t0) > 8000u))
         {
             motion_stop(SRC_NAV);
-            return MOTION_STOPPED;
+            return SWEEP_STOPPED;
         }
     }
+}
+
+LOCAL motion_result_t turn_on_line(float deg)
+{
+    float           dir = (deg < 0.0f) ? -1.0f : 1.0f;
+    float           mag = (deg < 0.0f) ? -deg : deg;
+    motion_result_t res = motion_turn(dir * (mag - SNAP_EARLY_DEG), g_params.turn_mm_s);
+    sweep_t         sw;
+
+    if ((res != MOTION_OK) || (sys_state() != SYS_MANEUVER))
+    {
+        return res;
+    }
+    sw = snap_sweep(dir, SNAP_MAX_DEG);
+    if (sw == SWEEP_MISSED)
+    {
+        /* missed going forward: sweep back past where the slow sweep began */
+        sw = snap_sweep(-dir, SNAP_MAX_DEG + SNAP_BACK_DEG);
+        if (sw == SWEEP_MISSED)
+        {
+            /* nothing either way: back to the encoder angle (now
+               SNAP_EARLY_DEG + SNAP_BACK_DEG short of it) */
+            (void)evt_post1(EVC_TURN_SNAP, 1u, 1u);   /* not_seen 1: "line not seen, encoder angle kept" */
+            return motion_turn(dir * (SNAP_EARLY_DEG + SNAP_BACK_DEG), g_params.turn_mm_s);
+        }
+    }
+    if (sw == SWEEP_STOPPED)
+    {
+        return MOTION_STOPPED;
+    }
+    (void)evt_post1(EVC_TURN_SNAP, 0u, 1u);   /* not_seen 0: "stopped on the line" */
+    return MOTION_OK;
 }
 
 /* FR6 / FR8: barcode -> navigation command. At a junction the car first

@@ -203,7 +203,7 @@ def test_param_table_matches_app_params():
     """Names, order, store widths and the table CRC against the C side
     (wire_dump). The limits are not in wire_dump, so they are not checked here."""
     dump = wire_spec.dump()
-    assert len(codec.PARAMS) == len(dump["params"]) == 57
+    assert len(codec.PARAMS) == len(dump["params"]) == 58
     for i, (param, c_param) in enumerate(zip(codec.PARAMS, dump["params"])):
         assert c_param["id"] == i
         assert (param[0], codec.PARAM_KINDS[param[1]]) == (c_param["name"], c_param["store_width"]), i
@@ -221,7 +221,7 @@ def test_crc_check_value():
 
 
 def test_param_table_version_follows_names():
-    assert codec.param_table_version() == (57, codec.PARAM_CRC)
+    assert codec.param_table_version() == (58, codec.PARAM_CRC)
     names = [p[0] for p in codec.PARAMS]
     names[0], names[1] = names[1], names[0]
     assert codec.param_table_version(names)[1] != codec.PARAM_CRC
@@ -742,8 +742,8 @@ def test_encode_config_reports_every_bad_line():
 
 
 def test_encode_config_too_many_pairs():
-    with pytest.raises(codec.CodecError, match="at most 57"):
-        codec.encode_config(["LINE_STEER=0.5"] * 58)
+    with pytest.raises(codec.CodecError, match="at most 58"):
+        codec.encode_config(["LINE_STEER=0.5"] * 59)
 
 
 # ---------------- jb_fixed ----------------

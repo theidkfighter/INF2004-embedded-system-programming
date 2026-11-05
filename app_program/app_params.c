@@ -76,6 +76,7 @@ static const param_def_t PARAMS[] =
     { "IR_TO_AXLE_MM",         &g_params.ir_to_axle_mm,       0.0f,   200.0f, 0u },
     { "JUNCTION_MIN_MM",       &g_params.junction_min_mm,     0.0f,   30.0f, 0u },
     { "JUNCTION_BLANK_MM",     &g_params.junction_blank_mm,   0.0f,   1000.0f, 0u },
+    { "JUNCTION_MAX_TURN_DEG", &g_params.junction_max_turn_deg, 0.0f, 90.0f, 0u },
 };
 
 #define PARAM_COUNT (sizeof(PARAMS) / sizeof(PARAMS[0]))
@@ -241,6 +242,7 @@ void params_init(void)
     g_params.ir_to_axle_mm       = (float)IR_TO_AXLE_MM;
     g_params.junction_min_mm     = (float)JUNCTION_MIN_MM;
     g_params.junction_blank_mm   = (float)JUNCTION_BLANK_MM;
+    g_params.junction_max_turn_deg = (float)JUNCTION_MAX_TURN_DEG;
 }
 
 int32_t params_set(const char *p_text)

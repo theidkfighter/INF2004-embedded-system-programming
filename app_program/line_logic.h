@@ -82,6 +82,26 @@ line_out_t line_step(line_ctx_t *p_ctx, const line_params_t *p_par,
 /* Steering -> wheel speeds. steer > 0 = turn right: left faster, right slower. */
 void       line_wheels(float base_mm_s, float steer, float *p_left, float *p_right);
 
+/* ---- Heading window for the junction check (patch/junction_check) ----
+ * Keeps the encoder heading every TURN_WIN_STEP_MM over the last
+ * TURN_WIN_SLOTS x TURN_WIN_STEP_MM of travel. At a cross the car drives
+ * straight; on a bend both sensors can also be black for a while, but the
+ * car is turning, so turn_win_change() is large. */
+#define TURN_WIN_SLOTS    (8u)
+#define TURN_WIN_STEP_MM  (5.0f)          /* window = 8 x 5 = 40 mm */
+
+typedef struct
+{
+    float   head[TURN_WIN_SLOTS];  /* heading samples, oldest at index i once full */
+    float   acc_mm;                /* travel since the last sample */
+    uint8_t i;                     /* next slot to write */
+    uint8_t n;                     /* samples held (0..TURN_WIN_SLOTS) */
+} turn_win_t;
+
+void  turn_win_reset(turn_win_t *p_w);
+void  turn_win_step(turn_win_t *p_w, float ds_mm, float heading_deg);
+float turn_win_change(const turn_win_t *p_w, float heading_deg);   /* |heading - oldest sample|, 0 if empty */
+
 /* ---- Line search: alternating pivots of growing amplitude ----
  * Targets: +A, -A, +2A, -2A, ... (first sign = side the line was last seen).
  * The caller pivots in the returned direction and feeds the heading change
