@@ -41,7 +41,7 @@ D15 = {"MOTOR_MAPPING_CONFIRMED": (9, 2, "S2"), "ENC_R_REVERSED": (0, 1, "F1"),
        "IMU_FORWARD_SIGN": (17, 2, "S2"), "TURN_SNAP": (3, 1, "F1"), "BARCODE_AT_JUNCTION": (4, 1, "F1"),
        "BARCODE_DETECT": (5, 1, "F1"), "BARCODE_LEVELS": (21, 3, "B3+1"), "BARCODE_DEBUG": (6, 1, "F1"),
        "OBST_LEGACY": (7, 1, "F1"), "OBST_TRUST_MISS": (8, 1, "F1"),
-       "JUNCTION_BLACK_HIGH": (24, 1, "F1")}   # patch/junction_check
+       "JUNCTION_BLACK_HIGH": (24, 1, "F1"), "JUNCTION_SIDE_CHECK": (25, 1, "F1")}   # patch/junction_check
 
 
 def bits_at(data, off, width):
@@ -171,8 +171,8 @@ def _range(enc):
 
 
 def test_table_crc_and_names(ps):
-    assert ps.params_count() == 60
-    names = [ps.params_name(i).decode() for i in range(60)]
+    assert ps.params_count() == 62
+    names = [ps.params_name(i).decode() for i in range(62)]
     assert names == wire_spec.param_names() and set(D15) <= set(names)
     assert ps.params_table_crc() == wire_spec.table_crc(names)
 
@@ -189,7 +189,7 @@ def test_packed_positions_and_round_trip(ps, name):
         after = _bits(ps)
         assert (after >> sh) & ((1 << w) - 1) == _code(enc, value)
         assert (after & ~(((1 << w) - 1) << sh)) == (before & ~(((1 << w) - 1) << sh))   # others kept
-        assert after >> 25 == 0
+        assert after >> 26 == 0
         assert ps.params_store_code(pid) == _code(enc, value)
     keep = _get(ps, pid)
     for bad in (0.5, -0.25, float(min(_range(enc)) - 1), float(max(_range(enc)) + 1)):
@@ -211,8 +211,8 @@ def test_defaults_equal_baseline(ps, base):
     base.base_params_init()
     ps.params_init()
     # The Baseline_Build has 55; the JUNCTION_* parameters are new. Defaults
-    # changed on purpose since: TRACK_WIDTH_MM (measured 3 Nov), TURN_SNAP (on, 5 Nov), LINE_DO_BLACK_HIGH (1, 5 Nov).
-    changed = {"TRACK_WIDTH_MM", "TURN_SNAP", "LINE_DO_BLACK_HIGH"}
+    # changed on purpose since: TRACK_WIDTH_MM (measured 3 Nov), TURN_SNAP (on, 5 Nov).
+    changed = {"TRACK_WIDTH_MM", "TURN_SNAP"}
     for i in range(55):
         if wire_spec.param_names()[i] in changed:
             continue

@@ -199,8 +199,8 @@ test("CRC-16/CCITT-FALSE check value", () => {
 
 test("table sizes and the parameter table version", () => {
     assert.equal(codec.EVENTS.length, 45);
-    assert.equal(codec.PARAMS.length, 60);
-    assert.deepEqual(codec.paramTableVersion(), [60, codec.PARAM_CRC]);
+    assert.equal(codec.PARAMS.length, 62);
+    assert.deepEqual(codec.paramTableVersion(), [62, codec.PARAM_CRC]);
     const names = codec.PARAMS.map((p) => p[0]);
     [names[0], names[1]] = [names[1], names[0]];
     assert.notEqual(codec.paramTableVersion(names)[1], codec.PARAM_CRC);
@@ -212,7 +212,7 @@ test("packed parameters match D15", () => {
     assert.deepEqual(packed, {
         0: "S2", 1: "F1", 2: "F1", 3: "S2", 4: "S2", 7: "S2", 8: "F1", 10: "B2-1", 11: "S2",
         33: "F1", 34: "F1", 36: "F1", 39: "B3+1", 41: "F1", 49: "F1", 51: "F1",
-        58: "F1",   // JUNCTION_BLACK_HIGH (patch/junction_check)
+        58: "F1", 61: "F1",   // JUNCTION_BLACK_HIGH, JUNCTION_SIDE_CHECK (patch/junction_check)
     });
 });
 
@@ -722,7 +722,7 @@ test("encodeConfig reports every bad line", () => {
         assert.ok(e.message.includes("line 3: NOPE") && e.message.includes("line 6: LINE_STEER"));
         return true;
     });
-    throwsCodec(() => codec.encodeConfig(new Array(61).fill("LINE_STEER=0.5")), /at most 60/);
+    throwsCodec(() => codec.encodeConfig(new Array(63).fill("LINE_STEER=0.5")), /at most 62/);
 });
 
 // ---------------- jbFixed ----------------

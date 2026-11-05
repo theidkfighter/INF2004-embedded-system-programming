@@ -70,8 +70,8 @@ typedef enum
 
 #define WIRE_EVT_ARG_BYTES   (26u)    /* WIRE_EVT_ARG_CAP_BITS / 8 */
 #define WIRE_MAP_LETTERS     (26u)
-#define WIRE_CFG_REJ_MAX     (60u)
-#define WIRE_PARAMS_MAX      (60u)
+#define WIRE_CFG_REJ_MAX     (62u)
+#define WIRE_PARAMS_MAX      (62u)
 
 /* ---- bit writer / reader ------------------------------------------------- */
 typedef struct

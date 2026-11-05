@@ -26,7 +26,7 @@
 #define CONNECT_TIMEOUT_MS   (5000u)
 #define RSSI_EVERY_MS        (2000u)
 #define PUBLISH_PER_POLL     (4u)
-#define IN_MAX               (WIRE_CFG_LEN(WIRE_PARAMS_MAX))   /* longest payload in: a full Config_Frame, 287 bytes */
+#define IN_MAX               (WIRE_CFG_LEN(WIRE_PARAMS_MAX))   /* longest payload in: a full Config_Frame, 297 bytes */
 #define DISCOVERY_FAILS      (2u)       /* failed connects before a beacon may move the broker */
 
 typedef struct

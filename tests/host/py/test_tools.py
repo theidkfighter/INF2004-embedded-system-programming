@@ -545,7 +545,7 @@ def test_params_binary(tmp_path, monkeypatch):
 def test_params_real_file_is_valid(monkeypatch):
     run_params(monkeypatch, "--legacy-json")
     assert published()[0][0] == "is02/config" and published()[0][2] is True
-    assert "LINE_DO_BLACK_HIGH=1" in published()[0][1]
+    assert "LINE_DO_BLACK_HIGH=0" in published()[0][1]
     run_params(monkeypatch)
     assert published()[0][0] == "is02/config" and isinstance(published()[0][1], bytes)
 

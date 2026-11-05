@@ -39,8 +39,10 @@
 #define SPEED_KI                  (0.0100f)     /* [P] duty per mm of error   */
 
 /* ---- From part_tests: test_ir ---- */
-#define LINE_DO_BLACK_HIGH        (1)           /* 5 Nov: this car's line sensor DO reads HIGH over black (the spec 4
-                                                   value 0 was inverted: white floor read as black) */
+#define LINE_DO_BLACK_HIGH        (0)           /* line FOLLOWING sense. The DO really reads HIGH over black on this car,
+                                                   but line following is tuned on 0: both sensors fit on the line, and
+                                                   with 0 the car rides the line edge (5 Nov: 1 lost the line). The
+                                                   junction check uses JUNCTION_BLACK_HIGH (1) instead */
 #define IR_WHITE_ADC              (200)    /* PLACEHOLDER until test_barcode B2 (26 Oct track telemetry: white 160-240) */   /* test_ir I3, barcode sensor over white */
 #define IR_BLACK_ADC              (3900)   /* PLACEHOLDER until test_barcode B2 (was 3000; 26 Oct track telemetry:
                                                black 3800-4095, so the switch level moves from 1600 to ~2050) */   /* test_ir I3, barcode sensor over black */
@@ -105,10 +107,14 @@
 #define JUNCTION_MAX_TURN_DEG     (15)          /* [P] a junction only counts if the car turned less than this over the
                                                    last 40 mm (a cross is on a straight; on a 70-90 mm bend the car
                                                    turns about 25-35 deg in 40 mm). 0 = off */
-#define JUNCTION_BLACK_HIGH       (1)           /* [P] line sensor level that means black for the junction check:
-                                                   keep it equal to LINE_DO_BLACK_HIGH (5 Nov: both 1 on this car).
-                                                   0 with LINE_DO_BLACK_HIGH 1 counts "both white" as the junction:
-                                                   it then fires after leaving any black, also on straights */
+#define JUNCTION_BLACK_HIGH       (1)           /* [P] line sensor level that means black for the junction check only:
+                                                   1 = DO reads HIGH over black (true on this car) */
+#define JUNCTION_MAX_MM           (30)          /* [P] a junction is a both-black stretch of JUNCTION_MIN_MM..this, counted
+                                                   when it ENDS: a cross is about 18-25 mm, riding along the line (both
+                                                   sensors fit on it) is longer. 0 = old rule (count at JUNCTION_MIN_MM) */
+#define JUNCTION_SIDE_CHECK       (1)           /* [P] 1 = the barcode sensor (35 mm left) must also see black during the
+                                                   stretch: a cross line runs under it, the line being followed does not.
+                                                   0 if a junction only branches to the right */
 #define TURN_PAUSE_MS             (150)         /* [P] barcode turn: stop and settle this long before the pivot and
                                                    again before line following resumes, so the car does not roll */
 #define BARCODE_MAX_LEN_MM        (400)         /* abandon a window longer than this */

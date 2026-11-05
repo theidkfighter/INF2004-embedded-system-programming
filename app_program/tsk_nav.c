@@ -230,7 +230,7 @@ LOCAL void settle(void)
 
 /* FR6 / FR8: barcode -> navigation command. At a junction the car first
    drives the sensor-to-axle distance, so it pivots on the crossing point. */
-LOCAL void execute(char code, bool b_at_junction)
+LOCAL void execute(char code, bool b_at_junction, float cross_mm)
 {
     nav_action_t    act = nav_map_get(code);      /* set over MQTT, never hard-coded */
     float           deg = nav_action_deg(act);
@@ -250,10 +250,12 @@ LOCAL void execute(char code, bool b_at_junction)
     res = MOTION_OK;
     if (b_at_junction)
     {
-        /* the junction is now reported JUNCTION_MIN_MM after the sensors
-           first saw the cross, so drive that much less to pivot on the
-           same point as before */
-        float move_mm = g_params.ir_to_axle_mm - g_params.junction_min_mm;
+        /* JUNCTION_MAX_MM > 0: the junction is reported when the sensors
+           leave the cross, cross_mm past its near edge, so drive
+           IR_TO_AXLE_MM - cross_mm / 2 to put the axle on the cross centre.
+           Otherwise (earlier rule) it is reported JUNCTION_MIN_MM into it. */
+        float move_mm = (g_params.junction_max_mm > 0.0f) ? (g_params.ir_to_axle_mm - (0.5f * cross_mm))
+                                                          : (g_params.ir_to_axle_mm - g_params.junction_min_mm);
 
         if (move_mm > 0.0f)
         {
@@ -324,7 +326,7 @@ LOCAL void on_nav_event(const nav_event_t *p_ev)
                 }
                 else
                 {
-                    execute(p_ev->code, false);
+                    execute(p_ev->code, false, 0.0f);
                 }
             }
             break;
@@ -332,10 +334,11 @@ LOCAL void on_nav_event(const nav_event_t *p_ev)
         case NAV_JUNCTION:
             if ((st == SYS_LINE_FOLLOWING) && (g_pending != 0))
             {
-                char code = g_pending;
+                char  code = g_pending;
+                float w_mm = ((p_ev->code >= 'A') && (p_ev->code <= 'Z')) ? (2.0f * (float)(p_ev->code - 'A')) : 0.0f;
 
                 g_pending = 0;
-                execute(code, true);
+                execute(code, true, w_mm);         /* w_mm: cross width measured by TSK_LINE */
             }
             break;
 

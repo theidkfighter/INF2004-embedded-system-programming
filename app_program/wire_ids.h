@@ -228,11 +228,11 @@ typedef enum
 #define WIRE_CMD_FRAME_COUNT    (11u)    /* codes 0..10 accepted on is02/cmd */
 #define WIRE_ACK_UNPARSED_LEN   (5u)
 
-/* GET:PARAMS reply parts: part U3 1..5, count U4 0..12, count x (ID U6,
+/* GET:PARAMS reply parts: part U3 1..6, count U4 0..12, count x (ID U6,
    value: F32 for float parameters, 1/2/3-bit code for packed ones). */
 #define WIRE_GETP_PER_PART      (12u)
 #define WIRE_GETP_MAX_LEN       WIRE_BYTES(WIRE_ACK_HDR_BITS + 3u + 4u + (WIRE_GETP_PER_PART * (6u + 32u)))
-/* CONFIG ack: applied U6, rejected count U6, rejected IDs U6 each (0..60). */
+/* CONFIG ack: applied U6, rejected count U6, rejected IDs U6 each (0..62). */
 #define WIRE_CFG_ACK_LEN(n_rej) WIRE_BYTES(WIRE_ACK_HDR_BITS + 6u + 6u + (6u * (uint32_t)(n_rej)))
 
 /* ---- stop reasons (D2, Requirement 2.9) ---------------------------------- */

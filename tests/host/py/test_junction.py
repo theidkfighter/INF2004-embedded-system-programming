@@ -16,22 +16,32 @@ F = ctypes.c_float
 
 
 class JuncCtx(ctypes.Structure):
-    _fields_ = [("b_both", ctypes.c_bool), ("b_sent", ctypes.c_bool), ("len_mm", F)]
+    _fields_ = [("b_both", ctypes.c_bool), ("b_sent", ctypes.c_bool), ("b_side", ctypes.c_bool),
+                ("len_mm", F), ("hit_mm", F)]
 
 
 @pytest.fixture(scope="module")
 def ll(lib):
     lib.junction_reset.restype, lib.junction_reset.argtypes = None, [ctypes.POINTER(JuncCtx)]
     lib.junction_step.restype = ctypes.c_bool
-    lib.junction_step.argtypes = [ctypes.POINTER(JuncCtx), ctypes.c_bool, ctypes.c_bool, F, F]
+    lib.junction_step.argtypes = [ctypes.POINTER(JuncCtx), ctypes.c_bool, ctypes.c_bool, ctypes.c_bool,
+                                  F, F, F, ctypes.c_bool]
     return lib
 
 
-def run(ll, readings, min_mm=6.0, ds=0.8):
-    """readings: list of (left_black, right_black). Returns the indexes that reported a junction."""
+def run(ll, readings, min_mm=6.0, ds=0.8, max_mm=0.0, side=False, need_side=False, lens=None):
+    """readings: (left_black, right_black[, side_black]). Returns the indexes that reported a junction.
+    max_mm 0 = the earlier rule (count on reaching min_mm)."""
     j = JuncCtx()
     ll.junction_reset(ctypes.byref(j))
-    return [i for i, (l, r) in enumerate(readings) if ll.junction_step(ctypes.byref(j), l, r, ds, min_mm)]
+    hits = []
+    for i, rd in enumerate(readings):
+        s = rd[2] if len(rd) > 2 else side
+        if ll.junction_step(ctypes.byref(j), rd[0], rd[1], s, ds, min_mm, max_mm, need_side):
+            hits.append(i)
+            if lens is not None:
+                lens.append(j.hit_mm)
+    return hits
 
 
 def cross(mm, ds=0.8):
@@ -93,6 +103,35 @@ def test_threshold_is_distance_not_readings(ll, ds):
     first_black = 10
     travelled = (hits[0] - first_black) * ds
     assert 6.0 <= travelled < 6.0 + ds + 1e-6
+
+
+# ---- end-of-stretch rule (JUNCTION_MAX_MM > 0), JUNCTION_SIDE_CHECK ----
+
+def test_cross_counts_when_the_stretch_ends(ll):
+    lens = []
+    hits = run(ll, cross(18.0), min_mm=4.0, max_mm=30.0, lens=lens)
+    assert hits == [10 + round(18.0 / 0.8)]              # the first reading after the cross
+    assert lens[0] == pytest.approx(18.0 - 0.8, abs=1.0)  # its width, for the pivot point
+
+
+def test_riding_along_the_line_is_not_a_junction(ll):
+    # both sensors fit on the line: 200 mm of both-black while following it
+    assert run(ll, cross(200.0), min_mm=4.0, max_mm=30.0) == []
+
+
+def test_too_short_still_ignored(ll):
+    assert run(ll, cross(3.0), min_mm=4.0, max_mm=30.0) == []
+
+
+def test_side_check_needs_the_barcode_sensor(ll):
+    # a 12 mm diagonal crossing of the followed line: short, but the side sensor stays white
+    readings = [(False, False, False)] * 10 + [(True, True, False)] * 15 + [(False, False, False)] * 10
+    assert run(ll, readings, min_mm=4.0, max_mm=30.0, need_side=True) == []
+    assert run(ll, readings, min_mm=4.0, max_mm=30.0, need_side=False) == [25]
+    # a cross line also runs under the side sensor for part of the stretch
+    readings = [(False, False, False)] * 10 + [(True, True, False)] * 5 + [(True, True, True)] * 10 + \
+               [(False, False, False)] * 10
+    assert run(ll, readings, min_mm=4.0, max_mm=30.0, need_side=True) == [25]
 
 
 # ---- heading window (JUNCTION_MAX_TURN_DEG) ----

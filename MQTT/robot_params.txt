@@ -19,7 +19,7 @@ ENC_L_REVERSED=1                   # 21 Oct: left counted down rolling forward
 # SPEED_FF_MM_S_PER_PCT=           # P1 prints x10: 45 -> 4.5
 
 # ---- part_tests: test_ir ----
-LINE_DO_BLACK_HIGH=1               # 5 Nov: DO reads HIGH over black on this car (spec said LOW: inverted)
+LINE_DO_BLACK_HIGH=0               # line following sense (tuned on 0; 1 lost the line on 5 Nov). Junctions: JUNCTION_BLACK_HIGH
 # IR_WHITE_ADC=                    # I3
 # IR_BLACK_ADC=                    # I3
 
@@ -46,5 +46,7 @@ LINE_DO_BLACK_HIGH=1               # 5 Nov: DO reads HIGH over black on this car
 # JUNCTION_BLANK_MM=0     (ignore junctions this far after a barcode; 0 = off; keep below the barcode-to-cross gap)
 # JUNCTION_MAX_TURN_DEG=15 (a junction only counts if the car turned less than this over the last 40 mm; stops bends counting; 0 = off)
 # TURN_SNAP=1             (finish barcode turns on the line, then sweep back if it was missed; 0 = encoder angle only)
-# JUNCTION_BLACK_HIGH=1   (keep equal to LINE_DO_BLACK_HIGH; 1 = DO HIGH over black, true on this car)
+# JUNCTION_BLACK_HIGH=1   (junction check only: 1 = DO HIGH over black, true on this car)
+# JUNCTION_MAX_MM=30      (junction = both-black stretch of JUNCTION_MIN_MM..this, counted when it ends; 0 = old rule)
+# JUNCTION_SIDE_CHECK=1   (barcode sensor must also see the cross line; 0 if a junction only branches right)
 # TURN_PAUSE_MS=150       (barcode turn: settle before the pivot and before line following resumes)
