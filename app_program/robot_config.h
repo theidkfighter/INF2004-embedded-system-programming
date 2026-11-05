@@ -104,6 +104,10 @@
 #define JUNCTION_MAX_TURN_DEG     (15)          /* [P] a junction only counts if the car turned less than this over the
                                                    last 40 mm (a cross is on a straight; on a 70-90 mm bend the car
                                                    turns about 25-35 deg in 40 mm). 0 = off */
+#define JUNCTION_BLACK_HIGH       (1)           /* [P] line sensor level that means black FOR THE JUNCTION CHECK ONLY:
+                                                   1 = DO reads HIGH over black (5 Nov: true on this car; both sensors
+                                                   go HIGH on the cross). Line following and the obstacle code keep
+                                                   LINE_DO_BLACK_HIGH, so their behaviour does not change */
 #define BARCODE_MAX_LEN_MM        (400)         /* abandon a window longer than this */
 #define BARCODE_MIN_ELEMENTS      (9)           /* fewer = a stray mark (e.g. a crossing line) */
 #define BARCODE_HYS               (0.05f)       /* [P] switch levels = mid +/- this x (black - white).

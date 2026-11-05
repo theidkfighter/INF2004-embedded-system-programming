@@ -20,7 +20,7 @@
 #include <stdint.h>
 
 /* Parameter_Store (Change Requirement 1, design D15). The 42 continuous
-   parameters stay float members. The 16 discrete ones live in `bits`:
+   parameters stay float members. The 17 discrete ones live in `bits`:
    one 32-bit word written only by TSK_TELEMETRY as one composed store, read
    by any task with one load through prm_flag() / prm_tri() / prm_int().
    Descriptor PRM_x = shift | width << 5 | encoding << 8. */
@@ -45,10 +45,11 @@
 #define PRM_IMU_FORWARD_SIGN           PRM_DESC(17u, 2u, PE_TRI)
 #define PRM_IMU_FORWARD_AXIS           PRM_DESC(19u, 2u, PE_AXIS)
 #define PRM_BARCODE_LEVELS             PRM_DESC(21u, 3u, PE_LEVELS)
+#define PRM_JUNCTION_BLACK_HIGH        PRM_DESC(24u, 1u, PE_FLAG)    /* patch/junction_check */
 
 typedef struct
 {
-    uint32_t bits;          /* the 16 discrete parameters, D15; bits [24..31] are 0 */
+    uint32_t bits;          /* the 17 discrete parameters, D15 + JUNCTION_BLACK_HIGH; bits [25..31] are 0 */
     /* confirmations and directions from the part tests (1 = yes / reversed) */
     float servo_min_us;
     float servo_max_us;

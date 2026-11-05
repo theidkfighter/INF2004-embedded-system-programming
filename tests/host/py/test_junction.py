@@ -1,59 +1,37 @@
-"""Junction check (line_logic.c, patch/junction_check).
+"""Junction check (line_logic.c junction_step, patch/junction_check).
 
-A junction is reported once both line sensors have stayed black for
-JUNCTION_MIN_MM of travel, once per both-black stretch. A real 18 mm cross
-passes; a one-reading flicker of one sensor while the other is on the line
-does not. JUNCTION_MIN_MM = 0 keeps the old behaviour (first reading).
+A junction is reported once both line sensors have stayed black (in the
+junction's own sense, JUNCTION_BLACK_HIGH) for JUNCTION_MIN_MM of travel,
+once per both-black stretch. A real 18 mm cross passes; the edge weaving on
+a straight (each sensor flicking black/white, sometimes both black for a
+moment) does not. JUNCTION_MIN_MM = 0 reports on the first reading.
 """
 
 import ctypes
+import random
 
 import pytest
 
 F = ctypes.c_float
-DT = 0.01                       # 10 ms line task
 
 
-class LineParams(ctypes.Structure):
-    _fields_ = [("steer_base", F), ("steer_ramp", F), ("hold_steer", F), ("hold_mm", F),
-                ("curve_mm", F), ("lost_mm", F), ("bias_ki", F), ("bias_decay_mm", F),
-                ("junction_min_mm", F)]
-
-
-class LineCtx(ctypes.Structure):
-    _fields_ = [("state", ctypes.c_int), ("side", ctypes.c_int8), ("black_s", F), ("episode_mm", F),
-                ("hold_left_mm", F), ("since_black_mm", F), ("b_last_curve", ctypes.c_bool),
-                ("b_both_prev", ctypes.c_bool), ("b_junc_sent", ctypes.c_bool), ("junc_mm", F),
-                ("bias", F)]
-
-
-class LineOut(ctypes.Structure):
-    _fields_ = [("steer", F), ("b_junction", ctypes.c_bool), ("b_lost", ctypes.c_bool)]
+class JuncCtx(ctypes.Structure):
+    _fields_ = [("b_both", ctypes.c_bool), ("b_sent", ctypes.c_bool), ("len_mm", F)]
 
 
 @pytest.fixture(scope="module")
 def ll(lib):
-    lib.line_reset.restype, lib.line_reset.argtypes = None, [ctypes.POINTER(LineCtx)]
-    lib.line_step.restype = LineOut
-    lib.line_step.argtypes = [ctypes.POINTER(LineCtx), ctypes.POINTER(LineParams),
-                              ctypes.c_bool, ctypes.c_bool, F, F]
+    lib.junction_reset.restype, lib.junction_reset.argtypes = None, [ctypes.POINTER(JuncCtx)]
+    lib.junction_step.restype = ctypes.c_bool
+    lib.junction_step.argtypes = [ctypes.POINTER(JuncCtx), ctypes.c_bool, ctypes.c_bool, F, F]
     return lib
-
-
-def params(min_mm):
-    return LineParams(0.4, 3.0, 0.2, 40.0, 60.0, 400.0, 0.0, 0.0, min_mm)
 
 
 def run(ll, readings, min_mm=6.0, ds=0.8):
     """readings: list of (left_black, right_black). Returns the indexes that reported a junction."""
-    ctx = LineCtx()
-    ll.line_reset(ctypes.byref(ctx))
-    par = params(min_mm)
-    hits = []
-    for i, (l, r) in enumerate(readings):
-        if ll.line_step(ctypes.byref(ctx), ctypes.byref(par), l, r, ds, DT).b_junction:
-            hits.append(i)
-    return hits
+    j = JuncCtx()
+    ll.junction_reset(ctypes.byref(j))
+    return [i for i, (l, r) in enumerate(readings) if ll.junction_step(ctypes.byref(j), l, r, ds, min_mm)]
 
 
 def cross(mm, ds=0.8):
@@ -70,24 +48,35 @@ def test_real_cross_reports_once(ll):
 
 
 def test_one_reading_flicker_is_not_a_junction(ll):
-    # correcting: left sensor on the line, the right one flickers black for one reading
+    # left sensor on the line edge, the right one flickers black for one reading
     readings = [(True, False)] * 20 + [(True, True)] + [(True, False)] * 20
     assert run(ll, readings) == []
+
+
+def test_edge_weave_on_a_straight_is_not_a_junction(ll):
+    # 5 Nov: on a straight both sensors keep switching between black and white,
+    # sometimes both black together for a few readings (<= 4 mm here)
+    rng = random.Random(5)
+    readings = []
+    for _ in range(400):
+        readings.append((rng.random() < 0.6, rng.random() < 0.4))
+        if rng.random() < 0.05:
+            readings += [(True, True)] * rng.randint(1, 5)      # up to 5 x 0.8 = 4 mm
+    assert run(ll, readings) == []
+    # ... and a cross after the weave is still found
+    assert len(run(ll, readings + cross(18.0))) == 1
 
 
 def test_short_both_black_is_not_a_junction(ll):
     assert run(ll, cross(4.0)) == []                      # 4 mm < JUNCTION_MIN_MM 6
 
 
-def test_zero_keeps_the_old_behaviour(ll):
-    assert run(ll, cross(18.0), min_mm=0.0) == [10]       # first both-black reading
-    readings = [(True, False)] * 20 + [(True, True)] + [(True, False)] * 20
-    assert run(ll, readings, min_mm=0.0) == [20]          # the flicker counted before the fix
+def test_zero_reports_on_the_first_reading(ll):
+    assert run(ll, cross(18.0), min_mm=0.0) == [10]
 
 
 def test_each_cross_reports(ll):
-    readings = cross(18.0) + cross(18.0)
-    assert len(run(ll, readings)) == 2
+    assert len(run(ll, cross(18.0) + cross(18.0))) == 2
 
 
 def test_stretch_must_restart_after_white(ll):

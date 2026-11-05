@@ -46,3 +46,4 @@ LINE_DO_BLACK_HIGH=0               # spec: DO reads LOW over black
 # JUNCTION_BLANK_MM=0     (ignore junctions this far after a barcode; 0 = off; keep below the barcode-to-cross gap)
 # JUNCTION_MAX_TURN_DEG=15 (a junction only counts if the car turned less than this over the last 40 mm; stops bends counting; 0 = off)
 # TURN_SNAP=1             (finish barcode turns on the line, then sweep back if it was missed; 0 = encoder angle only)
+# JUNCTION_BLACK_HIGH=1   (junction check only: 1 = line sensor DO is HIGH over black, true on this car; line following keeps LINE_DO_BLACK_HIGH)

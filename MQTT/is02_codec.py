@@ -236,6 +236,7 @@ PARAMS = [
     ("JUNCTION_MIN_MM", "F32", 0.0, 30.0),
     ("JUNCTION_BLANK_MM", "F32", 0.0, 1000.0),
     ("JUNCTION_MAX_TURN_DEG", "F32", 0.0, 90.0),
+    ("JUNCTION_BLACK_HIGH", "F1", 0.0, 1.0),
 ]
 PARAM_IDS = {p[0]: i for i, p in enumerate(PARAMS)}
 PARAM_NOT_FOUND = 63                    # SET ack of a legacy text with an unknown name

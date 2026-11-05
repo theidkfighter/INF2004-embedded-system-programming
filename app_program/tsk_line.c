@@ -40,11 +40,12 @@ LOCAL search_ctx_t g_search;
 LOCAL bool         g_searching;
 /* junction check (patch/junction_check): distance since the last decoded
    barcode, for JUNCTION_BLANK_MM. g_junc_exempt: the car was already on a
-   both-black stretch when the barcode was decoded, so that stretch is not
-   blanked (a cross right after the barcode). */
+   both-black stretch (junction sense) when the barcode was decoded, so that
+   stretch is not blanked. */
 LOCAL bool         g_bc_seen;
 LOCAL float        g_since_bc_mm;
 LOCAL bool         g_junc_exempt;
+LOCAL junc_ctx_t   g_junc;         /* junction check, JUNCTION_BLACK_HIGH sense */
 LOCAL turn_win_t   g_turn_win;     /* heading over the last 40 mm (JUNCTION_MAX_TURN_DEG) */
 LOCAL float        g_heading;      /* encoder heading, summed from dheading */
 LOCAL bc_ctx_t     g_bc;
@@ -133,14 +134,7 @@ LOCAL void report_barcode(bc_result_t res, char code, bool b_rev)
             buzzer_request(BUZZ_BARCODE);
             g_bc_seen     = true;
             g_since_bc_mm = 0.0f;
-            g_junc_exempt = g_line.b_both_prev;
-            if (g_line.b_both_prev && g_line.b_junc_sent)
-            {
-                /* already confirmed on a cross before the barcode was
-                   stored: report it again so the stored turn uses it */
-                (void)post_nav(NAV_JUNCTION, 0);
-                log_line("[line] junction: already on it when the barcode was decoded");
-            }
+            g_junc_exempt = g_junc.b_both;     /* a stretch already under way is not blanked */
         }
         (void)evt_post(&b);
         log_line(text);
@@ -372,7 +366,7 @@ LOCAL void barcode_service(bool b_active)
     }
 }
 
-LOCAL void follow(bool b_l, bool b_r, float ds_mm, float dheading)
+LOCAL void follow(bool b_l, bool b_r, bool b_jl, bool b_jr, float ds_mm, float dheading)
 {
     line_params_t par;
     line_out_t    out;
@@ -387,6 +381,7 @@ LOCAL void follow(bool b_l, bool b_r, float ds_mm, float dheading)
         {
             g_searching = false;
             line_reset(&g_line);
+            junction_reset(&g_junc);
             flag_set(EVF_LINE_FOUND);
             (void)evt_post0(EVC_LINE_FOUND);   /* "search" */
         }
@@ -417,12 +412,11 @@ LOCAL void follow(bool b_l, bool b_r, float ds_mm, float dheading)
     par.lost_mm    = g_params.line_lost_mm;
     par.bias_ki       = g_params.line_bias_ki;
     par.bias_decay_mm = g_params.line_bias_decay_mm;
-    par.junction_min_mm = g_params.junction_min_mm;
     out = line_step(&g_line, &par, b_l, b_r, ds_mm, DT_S);
     g_since_bc_mm += (ds_mm < 0.0f) ? -ds_mm : ds_mm;
     g_heading     += dheading;
 
-    if (out.b_junction)
+    if (junction_step(&g_junc, b_jl, b_jr, ds_mm, g_params.junction_min_mm))
     {
         char   text[80];
         jbuf_t jb;
@@ -454,7 +448,7 @@ LOCAL void follow(bool b_l, bool b_r, float ds_mm, float dheading)
         }
     }
     turn_win_step(&g_turn_win, ds_mm, g_heading);
-    if (!g_line.b_both_prev)
+    if (!g_junc.b_both)
     {
         g_junc_exempt = false;                 /* that stretch has ended */
     }
@@ -522,6 +516,8 @@ void tsk_line(INT stacd, void *exinf)
         sys_state_t st;
         bool        b_l;
         bool        b_r;
+        bool        lv_l;
+        bool        lv_r;
         float       ds_mm;
         float       dheading;
 
@@ -530,8 +526,10 @@ void tsk_line(INT stacd, void *exinf)
         g_hb[HB_LINE]++;
 
         st  = sys_state();
-        b_l = is_black(hal_ir_left_level());
-        b_r = is_black(hal_ir_right_level());
+        lv_l = hal_ir_left_level();
+        lv_r = hal_ir_right_level();
+        b_l  = is_black(lv_l);
+        b_r  = is_black(lv_r);
         odometry_get(&odo);
         ds_mm        = (float)(odo.odo_um - odo_prev) / 1000.0f;
         dheading     = odo.heading_deg - heading_prev;
@@ -549,6 +547,7 @@ void tsk_line(INT stacd, void *exinf)
                 g_bc_seen     = false;
                 g_junc_exempt = false;
                 turn_win_reset(&g_turn_win);   /* the turn or bypass itself is not "turning" on the line */
+                junction_reset(&g_junc);
                 barcode_arm();
                 /* coming back from a turn or a bypass: the line should be
                    close, so treat a long white stretch as "lost" */
@@ -567,7 +566,9 @@ void tsk_line(INT stacd, void *exinf)
         {
             if ((flag_peek() & EVF_OBSTACLE_TRIGGER) == 0u)
             {
-                follow(b_l, b_r, ds_mm, dheading);
+                bool b_jhigh = prm_flag(PRM_JUNCTION_BLACK_HIGH);
+
+                follow(b_l, b_r, lv_l == b_jhigh, lv_r == b_jhigh, ds_mm, dheading);
             }
             /* else: the obstacle task has stopped the car; wait for the planner */
         }

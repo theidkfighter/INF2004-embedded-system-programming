@@ -40,7 +40,8 @@ D15 = {"MOTOR_MAPPING_CONFIRMED": (9, 2, "S2"), "ENC_R_REVERSED": (0, 1, "F1"),
        "SERVO_LOW_ANGLE_IS_RIGHT": (2, 1, "F1"), "IMU_FORWARD_AXIS": (19, 2, "B2-1"),
        "IMU_FORWARD_SIGN": (17, 2, "S2"), "TURN_SNAP": (3, 1, "F1"), "BARCODE_AT_JUNCTION": (4, 1, "F1"),
        "BARCODE_DETECT": (5, 1, "F1"), "BARCODE_LEVELS": (21, 3, "B3+1"), "BARCODE_DEBUG": (6, 1, "F1"),
-       "OBST_LEGACY": (7, 1, "F1"), "OBST_TRUST_MISS": (8, 1, "F1")}
+       "OBST_LEGACY": (7, 1, "F1"), "OBST_TRUST_MISS": (8, 1, "F1"),
+       "JUNCTION_BLACK_HIGH": (24, 1, "F1")}   # patch/junction_check
 
 
 def bits_at(data, off, width):
@@ -170,8 +171,8 @@ def _range(enc):
 
 
 def test_table_crc_and_names(ps):
-    assert ps.params_count() == 58
-    names = [ps.params_name(i).decode() for i in range(58)]
+    assert ps.params_count() == 59
+    names = [ps.params_name(i).decode() for i in range(59)]
     assert names == wire_spec.param_names() and set(D15) <= set(names)
     assert ps.params_table_crc() == wire_spec.table_crc(names)
 
@@ -188,7 +189,7 @@ def test_packed_positions_and_round_trip(ps, name):
         after = _bits(ps)
         assert (after >> sh) & ((1 << w) - 1) == _code(enc, value)
         assert (after & ~(((1 << w) - 1) << sh)) == (before & ~(((1 << w) - 1) << sh))   # others kept
-        assert after >> 24 == 0
+        assert after >> 25 == 0
         assert ps.params_store_code(pid) == _code(enc, value)
     keep = _get(ps, pid)
     for bad in (0.5, -0.25, float(min(_range(enc)) - 1), float(max(_range(enc)) + 1)):

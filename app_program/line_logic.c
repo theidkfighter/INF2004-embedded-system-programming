@@ -19,15 +19,13 @@ void line_reset(line_ctx_t *p_ctx)
     p_ctx->since_black_mm = 0.0f;
     p_ctx->b_last_curve   = false;
     p_ctx->b_both_prev    = false;
-    p_ctx->b_junc_sent    = false;
-    p_ctx->junc_mm        = 0.0f;
     p_ctx->bias           = 0.0f;
 }
 
 line_out_t line_step(line_ctx_t *p_ctx, const line_params_t *p_par,
                      bool b_left_black, bool b_right_black, float ds_mm, float dt_s)
 {
-    line_out_t out = { 0.0f, false, false };
+    line_out_t out = { 0.0f, false };
 
     if (ds_mm < 0.0f)
     {
@@ -36,16 +34,8 @@ line_out_t line_step(line_ctx_t *p_ctx, const line_params_t *p_par,
 
     if (b_left_black && b_right_black)
     {
-        /* junction / crossing line: drive straight through. It counts as a
-           junction only once both sensors have stayed black for
-           junction_min_mm: a one-reading flicker of one sensor while the
-           other is on the line is not a cross (patch/junction_check). */
-        p_ctx->junc_mm = p_ctx->b_both_prev ? (p_ctx->junc_mm + ds_mm) : 0.0f;
-        if (!p_ctx->b_junc_sent && (p_ctx->junc_mm >= p_par->junction_min_mm))
-        {
-            out.b_junction     = true;
-            p_ctx->b_junc_sent = true;
-        }
+        /* both black: drive straight through (junctions are found by
+           junction_step(), with their own sensor sense) */
         p_ctx->state          = LINE_JUNCTION;
         p_ctx->since_black_mm = 0.0f;
         p_ctx->hold_left_mm   = 0.0f;
@@ -129,11 +119,6 @@ line_out_t line_step(line_ctx_t *p_ctx, const line_params_t *p_par,
         }
     }
     p_ctx->b_both_prev = b_left_black && b_right_black;
-    if (!p_ctx->b_both_prev)
-    {
-        p_ctx->b_junc_sent = false;            /* the stretch has ended */
-        p_ctx->junc_mm     = 0.0f;
-    }
     return out;
 }
 
@@ -222,4 +207,36 @@ float turn_win_change(const turn_win_t *p_w, float heading_deg)
     /* oldest sample: slot i once the window is full, slot 0 before */
     d = heading_deg - p_w->head[(p_w->n < TURN_WIN_SLOTS) ? 0u : p_w->i];
     return (d < 0.0f) ? -d : d;
+}
+
+void junction_reset(junc_ctx_t *p_j)
+{
+    p_j->b_both = false;
+    p_j->b_sent = false;
+    p_j->len_mm = 0.0f;
+}
+
+bool junction_step(junc_ctx_t *p_j, bool b_left_black, bool b_right_black, float ds_mm, float min_mm)
+{
+    bool b_hit = false;
+
+    if (ds_mm < 0.0f)
+    {
+        ds_mm = -ds_mm;
+    }
+    if (b_left_black && b_right_black)
+    {
+        p_j->len_mm = p_j->b_both ? (p_j->len_mm + ds_mm) : 0.0f;
+        if (!p_j->b_sent && (p_j->len_mm >= min_mm))
+        {
+            b_hit       = true;
+            p_j->b_sent = true;
+        }
+        p_j->b_both = true;
+    }
+    else
+    {
+        junction_reset(p_j);                   /* any white reading ends the stretch */
+    }
+    return b_hit;
 }
