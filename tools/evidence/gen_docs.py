@@ -780,7 +780,7 @@ FLAG_CODE = {
     "R4": "Spec followed: the Map_Frame has four slots, one letter per movement. The pair form (several letters for one movement) is a recorded difference.",
     "R5": "Spec followed: `bp_quant` rounds in double (`bitpack.h`). `jb_fixed` rounds in float, so a rare boundary value can differ by one step from the Baseline_Build JSON.",
     "R6": "No task marked optional; the minimum-scope ledger instead lists every skipped task above.",
-    "R7": "Guides followed: the tools send binary by default since LT-05, and `--legacy-json` only reads JSON. The robot accepts binary commands only.",
+    "R7": "Resolved: the tools send and read binary frames only (the legacy JSON mode was removed on 5 Nov 2026). The robot accepts binary commands only.",
     "R8": "Did not arise: `obstacle_logic.c/.h` are identical to the Baseline_Build, and Property 14 compares them with the frozen Baseline_Build. `tsk_obstacle.c` changed for events, status accessors and the odometry record (ledger session 2); no obstacle refinement was made.",
 }
 

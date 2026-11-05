@@ -12,8 +12,7 @@ values it applied and the ones it rejected.
 
 Every line is checked against the parameter table first: one bad line prints
 its line number and NAME and nothing is sent. The file goes out as a
-Config_Frame by default. --legacy-json sends baseline text instead, only for a
-Baseline_Build robot. Nothing is sent
+binary Config_Frame. Nothing is sent
 while the robot's heartbeat shows a different parameter table.
 """
 import argparse
@@ -50,10 +49,6 @@ def main():
     ap.add_argument("--file", default=os.path.join(here, "robot_params.txt"))
     ap.add_argument("--clear", action="store_true", help="delete the retained configuration")
     ap.add_argument("--wait", type=float, default=8.0, help="seconds to wait for the robot's ack")
-    ap.add_argument("--legacy-json", dest="legacy_json", action="store_true", default=False,
-                    help="send the file as baseline text (only for a Baseline_Build robot)")
-    ap.add_argument("--no-legacy-json", dest="legacy_json", action="store_false",
-                    help="send a Config_Frame (the default)")
     args = ap.parse_args()
 
     if args.clear:
@@ -66,21 +61,17 @@ def main():
         except codec.CodecError as e:
             sys.exit(f"bad lines in {args.file}, nothing sent:\n{e}")
         lines = [line for line in (raw.split("#", 1)[0].strip() for raw in raw_lines) if line]
-        payload = "\n".join(lines)
+        payload = frame
         print(f"{len(lines)} values from {args.file}:")
         for line in lines:
             print("   " + line)
-        if not args.legacy_json:
-            payload = frame
-        elif len(payload) > 1000:
-            sys.exit("too long for the robot (1000 characters max): remove some tuning lines")
 
     acks = []
     heartbeat = threading.Event()
     mismatch = []
 
     def on_message(cl, ud, msg):
-        decoded = codec.decode(msg.topic, msg.payload, legacy_json=True, log=print)
+        decoded = codec.decode(msg.topic, msg.payload, log=print)
         if decoded is None:
             return
         if msg.topic == "is02/ack":

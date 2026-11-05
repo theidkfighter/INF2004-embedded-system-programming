@@ -7,7 +7,7 @@ const fc = require('fast-check');
 const { checkProperty } = require('./prop');
 const { codec, wireDump } = require('./cross_helper');
 
-const quiet = (logs) => ({ legacyJson: false, log: (line) => logs.push(line) });
+const quiet = (logs) => ({ log: (line) => logs.push(line) });
 
 // ---------------- Property 24 ----------------
 

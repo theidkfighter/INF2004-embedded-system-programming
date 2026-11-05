@@ -590,23 +590,13 @@ test("the default log is console.warn", (t) => {
     assert.match(calls[0], /is02\/event/);
 });
 
-// ---------------- legacy JSON ----------------
+// ---------------- text / JSON payloads are not decoded ----------------
 
-test("legacy JSON passes through only when asked", () => {
-    const baseline = { seq: 3, t: 100, state: "IDLE", spd: [0, 0] };
-    const text = new TextEncoder().encode(JSON.stringify(baseline));
-    assert.deepEqual(codec.decode("is02/telemetry", text, { legacyJson: true }), baseline);
+test("JSON text is dropped", () => {
+    const text = new TextEncoder().encode(JSON.stringify({ seq: 3, t: 100 }));
     const [lines, log] = logged();
     assert.equal(codec.decode("is02/telemetry", text, { log }), null);
     assert.match(lines[0], /version 7/);                                // '{' = 0x7B
-});
-
-test("legacy mode still decodes binary; invalid JSON is dropped", () => {
-    const m = codec.decode("is02/status", codec.encodeFields("heartbeat", HEARTBEAT), { legacyJson: true });
-    assert.equal(m.broker, "192.168.1.20");
-    const [lines, log] = logged();
-    assert.equal(codec.decode("is02/telemetry", new TextEncoder().encode("{not json"), { legacyJson: true, log }), null);
-    assert.ok(lines.length > 0);
 });
 
 // ---------------- user input ----------------
@@ -757,13 +747,10 @@ test("require() and the browser global both give the codec", () => {
     assert.equal(typeof sandbox.IS02.decode, "function");
 });
 
-test("readPayload tells JSON, text and binary apart in both modes", () => {
+test("readPayload decodes binary frames and drops anything else", () => {
     const text = (s) => new TextEncoder().encode(s);
-    assert.deepEqual(codec.readPayload("is02/ack", text('{"cmd": "PING:1"}')),
-        { decoded: { cmd: "PING:1" }, text: '{"cmd": "PING:1"}' });
-    assert.deepEqual(codec.readPayload("is02/cmd", text("PING:1")), { decoded: null, text: "PING:1" });
-    assert.deepEqual(codec.readPayload("is02/map", text("X=FWD,K=LEFT")), { decoded: null, text: "X=FWD,K=LEFT" });
     assert.deepEqual(codec.readPayload("is02/config", new Uint8Array(0)), { decoded: null, text: "" });
+    assert.deepEqual(codec.readPayload("is02/other", text("hello")), { decoded: null, text: "hello" });
     const map = codec.readPayload("is02/map", codec.encodeMap("X=FWD,K=LEFT,Q=RIGHT,M=UTURN"));
     assert.deepEqual(map.decoded, { map: "K=LEFT,M=UTURN,Q=RIGHT,X=FWD", n: 4 });
     assert.deepEqual(JSON.parse(map.text), map.decoded);
@@ -771,7 +758,7 @@ test("readPayload tells JSON, text and binary apart in both modes", () => {
     const log = (line) => lines.push(line);
     assert.deepEqual(codec.readPayload("is02/map", new Uint8Array([0x10]), { log }), { decoded: null, text: null });
     assert.deepEqual(codec.readPayload("is02/telemetry", text("hello"), { log }), { decoded: null, text: null });
-    assert.deepEqual(codec.readPayload("is02/telemetry", text("{bad"), { log }), { decoded: null, text: "{bad" });
+    assert.deepEqual(codec.readPayload("is02/cmd", text("PING:1"), { log }), { decoded: null, text: null });
     assert.equal(lines.length, 3);
     assert.ok(lines[1].includes("version 6"));
 });

@@ -7,7 +7,7 @@
  *     IS02.decodeFields(kind, payload) -> record     raw field codes; encodeFields
  *     IS02.encodeFields(kind, record)  -> Uint8Array gives the input bytes back
  *
- *     IS02.decode(topic, payload, {legacyJson, log}) -> object   the Baseline_Build JSON shape
+ *     IS02.decode(topic, payload, {log}) -> object   the Baseline_Build JSON shape of a binary frame
  *     IS02.encodeCommandText(text)   -> Uint8Array   "ESTOP", "PING:7", "SET:LINE_STEER=0.35", ...
  *     IS02.encodeMap(pairs)          -> Uint8Array   the Map_Frame
  *     IS02.encodeConfig(lines)       -> Uint8Array   the Config_Frame
@@ -293,7 +293,7 @@
         PARAM_IDS[p[0]] = i;
         PARAM_ID_MAP.set(p[0], i);
     });
-    var PARAM_NOT_FOUND = 63;               // SET ack of a legacy text with an unknown name
+    var PARAM_NOT_FOUND = 63;               // SET ack whose parameter name is not in PARAMS
 
     /* CRC-16/CCITT-FALSE: polynomial 0x1021, start 0xFFFF, no reflection, no final XOR.
        data: bytes, or an ASCII string. */
@@ -1317,15 +1317,12 @@
         ["is02/config", ["config", presentConfig]]
     ]);
     var RETAINED_TOPICS = ["is02/map", "is02/config"];
-    // Topics the tools fill with baseline text while legacy mode is on (flag R7)
-    var TEXT_TOPICS = ["is02/cmd", "is02/map", "is02/config"];
 
-    /* The Baseline_Build JSON shape of a payload, or null if it was dropped.
+    /* The Baseline_Build JSON shape of a binary payload, or null if it was dropped.
      *
      * options.log: a function taking one line of text for bad versions, lengths
      * and unknown codes (default console.warn). An empty retained payload is the
      * broker deleting it, so it returns null without a log line.
-     * options.legacyJson: a payload starting with "{" is parsed as baseline JSON.
      */
     function decode(topic, payload, options) {
         options = options || {};
@@ -1334,14 +1331,6 @@
         if (!TOPICS.has(topic)) {
             emit(topic + ": no decoder for this topic, length " + data.length);
             return null;
-        }
-        if (options.legacyJson && data[0] === 0x7B) {
-            try {
-                return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(data));
-            } catch (e) {
-                emit(topic + ": dropped, invalid JSON: " + e.message);
-                return null;
-            }
         }
         if (data.length === 0 && RETAINED_TOPICS.indexOf(topic) >= 0) {
             return null;
@@ -1361,25 +1350,19 @@
         return entry[1](rec, emit);
     }
 
-    /* What the tools do with a received payload, in both modes: {decoded, text}.
+    /* What the tools do with a received payload: {decoded, text}.
      *
-     * "{" is baseline JSON, anything else binary (flag R7). On TEXT_TOPICS and on a
-     * topic with no decoder, a payload without our Format_Version is text, and
-     * decoded is null. text is the payload as received, or the decoded JSON of a
-     * binary frame, or null if the frame was dropped.
+     * text is the decoded frame as JSON, or null if the frame was dropped
+     * (already logged). A topic with no decoder, or an empty retained payload
+     * (the broker deleting it), gives {decoded: null, text: the payload as text}.
      */
     function readPayload(topic, payload, options) {
         var data = toBytes(payload);
-        var received = new TextDecoder("utf-8").decode(data);
-        if (!TOPICS.has(topic) || (TEXT_TOPICS.indexOf(topic) >= 0 &&
-                (data.length === 0 || data[0] >> 4 !== FORMAT_VERSION))) {
-            return { decoded: null, text: received };
+        if (!TOPICS.has(topic) || (data.length === 0 && RETAINED_TOPICS.indexOf(topic) >= 0)) {
+            return { decoded: null, text: new TextDecoder("utf-8").decode(data) };
         }
         var log = options && options.log;
-        var decoded = decode(topic, data, { legacyJson: true, log: log });
-        if (data[0] === 0x7B) {
-            return { decoded: decoded, text: received };
-        }
+        var decoded = decode(topic, data, { log: log });
         return { decoded: decoded, text: decoded === null ? null : JSON.stringify(decoded) };
     }
 

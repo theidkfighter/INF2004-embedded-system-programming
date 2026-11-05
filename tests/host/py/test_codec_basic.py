@@ -601,29 +601,12 @@ def test_unknown_code_inside_an_event_shows_the_number(name, args, text):
     assert lines
 
 
-# ---------------- legacy JSON ----------------
+# ---------------- text / JSON payloads are not decoded ----------------
 
-def test_legacy_json_pass_through():
-    baseline = {"seq": 3, "t": 100, "state": "IDLE", "spd": [0.0, 0.0]}
-    text = json.dumps(baseline).encode()
-    assert codec.decode("is02/telemetry", text, legacy_json=True) == baseline
-
-
-def test_legacy_json_off_rejects_text():
+def test_json_text_is_dropped():
     lines, log = logged()
     assert codec.decode("is02/telemetry", b'{"seq":3}', log=log) is None
     assert "version 7" in lines[0]                                      # '{' = 0x7B
-
-
-def test_legacy_json_still_decodes_binary():
-    m = codec.decode("is02/status", codec.encode_fields("heartbeat", HEARTBEAT), legacy_json=True)
-    assert m["broker"] == "192.168.1.20"
-
-
-def test_legacy_json_invalid_is_logged_and_dropped():
-    lines, log = logged()
-    assert codec.decode("is02/telemetry", b"{not json", legacy_json=True, log=log) is None
-    assert lines
 
 
 # ---------------- user input ----------------

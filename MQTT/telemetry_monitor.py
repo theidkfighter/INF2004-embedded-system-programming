@@ -15,9 +15,7 @@ Keys (type the letter, then Enter):
 
 Needs: pip install paho-mqtt
 
-Received payloads are read as JSON or binary automatically. Commands go out as
-binary frames by default. --legacy-json sends baseline text instead, only for a
-Baseline_Build robot.
+Everything is sent and received as binary frames (is02_codec.py).
 """
 
 import argparse
@@ -266,7 +264,7 @@ class Monitor:
             self.out("!! not connected to the broker")
             return
         try:
-            payload = cmd if self.args.legacy_json else codec.encode_command_text(cmd)
+            payload = codec.encode_command_text(cmd)
         except codec.CodecError as e:
             self.out(f"!! not sent: {e}")
             return
@@ -399,10 +397,6 @@ def main():
     ap.add_argument("--no-keyboard", action="store_true", help="no keyboard commands (for scripts)")
     ap.add_argument("--no-beacon", action="store_true",
                     help="don't broadcast the broker beacon (the robot uses it to find a moved broker)")
-    ap.add_argument("--legacy-json", dest="legacy_json", action="store_true", default=False,
-                    help="send commands as baseline text (only for a Baseline_Build robot)")
-    ap.add_argument("--no-legacy-json", dest="legacy_json", action="store_false",
-                    help="send binary frames (the default)")
     args = ap.parse_args()
 
     mon = Monitor(args)

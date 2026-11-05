@@ -13,10 +13,8 @@
   is02/status, is02/event and is02/ack messages, and sends commands on
   is02/cmd. Runs side by side with telemetry_monitor.py.
 
-  Keep is02_codec.js next to this file. Received payloads are read as JSON or
-  binary automatically. Commands, the map and SET go out as binary frames by
-  default. Ticking "legacy JSON" sends baseline text instead, only for a
-  Baseline_Build robot. The box is unticked again at every page load.
+  Keep is02_codec.js next to this file. Everything is sent and received as
+  binary frames (commands, the map and SET included).
 
   Another laptop on the hotspot: open dashboard.html?host=<broker laptop IP>
   (the broker laptop then needs the firewall rule for port 9001).
@@ -115,7 +113,6 @@ td:last-child { text-align: right; }
     <input class="host" id="host" aria-label="broker host">
     <input class="port" id="port" aria-label="websocket port">
     <button id="reconnect">Connect</button>
-    <label><input type="checkbox" id="legacyJson" autocomplete="off"> legacy JSON</label>
   </span>
 </header>
 <div class="banner" id="ptabBanner" hidden></div>
@@ -441,13 +438,10 @@ $("bSave").onclick = () => {
 };
 
 /* --- commands --- */
-const legacyOn = () => $("legacyJson").checked;
 function send(cmd) {
-  let payload = cmd;
-  if (!legacyOn()) {
-    try { payload = IS02.encodeCommandText(cmd); }
-    catch (e) { log("err", "not sent: " + e.message); return; }
-  }
+  let payload;
+  try { payload = IS02.encodeCommandText(cmd); }
+  catch (e) { log("err", "not sent: " + e.message); return; }
   if (mqtt.publish("is02/cmd", payload)) {
     log("sent", "SENT   " + cmd);
     const sm = /^SET:LINE_BASE_MM_S=([0-9.]+)$/i.exec(cmd);
@@ -458,8 +452,8 @@ function send(cmd) {
 document.querySelectorAll("button[data-cmd]").forEach(b => b.onclick = () => send(b.dataset.cmd));
 $("bEstop").onclick = () => send("ESTOP");
 $("bPing").onclick = () => {
-  if (!legacyOn()) pingNo = (pingNo >= 65535) ? 49152 : pingNo + 1;
-  const id = legacyOn() ? "PING:D" + Date.now().toString(36) : "PING:" + pingNo;
+  pingNo = (pingNo >= 65535) ? 49152 : pingNo + 1;
+  const id = "PING:" + pingNo;
   pings[id] = performance.now(); send(id);
 };
 $("bGetParams").onclick = () => send("GET:PARAMS");
@@ -476,7 +470,7 @@ $("bMap").onclick = () => {
   if (!chars.every(c => /^[A-Z]$/.test(c))) { log("err", "mapping: fill in all four boxes with a letter A-Z"); return; }
   if (new Set(chars).size !== 4) { log("err", "mapping: each movement needs a different letter"); return; }
   const text = chars[0] + "=FWD," + chars[1] + "=LEFT," + chars[2] + "=RIGHT," + chars[3] + "=UTURN";
-  if (mqtt.publish("is02/map", legacyOn() ? text : IS02.encodeMap(text), true)) log("sent", "SENT   mapping on is02/map (retained): " + text);
+  if (mqtt.publish("is02/map", IS02.encodeMap(text), true)) log("sent", "SENT   mapping on is02/map (retained): " + text);
   else log("err", "not connected to the broker: mapping not sent");
 };
 $("bGetMap").onclick = () => send("GET:MAP");

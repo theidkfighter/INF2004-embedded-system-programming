@@ -7,7 +7,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { codec, loadCases, bytes } = require('./cross_helper');
 
-const quiet = (logs) => ({ legacyJson: false, log: (line) => logs.push(line) });
+const quiet = (logs) => ({ log: (line) => logs.push(line) });
 const TOPIC = { telemetry: 'is02/telemetry', heartbeat: 'is02/status', event: 'is02/event', ack: 'is02/ack',
   command: 'is02/cmd', map: 'is02/map', config: 'is02/config' };
 

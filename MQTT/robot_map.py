@@ -13,8 +13,7 @@ is02/ack (cmd "MAP:...") with the map it now uses and "n" (number of
 letters), or "nack: <reason>". The dashboard's "Barcode mapping" panel and
 `is02_tool.py map ...` do the same thing.
 
-The map goes out as a Map_Frame by default. --legacy-json sends baseline text
-instead, only for a Baseline_Build robot.
+The map goes out as a binary Map_Frame.
 """
 import argparse
 import re
@@ -79,10 +78,6 @@ def main():
     ap.add_argument("--show", action="store_true", help="ask the robot which mapping it is using")
     ap.add_argument("--clear", action="store_true", help="delete the retained map and empty the robot's map")
     ap.add_argument("--wait", type=float, default=8.0, help="seconds to wait for the robot's ack")
-    ap.add_argument("--legacy-json", dest="legacy_json", action="store_true", default=False,
-                    help="send baseline text (only for a Baseline_Build robot)")
-    ap.add_argument("--no-legacy-json", dest="legacy_json", action="store_false",
-                    help="send binary frames (the default)")
     args = ap.parse_args()
 
     if not (args.pairs or args.show or args.clear):
@@ -90,11 +85,11 @@ def main():
     text = parse(args.pairs) if args.pairs else None
 
     def command(cmd):
-        return cmd if args.legacy_json else codec.encode_command_text(cmd)
+        return codec.encode_command_text(cmd)
 
     acks = []
     c = make_client()
-    c.on_message = lambda cl, ud, msg: acks.append(codec.decode(msg.topic, msg.payload, legacy_json=True, log=print))
+    c.on_message = lambda cl, ud, msg: acks.append(codec.decode(msg.topic, msg.payload, log=print))
     c.connect(args.broker, args.port, keepalive=30)
     c.subscribe("is02/ack")
     c.loop_start()
@@ -106,10 +101,10 @@ def main():
         c.publish("is02/cmd", command("MAP:CLEAR"), qos=1).wait_for_publish()
         want = ("MAP:CLEAR",)
     elif text is not None:
-        payload = text if args.legacy_json else codec.encode_map(text)
+        payload = codec.encode_map(text)
         c.publish("is02/map", payload, qos=1, retain=True).wait_for_publish()
         print("map stored on the broker: " + text)
-        want = ("MAP:" + text, "MAP")         # the robot acks the retained map as "MAP:<payload>", a binary ack as "MAP"
+        want = ("MAP",)
     else:
         c.publish("is02/cmd", command("GET:MAP"), qos=1).wait_for_publish()
         want = ("GET:MAP",)

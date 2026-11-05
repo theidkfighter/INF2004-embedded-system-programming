@@ -11,7 +11,7 @@ Two layers, the same as MQTT/is02_codec.js:
     encode_map(pairs)            -> bytes      the Map_Frame
     encode_config(lines)         -> bytes      the Config_Frame
 
-    read_payload(topic, payload) -> (decoded, text)    for the tools: JSON, text or binary
+    read_payload(topic, payload) -> (decoded, text)    for the tools: binary frame -> JSON text
     ptab_mismatch(status)        -> warning or None    from a decoded heartbeat
 
 The kinds are telemetry, heartbeat, event, ack, command, map and config.
@@ -240,7 +240,7 @@ PARAMS = [
     ("JUNCTION_MAX_MM", "F32", 0.0, 100.0),
 ]
 PARAM_IDS = {p[0]: i for i, p in enumerate(PARAMS)}
-PARAM_NOT_FOUND = 63                    # SET ack of a legacy text with an unknown name
+PARAM_NOT_FOUND = 63                    # SET ack whose parameter name is not in PARAMS
 
 
 def crc16_ccitt_false(data):
@@ -1090,29 +1090,20 @@ TOPICS = {
     "is02/config": ("config", present_config),
 }
 RETAINED_TOPICS = ("is02/map", "is02/config")
-# Topics the tools fill with baseline text while legacy mode is on (flag R7)
-TEXT_TOPICS = ("is02/cmd", "is02/map", "is02/config")
 
 
-def decode(topic, payload, legacy_json=False, log=None):
-    """The Baseline_Build JSON shape of a payload, or None if it was dropped.
+def decode(topic, payload, log=None):
+    """The Baseline_Build JSON shape of a binary payload, or None if it was dropped.
 
     Bad versions, lengths and unknown codes go to log (a function taking one
     line of text), by default the "is02_codec" logger. An empty retained
     payload is the broker deleting it, so it returns None without a log line.
-    With legacy_json=True a payload starting with "{" is parsed as baseline JSON.
     """
     emit = log or LOG.warning
     data = payload.encode("utf-8") if isinstance(payload, str) else bytes(payload)
     if topic not in TOPICS:
         emit(f"{topic}: no decoder for this topic, length {len(data)}")
         return None
-    if legacy_json and data[:1] == b"{":
-        try:
-            return json.loads(data.decode("utf-8"))
-        except ValueError as e:
-            emit(f"{topic}: dropped, invalid JSON: {e}")
-            return None
     if not data and topic in RETAINED_TOPICS:
         return None
     kind, present = TOPICS[topic]
@@ -1126,20 +1117,16 @@ def decode(topic, payload, legacy_json=False, log=None):
 
 
 def read_payload(topic, payload, log=None):
-    """What the tools do with a received payload, in both modes: (decoded, text).
+    """What the tools do with a received payload: (decoded, text).
 
-    "{" is baseline JSON, anything else binary (flag R7). On TEXT_TOPICS and on a
-    topic with no decoder, a payload without our Format_Version is text, and
-    decoded is None. text is the payload as received, or the decoded JSON of a
-    binary frame, or None if the frame was dropped.
+    text is the decoded frame as compact JSON, or None if the frame was dropped
+    (already logged). A topic with no decoder, or an empty retained payload
+    (the broker deleting it), gives (None, the payload as text).
     """
     data = payload.encode("utf-8") if isinstance(payload, str) else bytes(payload)
-    received = data.decode("utf-8", errors="replace")
-    if topic not in TOPICS or (topic in TEXT_TOPICS and (not data or data[0] >> 4 != FORMAT_VERSION)):
-        return None, received
-    decoded = decode(topic, data, legacy_json=True, log=log)
-    if data[:1] == b"{":
-        return decoded, received
+    if topic not in TOPICS or (not data and topic in RETAINED_TOPICS):
+        return None, data.decode("utf-8", errors="replace")
+    decoded = decode(topic, data, log=log)
     return decoded, None if decoded is None else json.dumps(decoded, separators=(",", ":"))
 
 

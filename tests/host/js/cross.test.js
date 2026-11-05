@@ -17,7 +17,7 @@ const T27 = 'Decode then encode is the identity on bytes';
 const T28 = 'The three codecs agree on the shared vectors';
 
 const TOPIC = { telemetry: 'is02/telemetry', heartbeat: 'is02/status' };
-const quiet = { legacyJson: false, log: () => {} };
+const quiet = { log: () => {} };
 
 const cm = (code, none) => (code === none ? -1.0 : code / 10);
 

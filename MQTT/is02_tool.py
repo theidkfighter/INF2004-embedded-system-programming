@@ -24,9 +24,7 @@ Commands (run from a terminal; --broker defaults to localhost):
                                           robot finds this laptop even if its IP changed
   python is02_tool.py log run1.csv       record every message to a CSV file
 
-Received payloads are read as JSON or binary automatically. cmd, set, map and
-config send binary frames by default. --legacy-json (before the command word)
-sends baseline text instead, only for a Baseline_Build robot.
+Everything is sent and received as binary frames (MQTT/is02_codec.py).
 
 (Windows: run it with "py is02_tool.py ...". The "#!/usr/bin/env python3"
 first line was removed: with it, the py launcher picks the first python3 on
@@ -129,9 +127,7 @@ def cmd_monitor(args):
 
 
 def encode_text(args, text):
-    """The payload for a baseline command text: the text itself in legacy mode, else its Command_Frame."""
-    if args.legacy_json:
-        return text
+    """The Command_Frame for a command text such as START or SET:LINE_STEER=0.35."""
     try:
         return codec.encode_command_text(text)
     except codec.CodecError as e:
@@ -188,12 +184,10 @@ def cmd_map(args):
         return
     if not args.pairs:
         sys.exit("give the map, e.g.  map F=FWD K=LEFT R=RIGHT U=UTURN   (or 4 letters: FWD UTURN LEFT RIGHT)")
-    payload = ",".join(args.pairs).upper()
-    if not args.legacy_json:
-        try:
-            payload = codec.encode_map(payload)
-        except codec.CodecError as e:
-            sys.exit(str(e))
+    try:
+        payload = codec.encode_map(",".join(args.pairs).upper())
+    except codec.CodecError as e:
+        sys.exit(str(e))
     # retained on is02/map: delivered now AND again at every reconnect
     send_and_wait_ack(args, T_MAP, payload, retain=True, want_prefix="MAP")
 
@@ -210,7 +204,7 @@ def cmd_set(args):
             frame = codec.encode_command_text("SET:" + item)
         except codec.CodecError as e:
             sys.exit(str(e))
-        payloads.append("SET:" + item if args.legacy_json else frame)
+        payloads.append(frame)
     for payload in payloads:
         send_and_wait_ack(args, T_CMD, payload, want_prefix="SET:", timeout=3)
 
@@ -222,8 +216,7 @@ def cmd_config(args):
         frame = codec.encode_config(text)
     except codec.CodecError as e:
         sys.exit(str(e))
-    send_and_wait_ack(args, T_CONFIG, text.strip() if args.legacy_json else frame, retain=True,
-                      want_prefix="CONFIG", check_ptab=True)
+    send_and_wait_ack(args, T_CONFIG, frame, retain=True, want_prefix="CONFIG", check_ptab=True)
 
 
 def cmd_beacon(args):
@@ -263,10 +256,6 @@ def main():
     p = argparse.ArgumentParser(description="IS-02 laptop MQTT tool")
     p.add_argument("--broker", default="localhost", help="broker address (default localhost)")
     p.add_argument("--port", type=int, default=1883)
-    p.add_argument("--legacy-json", dest="legacy_json", action="store_true", default=False,
-                   help="send commands, map and config as baseline text (only for a Baseline_Build robot)")
-    p.add_argument("--no-legacy-json", dest="legacy_json", action="store_false",
-                   help="send binary frames (the default)")
     sub = p.add_subparsers(dest="what", required=True)
 
     s = sub.add_parser("monitor"); s.add_argument("--tlm", action="store_true"); s.set_defaults(fn=cmd_monitor)
