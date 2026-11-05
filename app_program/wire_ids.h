@@ -232,7 +232,7 @@ typedef enum
    value: F32 for float parameters, 1/2/3-bit code for packed ones). */
 #define WIRE_GETP_PER_PART      (12u)
 #define WIRE_GETP_MAX_LEN       WIRE_BYTES(WIRE_ACK_HDR_BITS + 3u + 4u + (WIRE_GETP_PER_PART * (6u + 32u)))
-/* CONFIG ack: applied U6, rejected count U6, rejected IDs U6 each (0..62). */
+/* CONFIG ack: applied U6, rejected count U6, rejected IDs U6 each (0..61). */
 #define WIRE_CFG_ACK_LEN(n_rej) WIRE_BYTES(WIRE_ACK_HDR_BITS + 6u + 6u + (6u * (uint32_t)(n_rej)))
 
 /* ---- stop reasons (D2, Requirement 2.9) ---------------------------------- */

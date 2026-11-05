@@ -213,12 +213,11 @@ void junction_reset(junc_ctx_t *p_j)
 {
     p_j->b_both = false;
     p_j->b_sent = false;
-    p_j->b_side = false;
     p_j->len_mm = 0.0f;
 }
 
-bool junction_step(junc_ctx_t *p_j, bool b_left_black, bool b_right_black, bool b_side_black,
-                   float ds_mm, float min_mm, float max_mm, bool b_need_side)
+bool junction_step(junc_ctx_t *p_j, bool b_left_black, bool b_right_black,
+                   float ds_mm, float min_mm, float max_mm)
 {
     bool b_hit = false;
 
@@ -229,9 +228,8 @@ bool junction_step(junc_ctx_t *p_j, bool b_left_black, bool b_right_black, bool 
     if (b_left_black && b_right_black)
     {
         p_j->len_mm  = p_j->b_both ? (p_j->len_mm + ds_mm) : 0.0f;
-        p_j->b_side  = (p_j->b_both && p_j->b_side) || b_side_black;
         p_j->b_both  = true;
-        if ((max_mm <= 0.0f) && !p_j->b_sent && (p_j->len_mm >= min_mm) && (!b_need_side || p_j->b_side))
+        if ((max_mm <= 0.0f) && !p_j->b_sent && (p_j->len_mm >= min_mm))
         {
             b_hit       = true;                /* earlier rule: count on reaching min_mm */
             p_j->b_sent = true;
@@ -240,8 +238,7 @@ bool junction_step(junc_ctx_t *p_j, bool b_left_black, bool b_right_black, bool 
     }
     else
     {
-        if (p_j->b_both && (max_mm > 0.0f) && (p_j->len_mm >= min_mm) && (p_j->len_mm <= max_mm) &&
-            (!b_need_side || p_j->b_side))
+        if (p_j->b_both && (max_mm > 0.0f) && (p_j->len_mm >= min_mm) && (p_j->len_mm <= max_mm))
         {
             b_hit       = true;                /* a short stretch has ended: a cross */
             p_j->hit_mm = p_j->len_mm;

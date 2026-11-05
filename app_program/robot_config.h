@@ -104,7 +104,7 @@
 #define JUNCTION_BLANK_MM         (0)           /* [P] ignore junctions this far after a barcode is decoded. 0 = off.
                                                    Keep it below the real barcode-to-cross gap, or the turn waits for
                                                    the next junction */
-#define JUNCTION_MAX_TURN_DEG     (15)          /* [P] a junction only counts if the car turned less than this over the
+#define JUNCTION_MAX_TURN_DEG     (30)          /* [P] a junction only counts if the car turned less than this over the
                                                    last 40 mm (a cross is on a straight; on a 70-90 mm bend the car
                                                    turns about 25-35 deg in 40 mm). 0 = off */
 #define JUNCTION_BLACK_HIGH       (1)           /* [P] line sensor level that means black for the junction check only:
@@ -112,9 +112,6 @@
 #define JUNCTION_MAX_MM           (30)          /* [P] a junction is a both-black stretch of JUNCTION_MIN_MM..this, counted
                                                    when it ENDS: a cross is about 18-25 mm, riding along the line (both
                                                    sensors fit on it) is longer. 0 = old rule (count at JUNCTION_MIN_MM) */
-#define JUNCTION_SIDE_CHECK       (1)           /* [P] 1 = the barcode sensor (35 mm left) must also see black during the
-                                                   stretch: a cross line runs under it, the line being followed does not.
-                                                   0 if a junction only branches to the right */
 #define TURN_PAUSE_MS             (150)         /* [P] barcode turn: stop and settle this long before the pivot and
                                                    again before line following resumes, so the car does not roll */
 #define BARCODE_MAX_LEN_MM        (400)         /* abandon a window longer than this */

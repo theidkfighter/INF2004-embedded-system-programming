@@ -85,23 +85,21 @@ void       line_wheels(float base_mm_s, float steer, float *p_left, float *p_rig
  * Both line sensors fit on the line on this car, so "both black" also
  * happens while riding along the line. A cross is a SHORT both-black
  * stretch (about 18-25 mm): with max_mm > 0, junction_step() reports when a
- * stretch ends and was min_mm..max_mm long (and, with b_need_side, the
- * barcode sensor beside the line saw black during it: a cross line runs
- * under it, the followed line does not). hit_mm is then that length.
+ * stretch ends and was min_mm..max_mm long; hit_mm is then that length.
+ * Only the two line sensors are used (the barcode sensor reads barcodes only).
  * With max_mm <= 0 it reports once per stretch on reaching min_mm (the
  * earlier rule). */
 typedef struct
 {
     bool  b_both;           /* both sensors black on the previous reading */
     bool  b_sent;           /* this stretch has already been reported (max_mm <= 0) */
-    bool  b_side;           /* the side (barcode) sensor saw black during the stretch */
     float len_mm;           /* length of the current both-black stretch */
     float hit_mm;           /* length of the stretch that was reported */
 } junc_ctx_t;
 
 void junction_reset(junc_ctx_t *p_j);
-bool junction_step(junc_ctx_t *p_j, bool b_left_black, bool b_right_black, bool b_side_black,
-                   float ds_mm, float min_mm, float max_mm, bool b_need_side);
+bool junction_step(junc_ctx_t *p_j, bool b_left_black, bool b_right_black,
+                   float ds_mm, float min_mm, float max_mm);
 
 /* ---- Heading window for the junction check (patch/junction_check) ----
  * Keeps the encoder heading every TURN_WIN_STEP_MM over the last

@@ -366,15 +366,6 @@ LOCAL void barcode_service(bool b_active)
     }
 }
 
-/* JUNCTION_SIDE_CHECK: the barcode sensor (beside the line) over black.
-   Level halfway between IR_WHITE_ADC and IR_BLACK_ADC. */
-LOCAL bool side_black(void)
-{
-    float mid = 0.5f * (g_params.ir_white_adc + g_params.ir_black_adc);
-
-    return (mid > 0.0f) && ((float)hal_ir_adc() >= mid);
-}
-
 LOCAL void follow(bool b_l, bool b_r, bool b_jl, bool b_jr, float ds_mm, float dheading)
 {
     line_params_t par;
@@ -425,8 +416,7 @@ LOCAL void follow(bool b_l, bool b_r, bool b_jl, bool b_jr, float ds_mm, float d
     g_since_bc_mm += (ds_mm < 0.0f) ? -ds_mm : ds_mm;
     g_heading     += dheading;
 
-    if (junction_step(&g_junc, b_jl, b_jr, side_black(), ds_mm, g_params.junction_min_mm,
-                      g_params.junction_max_mm, prm_flag(PRM_JUNCTION_SIDE_CHECK)))
+    if (junction_step(&g_junc, b_jl, b_jr, ds_mm, g_params.junction_min_mm, g_params.junction_max_mm))
     {
         char   text[80];
         jbuf_t jb;

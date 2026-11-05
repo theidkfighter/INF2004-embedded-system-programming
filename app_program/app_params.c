@@ -80,7 +80,6 @@ static const param_def_t PARAMS[] =
     { "JUNCTION_BLACK_HIGH", (float *)0, 0.0f, 1.0f, PRM_JUNCTION_BLACK_HIGH },
     { "TURN_PAUSE_MS",         &g_params.turn_pause_ms,       0.0f,   1000.0f, 0u },
     { "JUNCTION_MAX_MM",       &g_params.junction_max_mm,     0.0f,   100.0f, 0u },
-    { "JUNCTION_SIDE_CHECK", (float *)0, 0.0f, 1.0f, PRM_JUNCTION_SIDE_CHECK },
 };
 
 #define PARAM_COUNT (sizeof(PARAMS) / sizeof(PARAMS[0]))
@@ -250,7 +249,6 @@ void params_init(void)
     (void)prm_put(PRM_JUNCTION_BLACK_HIGH, (float)JUNCTION_BLACK_HIGH);
     g_params.turn_pause_ms       = (float)TURN_PAUSE_MS;
     g_params.junction_max_mm     = (float)JUNCTION_MAX_MM;
-    (void)prm_put(PRM_JUNCTION_SIDE_CHECK, (float)JUNCTION_SIDE_CHECK);
 }
 
 int32_t params_set(const char *p_text)

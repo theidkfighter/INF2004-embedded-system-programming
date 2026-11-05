@@ -286,8 +286,7 @@
         ["JUNCTION_MAX_TURN_DEG", "F32", 0.0, 90.0],
         ["JUNCTION_BLACK_HIGH", "F1", 0.0, 1.0],
         ["TURN_PAUSE_MS", "F32", 0.0, 1000.0],
-        ["JUNCTION_MAX_MM", "F32", 0.0, 100.0],
-        ["JUNCTION_SIDE_CHECK", "F1", 0.0, 1.0]
+        ["JUNCTION_MAX_MM", "F32", 0.0, 100.0]
     ];
     var PARAM_IDS = {};
     var PARAM_ID_MAP = new Map();
