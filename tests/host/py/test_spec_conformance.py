@@ -6,7 +6,7 @@
 - Map body (D13): slots forward, left, right, U-turn.
 - Parameter_Store (D15): the 16 discrete parameters live in g_params.bits at
   the design positions; whole values in min..max round trip, other values
-  are refused with -3; the defaults equal the Baseline_Build's for all 55
+  are refused with -3; the defaults equal the Baseline_Build's for its 55
   IDs; the table CRC (D15) matches the laptop codec.
 """
 
@@ -170,8 +170,8 @@ def _range(enc):
 
 
 def test_table_crc_and_names(ps):
-    assert ps.params_count() == 55
-    names = [ps.params_name(i).decode() for i in range(55)]
+    assert ps.params_count() == 57
+    names = [ps.params_name(i).decode() for i in range(57)]
     assert names == wire_spec.param_names() and set(D15) <= set(names)
     assert ps.params_table_crc() == wire_spec.table_crc(names)
 
@@ -209,5 +209,5 @@ def test_float_params_store_as_f32(ps):
 def test_defaults_equal_baseline(ps, base):
     base.base_params_init()
     ps.params_init()
-    for i in range(55):
+    for i in range(55):   # the Baseline_Build has 55; JUNCTION_MIN_MM and JUNCTION_BLANK_MM are new
         assert _get(ps, i) == base.base_bh_param_get(i), wire_spec.param_names()[i]

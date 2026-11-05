@@ -203,9 +203,17 @@ LOCAL void execute(char code, bool b_at_junction)
     (void)sys_set_state(SYS_MANEUVER, false);
     motion_stop(SRC_NAV);
     res = MOTION_OK;
-    if (b_at_junction && (g_params.ir_to_axle_mm > 0.0f))
+    if (b_at_junction)
     {
-        res = motion_move(g_params.ir_to_axle_mm, g_params.bypass_mm_s);
+        /* the junction is now reported JUNCTION_MIN_MM after the sensors
+           first saw the cross, so drive that much less to pivot on the
+           same point as before */
+        float move_mm = g_params.ir_to_axle_mm - g_params.junction_min_mm;
+
+        if (move_mm > 0.0f)
+        {
+            res = motion_move(move_mm, g_params.bypass_mm_s);
+        }
     }
     if ((res == MOTION_OK) && (sys_state() == SYS_MANEUVER))
     {

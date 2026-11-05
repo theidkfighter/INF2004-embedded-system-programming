@@ -49,6 +49,7 @@ typedef struct
     float lost_mm;          /* LINE_LOST_MM    */
     float bias_ki;          /* LINE_BIAS_KI: curve memory growth per second black (0 = off) */
     float bias_decay_mm;    /* LINE_BIAS_DECAY_MM: curve memory fades over this distance of white */
+    float junction_min_mm;  /* JUNCTION_MIN_MM: both sensors black this far = a junction (0 = first reading) */
 } line_params_t;
 
 typedef struct
@@ -60,7 +61,9 @@ typedef struct
     float        hold_left_mm;   /* remaining hold distance */
     float        since_black_mm; /* distance since any sensor last saw black */
     bool         b_last_curve;   /* the last black episode was a curve */
-    bool         b_both_prev;
+    bool         b_both_prev;    /* both sensors black on the previous reading */
+    bool         b_junc_sent;    /* this both-black stretch has already been reported */
+    float        junc_mm;        /* length of the current both-black stretch */
     float        bias;           /* curve memory: integral of the error, kept across
                                     episodes and while both sensors are white */
 } line_ctx_t;
@@ -68,7 +71,7 @@ typedef struct
 typedef struct
 {
     float steer;            /* -1..+1, + = turn right */
-    bool  b_junction;       /* both sensors just went black */
+    bool  b_junction;       /* both sensors have now been black for junction_min_mm (once per stretch) */
     bool  b_lost;           /* just became lost */
 } line_out_t;
 

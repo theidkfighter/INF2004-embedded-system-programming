@@ -19,6 +19,8 @@ void line_reset(line_ctx_t *p_ctx)
     p_ctx->since_black_mm = 0.0f;
     p_ctx->b_last_curve   = false;
     p_ctx->b_both_prev    = false;
+    p_ctx->b_junc_sent    = false;
+    p_ctx->junc_mm        = 0.0f;
     p_ctx->bias           = 0.0f;
 }
 
@@ -34,8 +36,16 @@ line_out_t line_step(line_ctx_t *p_ctx, const line_params_t *p_par,
 
     if (b_left_black && b_right_black)
     {
-        /* junction / crossing line: drive straight through */
-        out.b_junction        = !p_ctx->b_both_prev;
+        /* junction / crossing line: drive straight through. It counts as a
+           junction only once both sensors have stayed black for
+           junction_min_mm: a one-reading flicker of one sensor while the
+           other is on the line is not a cross (patch/junction_check). */
+        p_ctx->junc_mm = p_ctx->b_both_prev ? (p_ctx->junc_mm + ds_mm) : 0.0f;
+        if (!p_ctx->b_junc_sent && (p_ctx->junc_mm >= p_par->junction_min_mm))
+        {
+            out.b_junction     = true;
+            p_ctx->b_junc_sent = true;
+        }
         p_ctx->state          = LINE_JUNCTION;
         p_ctx->since_black_mm = 0.0f;
         p_ctx->hold_left_mm   = 0.0f;
@@ -119,6 +129,11 @@ line_out_t line_step(line_ctx_t *p_ctx, const line_params_t *p_par,
         }
     }
     p_ctx->b_both_prev = b_left_black && b_right_black;
+    if (!p_ctx->b_both_prev)
+    {
+        p_ctx->b_junc_sent = false;            /* the stretch has ended */
+        p_ctx->junc_mm     = 0.0f;
+    }
     return out;
 }
 

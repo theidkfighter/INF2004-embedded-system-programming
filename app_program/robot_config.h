@@ -94,6 +94,13 @@
 /* ---- Barcodes (DR 6.1, FR5-FR8) ---- */
 #define BARCODE_AT_JUNCTION       (1)           /* [P] 1 = store, act at the next cross-junction (demo brief), 0 = act at once */
 #define BARCODE_TURN_DEG          (90)
+#define JUNCTION_MIN_MM           (6)           /* [P] both line sensors must stay black this far before it counts as a
+                                                   junction (a real 18 mm cross passes; a one-reading flicker of one
+                                                   sensor while the other is on the line does not). 0 = first reading,
+                                                   the old behaviour */
+#define JUNCTION_BLANK_MM         (0)           /* [P] ignore junctions this far after a barcode is decoded. 0 = off.
+                                                   Keep it below the real barcode-to-cross gap, or the turn waits for
+                                                   the next junction */
 #define BARCODE_MAX_LEN_MM        (400)         /* abandon a window longer than this */
 #define BARCODE_MIN_ELEMENTS      (9)           /* fewer = a stray mark (e.g. a crossing line) */
 #define BARCODE_HYS               (0.05f)       /* [P] switch levels = mid +/- this x (black - white).

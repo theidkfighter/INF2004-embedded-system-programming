@@ -38,6 +38,13 @@
 LOCAL line_ctx_t   g_line;
 LOCAL search_ctx_t g_search;
 LOCAL bool         g_searching;
+/* junction check (patch/junction_check): distance since the last decoded
+   barcode, for JUNCTION_BLANK_MM. g_junc_exempt: the car was already on a
+   both-black stretch when the barcode was decoded, so that stretch is not
+   blanked (a cross right after the barcode). */
+LOCAL bool         g_bc_seen;
+LOCAL float        g_since_bc_mm;
+LOCAL bool         g_junc_exempt;
 LOCAL bc_ctx_t     g_bc;
 LOCAL bc_params_t  g_bc_par;
 LOCAL bcm_t        g_bcm;          /* BARCODE_DETECT = 1: BARCODE_LEVELS detectors (bc_multi.c) */
@@ -122,6 +129,16 @@ LOCAL void report_barcode(bc_result_t res, char code, bool b_rev)
         {
             (void)post_nav(NAV_BARCODE, code);
             buzzer_request(BUZZ_BARCODE);
+            g_bc_seen     = true;
+            g_since_bc_mm = 0.0f;
+            g_junc_exempt = g_line.b_both_prev;
+            if (g_line.b_both_prev && g_line.b_junc_sent)
+            {
+                /* already confirmed on a cross before the barcode was
+                   stored: report it again so the stored turn uses it */
+                (void)post_nav(NAV_JUNCTION, 0);
+                log_line("[line] junction: already on it when the barcode was decoded");
+            }
         }
         (void)evt_post(&b);
         log_line(text);
@@ -398,11 +415,36 @@ LOCAL void follow(bool b_l, bool b_r, float ds_mm, float dheading)
     par.lost_mm    = g_params.line_lost_mm;
     par.bias_ki       = g_params.line_bias_ki;
     par.bias_decay_mm = g_params.line_bias_decay_mm;
+    par.junction_min_mm = g_params.junction_min_mm;
     out = line_step(&g_line, &par, b_l, b_r, ds_mm, DT_S);
+    g_since_bc_mm += (ds_mm < 0.0f) ? -ds_mm : ds_mm;
 
     if (out.b_junction)
     {
-        (void)post_nav(NAV_JUNCTION, 0);
+        char   text[72];
+        jbuf_t jb;
+        bool   b_blank = g_bc_seen && !g_junc_exempt && (g_since_bc_mm < g_params.junction_blank_mm);
+
+        jb_init(&jb, text, sizeof(text));
+        jb_raw(&jb, b_blank ? "[line] junction ignored (JUNCTION_BLANK_MM): " : "[line] junction: ");
+        if (g_bc_seen)
+        {
+            jb_fixed(&jb, g_since_bc_mm, 0u);
+            jb_raw(&jb, " mm after the barcode");
+        }
+        else
+        {
+            jb_raw(&jb, "no barcode yet");
+        }
+        log_line(text);
+        if (!b_blank)
+        {
+            (void)post_nav(NAV_JUNCTION, 0);
+        }
+    }
+    if (!g_line.b_both_prev)
+    {
+        g_junc_exempt = false;                 /* that stretch has ended */
     }
     if (out.b_lost)
     {
@@ -492,6 +534,8 @@ void tsk_line(INT stacd, void *exinf)
             {
                 line_reset(&g_line);
                 g_searching = false;
+                g_bc_seen     = false;
+                g_junc_exempt = false;
                 barcode_arm();
                 /* coming back from a turn or a bypass: the line should be
                    close, so treat a long white stretch as "lost" */

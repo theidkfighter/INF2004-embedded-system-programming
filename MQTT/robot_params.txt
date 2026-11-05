@@ -42,3 +42,5 @@ LINE_DO_BLACK_HIGH=0               # spec: DO reads LOW over black
 # LINE_STEER=0.40
 # LINE_STEER_RAMP=3.0
 # BARCODE_AT_JUNCTION=1   (1 = act at the next junction, the demo rule)
+# JUNCTION_MIN_MM=6       (both line sensors black this far = a junction; 0 = first reading, the old behaviour)
+# JUNCTION_BLANK_MM=0     (ignore junctions this far after a barcode; 0 = off; keep below the barcode-to-cross gap)

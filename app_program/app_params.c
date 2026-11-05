@@ -74,6 +74,8 @@ static const param_def_t PARAMS[] =
     { "OBST_EDGE_PAD_MM",      &g_params.obst_edge_pad_mm,    0.0f,   100.0f, 0u },
     { "ROBOT_LEFT_HALF_MM",    &g_params.robot_left_half_mm,  0.0f,   250.0f, 0u },
     { "IR_TO_AXLE_MM",         &g_params.ir_to_axle_mm,       0.0f,   200.0f, 0u },
+    { "JUNCTION_MIN_MM",       &g_params.junction_min_mm,     0.0f,   30.0f, 0u },
+    { "JUNCTION_BLANK_MM",     &g_params.junction_blank_mm,   0.0f,   1000.0f, 0u },
 };
 
 #define PARAM_COUNT (sizeof(PARAMS) / sizeof(PARAMS[0]))
@@ -237,6 +239,8 @@ void params_init(void)
     g_params.obst_edge_pad_mm    = (float)OBST_EDGE_PAD_MM;
     g_params.robot_left_half_mm  = (float)ROBOT_LEFT_HALF_MM;
     g_params.ir_to_axle_mm       = (float)IR_TO_AXLE_MM;
+    g_params.junction_min_mm     = (float)JUNCTION_MIN_MM;
+    g_params.junction_blank_mm   = (float)JUNCTION_BLANK_MM;
 }
 
 int32_t params_set(const char *p_text)

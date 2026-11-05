@@ -233,6 +233,8 @@ PARAMS = [
     ("OBST_EDGE_PAD_MM", "F32", 0.0, 100.0),
     ("ROBOT_LEFT_HALF_MM", "F32", 0.0, 250.0),
     ("IR_TO_AXLE_MM", "F32", 0.0, 200.0),
+    ("JUNCTION_MIN_MM", "F32", 0.0, 30.0),
+    ("JUNCTION_BLANK_MM", "F32", 0.0, 1000.0),
 ]
 PARAM_IDS = {p[0]: i for i, p in enumerate(PARAMS)}
 PARAM_NOT_FOUND = 63                    # SET ack of a legacy text with an unknown name

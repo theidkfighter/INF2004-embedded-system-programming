@@ -280,7 +280,9 @@
         ["OBST_TRUST_MISS", "F1", 0.0, 1.0],
         ["OBST_EDGE_PAD_MM", "F32", 0.0, 100.0],
         ["ROBOT_LEFT_HALF_MM", "F32", 0.0, 250.0],
-        ["IR_TO_AXLE_MM", "F32", 0.0, 200.0]
+        ["IR_TO_AXLE_MM", "F32", 0.0, 200.0],
+        ["JUNCTION_MIN_MM", "F32", 0.0, 30.0],
+        ["JUNCTION_BLANK_MM", "F32", 0.0, 1000.0]
     ];
     var PARAM_IDS = {};
     var PARAM_ID_MAP = new Map();

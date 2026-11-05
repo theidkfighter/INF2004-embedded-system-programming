@@ -374,7 +374,7 @@ LOCAL void cfg_apply_one(uint32_t id, uint32_t value_bits, void *p_ctx)
     }
     else
     {
-        /* cannot happen: at most 55 pairs */
+        /* cannot happen: at most WIRE_PARAMS_MAX pairs */
     }
 }
 

@@ -19,7 +19,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-/* Parameter_Store (Change Requirement 1, design D15). The 39 continuous
+/* Parameter_Store (Change Requirement 1, design D15). The 41 continuous
    parameters stay float members. The 16 discrete ones live in `bits`:
    one 32-bit word written only by TSK_TELEMETRY as one composed store, read
    by any task with one load through prm_flag() / prm_tri() / prm_int().
@@ -93,6 +93,9 @@ typedef struct
     float obst_edge_pad_mm;
     float robot_left_half_mm;
     float ir_to_axle_mm;
+    /* junction check (patch/junction_check) */
+    float junction_min_mm;
+    float junction_blank_mm;
 } app_params_t;
 
 extern app_params_t g_params;
