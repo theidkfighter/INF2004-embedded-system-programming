@@ -554,9 +554,9 @@ test("an unknown Event_Code shows the number and keeps the bytes", () => {
 
 test("an unknown Reason_Code shows the number", () => {
     const [lines, log] = logged();
-    const payload = codec.encodeFields("ack", { t: 1, cmd: 2, reason: 28, args: {} });
-    assert.deepEqual(codec.decode("is02/ack", payload, { log }), { t: 1, cmd: "START", result: 28 });
-    assert.equal(lines[0], "unknown Reason_Code 28");
+    const payload = codec.encodeFields("ack", { t: 1, cmd: 2, reason: 30, args: {} });
+    assert.deepEqual(codec.decode("is02/ack", payload, { log }), { t: 1, cmd: "START", result: 30 });
+    assert.equal(lines[0], "unknown Reason_Code 30");
 });
 
 test("an unknown command code shows the number and keeps the bytes", () => {

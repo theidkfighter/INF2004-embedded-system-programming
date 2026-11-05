@@ -144,6 +144,7 @@ LOCAL void enter_estop(stop_reason_t reason)
     g_t_estop = hal_time_ms();
     (void)evt_post1(EVC_EMERGENCY_STOP, (uint32_t)reason, 4u);
     log_line(wire_stop_reason_text((uint32_t)reason));
+    hal_clip_stop();                          /* the alarm wins over a playing clip */
     tone_start(T_ALARM);
 }
 
@@ -154,6 +155,7 @@ LOCAL void enter_error(stop_reason_t reason)
     (void)sys_set_state(SYS_ERROR, true);
     (void)evt_post1(EVC_ERROR, (uint32_t)reason, 4u);
     log_line(wire_stop_reason_text((uint32_t)reason));
+    hal_clip_stop();
     tone_start(T_ERROR);
 }
 
@@ -373,14 +375,22 @@ void tsk_safety(INT stacd, void *exinf)
         if ((flag_peek() & EVF_BUZZER_REQ) != 0u)
         {
             const tone_t *p_t;
+            uint32_t      p;
 
             flag_clear(EVF_BUZZER_REQ);
-            p_t = pattern(buzzer_pattern_take());
-            if ((p_t != NULL) && (sys_state() != SYS_ESTOP))
+            p = buzzer_pattern_take();
+            p_t = pattern(p);
+            if ((p == BUZZ_CLIP) && (sys_state() != SYS_ESTOP) && (sys_state() != SYS_ERROR))
+            {
+                gp_tone = NULL;               /* tones requested while it plays stay silent */
+                (void)hal_clip_play();
+            }
+            else if ((p_t != NULL) && (sys_state() != SYS_ESTOP))
             {
                 tone_start(p_t);
             }
         }
+        hal_clip_poll();
         tone_tick((sys_state() == SYS_ESTOP) && ((hal_time_ms() - g_t_estop) < ALARM_MS));
     }
 }

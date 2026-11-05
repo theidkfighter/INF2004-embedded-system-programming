@@ -574,9 +574,9 @@ def test_unknown_event_code_shows_the_number():
 
 def test_unknown_reason_code_shows_the_number():
     lines, log = logged()
-    payload = codec.encode_fields("ack", {"t": 1, "cmd": 2, "reason": 28, "args": {}})
-    assert codec.decode("is02/ack", payload, log=log) == {"t": 1, "cmd": "START", "result": 28}
-    assert "28" in lines[0]
+    payload = codec.encode_fields("ack", {"t": 1, "cmd": 2, "reason": 30, "args": {}})
+    assert codec.decode("is02/ack", payload, log=log) == {"t": 1, "cmd": "START", "result": 30}
+    assert "30" in lines[0]
 
 
 def test_unknown_command_code_shows_the_number():

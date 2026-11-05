@@ -136,6 +136,7 @@ td:last-child { text-align: right; }
              aria-label="clip volume" title="clip volume">
       <span id="clipVolTxt" class="note" style="margin:0">30%</span>
       <audio id="clip" src="clip.mp3" preload="auto"></audio>
+      <button data-cmd="PLAY" title="the same clip on the robot's buzzer (needs app_program/clip_pcm.h, see tools/make_clip.py)">Play on car</button>
     </div>
     <div class="note">After an E-stop the robot only recovers with BTN1 on the robot (RESUME over MQTT is refused by design).
       Send barcode = remote override (FR19) for bench tests: the robot performs the mapped movement <b>at once</b>

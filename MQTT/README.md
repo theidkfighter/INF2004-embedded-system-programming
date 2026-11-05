@@ -190,7 +190,7 @@ The CSV has one row per telemetry frame (open it in Excel to plot speed, distanc
 | `is02/telemetry` | robot → laptop | Telemetry frame, 2 Hz (buffered while offline); shown as the JSON below |
 | `is02/status` | robot → laptop | Heartbeat, 1 Hz: `{"seq","t","state","rssi","buf","up"}` |
 | `is02/event` | robot → laptop | `{"t","event","detail"}`, e.g. `ONLINE`, `BARCODE`, `OBSTACLE_SCAN`, `EMERGENCY_STOP`, `OVERRIDE` |
-| `is02/cmd` | laptop → robot | `ESTOP`, `START`, `STOP`, `BARCODE:<A-Z>`, `MAP:...`, `MAP:CLEAR`, `GET:MAP`, `PING:<n>`, `SET:NAME=VALUE`, `GET:PARAMS` |
+| `is02/cmd` | laptop → robot | `ESTOP`, `START`, `STOP`, `BARCODE:<A-Z>`, `MAP:...`, `MAP:CLEAR`, `GET:MAP`, `PING:<n>`, `SET:NAME=VALUE`, `GET:PARAMS`, `PLAY` |
 | `is02/map` | laptop → robot | Barcode map, retained, e.g. `X=FWD,K=LEFT,Q=RIGHT,M=UTURN` |
 | `is02/ack` | robot → laptop | `{"t","cmd",...}` reply to each command |
 
@@ -236,6 +236,15 @@ The formats above show the JSON shape the tools display. On the wire, every mess
 2. Send the map once (`py robot_map.py --broker <laptop IP> K=LEFT Q=RIGHT X=FWD M=UTURN`, `is02_tool.py map ...`, or the dashboard's Barcode mapping panel).
 
 **Play clip (dashboard):** plays `MQTT/clip.mp3` on the laptop, the whole file within 5 s (sped up when longer, up to 16x, pitch kept). The slider next to it sets the volume (default 30 %, remembered in that browser). Put your own audio file there under that name; it is in `.gitignore` and is not committed. The robot is not involved.
+
+**Play on car:** sends `PLAY`; the robot plays the same clip on its buzzer (GP22), 5 s, at 8 kHz. The audio is built into the firmware from a header you generate once from your `clip.mp3` (needs ffmpeg), then rebuild and flash:
+
+```
+python tools/make_clip.py                 # MQTT/clip.mp3 -> app_program/clip_pcm.h (git-ignored)
+python tools/make_clip.py --volume 60     # quieter
+```
+
+Without the header the firmware still builds and `PLAY` answers `nack: no clip in this firmware`. The robot refuses it in E-STOP/ERROR, an E-stop or error alarm cuts it off, and the usual beeps stay silent while it plays. The buzzer is a small piezo: expect it tinny and fairly quiet, and the board's buzzer mute switch must be off.
 
 **Dependencies:** Python 3 and `paho-mqtt` for the tools. The dashboard needs nothing: no build step and no server, only `is02_codec.js` next to `dashboard.html`, and it runs from `file://`.
 

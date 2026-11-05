@@ -20,8 +20,8 @@ from codec_helpers import is02_codec as codec
 KINDS = ("telemetry", "heartbeat", "event", "ack", "command", "map", "config")
 C_KIND = {"command": "cmd"}                 # the name wire_vectors uses
 TOPIC = {kind: topic for topic, (kind, _) in codec.TOPICS.items()}
-ACK_CODES = list(range(12)) + [codec.WCMD_UNPARSED]
-COMMAND_CODES = list(range(11))
+ACK_CODES = list(range(13)) + [codec.WCMD_UNPARSED]
+COMMAND_CODES = [code for code, c in enumerate(codec.COMMANDS) if c[2] > 0]   # all but CONFIG
 SLOTS = ("fwd", "left", "right", "uturn")
 
 

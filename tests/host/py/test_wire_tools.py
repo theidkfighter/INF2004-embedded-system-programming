@@ -56,7 +56,7 @@ def test_dump_tables_match_design(dump):
     track's table test compares its codecs with this same JSON)."""
     assert dump["format_version"] == 1
     assert len(dump["events"]) == 45 and [e["code"] for e in dump["events"]] == list(range(45))
-    assert len(dump["reasons"]) == 28 and dump["reasons"][16]["text"] == "nack: unknown format version"
+    assert len(dump["reasons"]) == 30 and dump["reasons"][16]["text"] == "nack: unknown format version"
     assert [c["code"] for c in dump["commands"]][:11] == list(range(11))
     assert [(c["cmd_len"]) for c in dump["commands"][:11]] == [1, 1, 1, 1, 2, 4, 1, 1, 3, 6, 1]
     names = [p["name"] for p in dump["params"]]

@@ -288,6 +288,21 @@ LOCAL void handle_command(const cmd_slot_t *p_s)
             (void)post_nav(NAV_START, 0);
             ack_simple(WCMD_START, (st == SYS_IDLE) ? RSN_STARTING : RSN_ONLY_FROM_IDLE);
             break;
+        case WCMD_PLAY:                       /* the clip on the buzzer; TSK_SAFETY owns GP22 */
+            if (!hal_clip_available())
+            {
+                ack_simple(WCMD_PLAY, RSN_NO_CLIP);
+            }
+            else if ((st == SYS_ESTOP) || (st == SYS_ERROR))
+            {
+                ack_simple(WCMD_PLAY, RSN_MOTORS_OFF);
+            }
+            else
+            {
+                buzzer_request(BUZZ_CLIP);
+                ack_simple(WCMD_PLAY, RSN_PLAYING);
+            }
+            break;
         case WCMD_STOP:
             (void)post_nav(NAV_STOP, 0);
             ack_simple(WCMD_STOP, RSN_ENDING_RUN);

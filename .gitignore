@@ -44,3 +44,5 @@ is02_mosquitto.db
 /build/
 # dashboard Play clip audio: your own local file, not committed (copyright)
 MQTT/clip.mp3
+# car buzzer clip, generated from MQTT/clip.mp3 by tools/make_clip.py (copyright, same as above)
+app_program/clip_pcm.h

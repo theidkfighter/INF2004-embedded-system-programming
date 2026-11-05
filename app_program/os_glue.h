@@ -90,7 +90,7 @@ void       flag_clear(uint32_t bits);
 uint32_t   flag_peek(void);
 bool       flag_take(uint32_t bits, uint32_t *p_got);              /* read + clear these bits */
 
-void       buzzer_request(uint32_t pattern);         /* ignored if > BUZZ_WARN */
+void       buzzer_request(uint32_t pattern);         /* ignored if > BUZZ_CLIP */
 
 /* System state (DR Section 5). Only the safety monitor may leave or enter
    EMERGENCY_STOP / ERROR; other callers are refused while either is active. */

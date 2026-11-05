@@ -16,7 +16,7 @@
 #define DONE_W_RESULT     (2u)
 #define PWM_OFF_MAX       (65535u)
 
-_Static_assert(BUZZ_WARN <= BP_MASK(3u), "g_buzz.pattern too narrow");
+_Static_assert(BUZZ_CLIP <= BP_MASK(3u), "g_buzz.pattern too narrow");
 _Static_assert((uint32_t)MOTION_TIMEOUT <= BP_MASK(DONE_W_RESULT), "g_done.done_result too narrow");
 
 volatile uint8_t  g_buzz;
@@ -29,7 +29,7 @@ volatile uint32_t g_done;
 
 bool buzz_put(uint32_t pattern)
 {
-    if (pattern > BUZZ_WARN)
+    if (pattern > BUZZ_CLIP)
     {
         return false;
     }

@@ -180,13 +180,15 @@ typedef enum
     X(24, MAP_EMPTY,         "nack: empty map") \
     X(25, MAP_DUP_LETTER,    "nack: the same letter was given twice") \
     X(26, CONFIG_REJECTED,   "") \
-    X(27, BAD_COUNT,         "nack: count larger than the parameter table")  /* (new) */
+    X(27, BAD_COUNT,         "nack: count larger than the parameter table")  /* (new) */ \
+    X(28, PLAYING,           "playing")                                      /* (new) */ \
+    X(29, NO_CLIP,           "nack: no clip in this firmware (tools/make_clip.py)")  /* (new) */
 
 #define WIRE_X_RSN_ENUM(c, n, t)  RSN_##n = (c),
 typedef enum
 {
     WIRE_REASON_TABLE(WIRE_X_RSN_ENUM)
-    RSN_COUNT                                   /* 28 */
+    RSN_COUNT                                   /* 30 */
 } wire_reason_t;
 #undef WIRE_X_RSN_ENUM
 
@@ -201,7 +203,8 @@ typedef enum
    cmd_len: Command_Frame length in bytes on is02/cmd; 0 = not accepted on
             is02/cmd (CONFIG is the Ack_Frame code of a Config_Frame).
    ack_len: Ack_Frame length in bytes; 0 = variable (GET:PARAMS parts, CONFIG).
-   Codes 0..10 are the 11 Baseline_Build commands (Requirement 13.2). */
+   Codes 0..10 are the 11 Baseline_Build commands (Requirement 13.2); 12 PLAY
+   (new) plays the clip on the buzzer. */
 #define WIRE_CMD_TABLE(X) \
     X( 0, ESTOP,      "ESTOP",      1u,  7u) \
     X( 1, RESUME,     "RESUME",     1u,  5u) \
@@ -214,18 +217,19 @@ typedef enum
     X( 8, PING,       "PING",       3u,  7u) \
     X( 9, SET,        "SET",        6u,  6u) \
     X(10, GET_PARAMS, "GET:PARAMS", 1u,  0u) \
-    X(11, CONFIG,     "CONFIG",     0u,  0u)
+    X(11, CONFIG,     "CONFIG",     0u,  0u) \
+    X(12, PLAY,       "PLAY",       1u,  5u)
 
 #define WIRE_X_CMD_ENUM(c, n, e, lc, la)  WCMD_##n = (c),
 typedef enum
 {
     WIRE_CMD_TABLE(WIRE_X_CMD_ENUM)
-    WCMD_TABLE_COUNT,                           /* 12: codes 0..11 */
+    WCMD_TABLE_COUNT,                           /* 13: codes 0..12 */
     WCMD_UNPARSED = 15                          /* ack of a rejected frame, no arguments */
 } wire_cmd_code_t;
 #undef WIRE_X_CMD_ENUM
 
-#define WIRE_CMD_FRAME_COUNT    (11u)    /* codes 0..10 accepted on is02/cmd */
+#define WIRE_CMD_FRAME_COUNT    (12u)    /* codes 0..10 and 12 accepted on is02/cmd */
 #define WIRE_ACK_UNPARSED_LEN   (5u)
 
 /* GET:PARAMS reply parts: part U3 1..5, count U4 0..12, count x (ID U6,
@@ -430,9 +434,9 @@ _Static_assert((WIRE_FORMAT_VERSION != 4u) && (WIRE_FORMAT_VERSION != 5u),
 
 /* Table counts (Requirements 2.9, 8.2, 12.4, 13.2). */
 _Static_assert(EVC_COUNT == 45, "wire_ids: 45 Event_Codes expected");
-_Static_assert(RSN_COUNT == 28, "wire_ids: 28 Reason_Codes expected");
-_Static_assert(WCMD_TABLE_COUNT == 12, "wire_ids: command codes 0..11 expected");
-_Static_assert(WIRE_CMD_FRAME_COUNT == (uint32_t)WCMD_CONFIG, "wire_ids: 11 is02/cmd command codes expected");
+_Static_assert(RSN_COUNT == 30, "wire_ids: 30 Reason_Codes expected");
+_Static_assert(WCMD_TABLE_COUNT == 13, "wire_ids: command codes 0..12 expected");
+_Static_assert(WIRE_CMD_FRAME_COUNT == (uint32_t)WCMD_TABLE_COUNT - 1u, "wire_ids: every code but CONFIG on is02/cmd");
 _Static_assert(STOP_REASON_COUNT == 10, "wire_ids: 10 stop reasons expected");
 _Static_assert(ABORT_REASON_COUNT == 11, "wire_ids: 11 abort reasons expected");
 

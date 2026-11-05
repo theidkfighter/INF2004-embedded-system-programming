@@ -26,7 +26,7 @@ T27 = "Decode then encode is the identity on bytes"
 T28 = "The three codecs agree on the shared vectors"
 
 EVENT_NAMES = [e[0] for e in codec.EVENTS]
-COMMAND_NAMES = [c[0] for c in codec.COMMANDS[:11]]
+COMMAND_NAMES = [c[0] for c in codec.COMMANDS if c[2] > 0]      # every is02/cmd command
 
 
 def cm(code, none):

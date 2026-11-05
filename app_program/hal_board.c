@@ -11,6 +11,7 @@
 #include "hardware/gpio.h"
 #include "hardware/pwm.h"
 #include "hardware/adc.h"
+#include "hardware/dma.h"
 #include "hardware/pio.h"
 #include "hardware/resets.h"
 #include "hardware/sync.h"
@@ -378,10 +379,113 @@ void hal_servo_range(uint32_t min_us, uint32_t max_us)
     }
 }
 
+/* ---- clip playback (PLAY) ----------------------------------------------------
+   clip_pcm.h (tools/make_clip.py, git-ignored) holds 8 kHz samples 0..255. While
+   the clip plays, the buzzer slice runs at 125 MHz / 256 = 488 kHz (inaudible)
+   and a DMA channel paced by a DMA timer writes one sample per 125 us into its
+   counter-compare register, so the duty follows the audio with no CPU work.
+   The 16-bit write lands in both halves of CC; B is GP23 (CYW43 WL_REG_ON, an
+   SIO pin, not PWM), so only A on GP22 is driven. At the end the slice goes
+   back to the 1 MHz tone set-up. */
+#if defined(__has_include)
+#if __has_include("clip_pcm.h")
+#include "clip_pcm.h"
+#define HAVE_CLIP (1)
+#endif
+#endif
+
+#ifdef HAVE_CLIP
+_Static_assert(CLIP_PCM_RATE_HZ == 8000u, "DMA timer below is set for 8 kHz");
+#define CLIP_WRAP        (255u)
+#define CLIP_TIMER_X     (1u)
+#define CLIP_TIMER_Y     (SYS_HZ / CLIP_PCM_RATE_HZ)    /* 125 MHz / 15625 = 8 kHz */
+
+static int  g_clip_ch = -1;
+static int  g_clip_tmr = -1;
+static bool g_b_clip;                                     /* buzzer slice is in clip mode */
+
+static void clip_release(void)
+{
+    uint32_t slice = pwm_gpio_to_slice_num(PIN_BUZZER);
+
+    pwm_set_gpio_level(PIN_BUZZER, 0u);
+    pwm_set_clkdiv(slice, 125.0f);                       /* back to the 1 MHz tone tick */
+    pwm_set_wrap(slice, 1000u);
+    g_b_clip = false;
+}
+
+bool hal_clip_play(void)
+{
+    uint32_t slice = pwm_gpio_to_slice_num(PIN_BUZZER);
+    dma_channel_config c;
+
+    if (g_clip_ch < 0)
+    {
+        g_clip_ch  = dma_claim_unused_channel(false);
+        g_clip_tmr = dma_claim_unused_timer(false);
+        if ((g_clip_ch < 0) || (g_clip_tmr < 0))
+        {
+            return false;
+        }
+        dma_timer_set_fraction((uint)g_clip_tmr, (uint16_t)CLIP_TIMER_X, (uint16_t)CLIP_TIMER_Y);
+    }
+    dma_channel_abort((uint)g_clip_ch);
+    pwm_set_clkdiv(slice, 1.0f);
+    pwm_set_wrap(slice, (uint16_t)CLIP_WRAP);
+    pwm_set_gpio_level(PIN_BUZZER, 128u);
+    g_b_clip = true;
+
+    c = dma_channel_get_default_config((uint)g_clip_ch);
+    channel_config_set_transfer_data_size(&c, DMA_SIZE_16);
+    channel_config_set_read_increment(&c, true);
+    channel_config_set_write_increment(&c, false);
+    channel_config_set_dreq(&c, dma_get_timer_dreq((uint)g_clip_tmr));
+    dma_channel_configure((uint)g_clip_ch, &c, &pwm_hw->slice[slice].cc, g_clip_pcm, CLIP_PCM_COUNT, true);
+    return true;
+}
+
+bool hal_clip_available(void)
+{
+    return true;
+}
+
+bool hal_clip_busy(void)
+{
+    return g_b_clip;
+}
+
+void hal_clip_stop(void)
+{
+    if (g_b_clip)
+    {
+        dma_channel_abort((uint)g_clip_ch);
+        clip_release();
+    }
+}
+
+void hal_clip_poll(void)
+{
+    if (g_b_clip && !dma_channel_is_busy((uint)g_clip_ch))
+    {
+        clip_release();
+    }
+}
+#else
+bool hal_clip_play(void)  { return false; }
+bool hal_clip_available(void) { return false; }
+bool hal_clip_busy(void)  { return false; }
+void hal_clip_stop(void)  { }
+void hal_clip_poll(void)  { }
+#endif
+
 void hal_buzzer(uint32_t freq_hz)
 {
     uint32_t slice = pwm_gpio_to_slice_num(PIN_BUZZER);
 
+    if (hal_clip_busy())
+    {
+        return;                                          /* the clip owns the slice */
+    }
     if ((freq_hz < 50u) || (freq_hz > 20000u))
     {
         pwm_set_gpio_level(PIN_BUZZER, 0u);

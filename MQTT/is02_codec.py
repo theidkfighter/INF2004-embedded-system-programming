@@ -93,6 +93,8 @@ REASONS = [
     ("MAP_DUP_LETTER", "nack: the same letter was given twice"),
     ("CONFIG_REJECTED", ""),
     ("BAD_COUNT", "nack: count larger than the parameter table"),
+    ("PLAYING", "playing"),
+    ("NO_CLIP", "nack: no clip in this firmware (tools/make_clip.py)"),
 ]
 RSN_CONFIG_REJECTED = 26
 
@@ -102,7 +104,7 @@ COMMANDS = [
     ("ESTOP", "ESTOP", 1, 7), ("RESUME", "RESUME", 1, 5), ("START", "START", 1, 5), ("STOP", "STOP", 1, 5),
     ("BARCODE", "BARCODE", 2, 6), ("MAP", "MAP", 4, 15), ("MAP_CLEAR", "MAP:CLEAR", 1, 15),
     ("GET_MAP", "GET:MAP", 1, 15), ("PING", "PING", 3, 7), ("SET", "SET", 6, 6),
-    ("GET_PARAMS", "GET:PARAMS", 1, 0), ("CONFIG", "CONFIG", 0, 0),
+    ("GET_PARAMS", "GET:PARAMS", 1, 0), ("CONFIG", "CONFIG", 0, 0), ("PLAY", "PLAY", 1, 5),
 ]
 WCMD = {c[0]: code for code, c in enumerate(COMMANDS)}
 WCMD_UNPARSED = 15
@@ -391,6 +393,7 @@ ACK_ARGS = {
     WCMD["PING"]: (("ping", 16),),
     WCMD["SET"]: (("param", 6),),
     WCMD["CONFIG"]: (("applied", 6), ("n_rej", 6), ("rej", 6, "n_rej")),
+    WCMD["PLAY"]: (),
     WCMD_UNPARSED: (),
 }
 
@@ -412,6 +415,7 @@ COMMAND_ARGS = {
     WCMD["PING"]: (("ping", 16),),
     WCMD["SET"]: (("param", 6), ("value", 32)),             # value: F32 bit pattern
     WCMD["GET_PARAMS"]: (),
+    WCMD["PLAY"]: (),
 }
 
 
@@ -1243,7 +1247,7 @@ def encode_command_text(text):
     """A Baseline_Build command text -> its Command_Frame. CodecError names the argument."""
     cmd = text.strip()
     simple = {"ESTOP": "ESTOP", "RESUME": "RESUME", "START": "START", "STOP": "STOP",
-              "GET:MAP": "GET_MAP", "GET:PARAMS": "GET_PARAMS"}
+              "GET:MAP": "GET_MAP", "GET:PARAMS": "GET_PARAMS", "PLAY": "PLAY"}
     if cmd in simple:
         return encode_fields("command", {"code": WCMD[simple[cmd]]})
     if cmd == "PING" or cmd.startswith("PING:"):

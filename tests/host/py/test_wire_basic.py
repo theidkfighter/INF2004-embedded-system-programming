@@ -249,7 +249,7 @@ def test_decoders_reject_text_and_empty(wl):
 
 
 def test_encoders_reject_out_of_range(wl):
-    a = ack(12, 0)                                  # command code 12 is unassigned
+    a = ack(13, 0)                                  # command code 13 is unassigned
     assert enc_ack(wl, a) == b""
     a = ack(WCMD_CONFIG, 0)
     a.a.cfg.n_rej = 61
@@ -257,5 +257,5 @@ def test_encoders_reject_out_of_range(wl):
     a = ack(WCMD_GET_PARAMS, 0)
     a.a.getp.part, a.a.getp.count = 1, 13
     assert enc_ack(wl, a) == b""
-    a = ack(WCMD_START, 28)                         # Reason_Code 28 is unassigned
+    a = ack(WCMD_START, 30)                         # Reason_Code 30 is unassigned
     assert enc_ack(wl, a) == b""

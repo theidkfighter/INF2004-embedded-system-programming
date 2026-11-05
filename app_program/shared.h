@@ -7,7 +7,7 @@
  * tests run the same code against crit_stub.c (Property 18).
  *
  *   unit                 fields                         writers, protection
- *   g_buzz (8)           pattern E3 BUZZ_NONE..BUZZ_WARN  any task, safety: dispatch disabled
+ *   g_buzz (8)           pattern E3 BUZZ_NONE..BUZZ_CLIP  any task, safety: dispatch disabled
  *   g_net_flags (8)      estop_pending [0],               radio task, safety, telemetry:
  *                        estop_ack_due [1],               dispatch disabled
  *                        config_due [2]
@@ -36,8 +36,9 @@
 #define BUZZ_ERROR       (4u)
 #define BUZZ_LOW_BATTERY (5u)
 #define BUZZ_WARN        (6u)
+#define BUZZ_CLIP        (7u)    /* PLAY: the clip from clip_pcm.h, not a tone pattern */
 
-bool     buzz_put(uint32_t pattern);        /* false, nothing stored, if > BUZZ_WARN */
+bool     buzz_put(uint32_t pattern);        /* false, nothing stored, if > BUZZ_CLIP */
 uint32_t buzzer_pattern_take(void);         /* read + clear in one section */
 
 /* ---- E-stop receive (consistent set, design D3.5) and config flag ---- */

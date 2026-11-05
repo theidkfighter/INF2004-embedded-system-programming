@@ -72,7 +72,13 @@ float    hal_us_read_cm(void);                   /* after >= 30 ms: cm, or -1 = 
 /* ---- servo, buzzer, NeoPixels, buttons ---- */
 void     hal_servo_deg(float physical_deg);      /* 0..180 physical, 90 = straight ahead */
 void     hal_servo_range(uint32_t min_us, uint32_t max_us);   /* pulse at 0 and 180 deg */
-void     hal_buzzer(uint32_t freq_hz);           /* 0 = off */
+void     hal_buzzer(uint32_t freq_hz);           /* 0 = off; ignored while the clip plays */
+bool     hal_clip_play(void);                    /* PLAY: start the clip (restart if playing);
+                                                    false = no clip_pcm.h in this build */
+bool     hal_clip_available(void);               /* clip_pcm.h was there at build time */
+bool     hal_clip_busy(void);
+void     hal_clip_stop(void);                    /* stop now, buzzer back to tones */
+void     hal_clip_poll(void);                    /* every tick: hands the buzzer back at the end */
 void     hal_neopixel(uint8_t r, uint8_t g, uint8_t b);   /* both on-board pixels */
 bool     hal_btn1_down(void);
 bool     hal_btn2_down(void);

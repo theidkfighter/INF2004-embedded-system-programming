@@ -27,7 +27,7 @@ HOOK = ctypes.CFUNCTYPE(None)
 TITLE = "Critical sections are balanced and cover every shared update"
 APP_DIR = HOST_DIR.parent.parent / "app_program"
 
-BUZZ_WARN = 6
+BUZZ_CLIP = 7                                    # highest pattern buzz_put accepts
 N_ESTOP_PENDING, N_ACK_DUE, N_CONFIG_DUE = 1, 2, 4
 ODO_WORDS = 5
 STATUS_BYTES = 60
@@ -164,7 +164,7 @@ def test_buzz(s, ops):
             model = 0
             assert s.crit_stub_dsp_enters() == enters + 1
         else:
-            b_ok = op <= BUZZ_WARN
+            b_ok = op <= BUZZ_CLIP
             assert s.buzz_put(op) == b_ok
             model = op if b_ok else model
         assert unit(s, "g_buzz", U8).value == model
