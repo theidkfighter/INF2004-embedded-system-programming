@@ -254,26 +254,33 @@ hump_out_t tilt_hump_step(tilt_hump_t *p_t, const hump_params_t *p_par, float pi
  * The first blank_samples average the accel vector into the reference
  * (the robot is on the floor when it starts driving; any IMU mounting).
  * Then, latched until lift_reset():
- *   LIFT_UP:   accel along the reference up axis (1 g at rest)
- *              >= 1 + up_g for up_samples (lifted: the caller ends the run);
- *   LIFT_OVER: angle(low-passed accel, reference) >= tilt_deg (60 deg)
- *              for tilt_samples (overturned: the caller raises an E-stop).
- * A single jolt (one sample) does neither. */
+ *   LIFT_UP:   estimated upward speed v >= v_lift_mm_s, where every sample
+ *              v = leak * v + clamp(up - 1 g, +-up_clip_g) * g * 20 ms and up
+ *              = accel along the reference up axis (lifted: the caller ends
+ *              the run). Tolerant of an uneven pick-up; a single jolt adds at
+ *              most up_clip_g x 196 mm/s.
+ *   LIFT_TILT: tilt = angle(low-passed accel, reference) >= tilt_deg for
+ *              tilt_samples (tipped up in a hand: lifted, ends the run).
+ *   LIFT_OVER: tilt >= over_deg for over_samples, or already >= over_deg
+ *              when LIFT_TILT fires (overturned: the caller raises an E-stop). */
 typedef enum
 {
     LIFT_NONE = 0,
     LIFT_OVER,
-    LIFT_UP
+    LIFT_UP,
+    LIFT_TILT
 } lift_cause_t;
 
 typedef struct
 {
+    float   v_lift_mm_s;
+    float   v_leak;
+    float   up_clip_g;
     float   tilt_deg;
-    float   up_g;
+    float   over_deg;
     float   alpha;            /* low-pass on the accel vector (tilt) */
-    float   up_alpha;         /* low-pass on the up-axis reading */
     uint8_t tilt_samples;
-    uint8_t up_samples;
+    uint8_t over_samples;
     uint8_t blank_samples;
 } lift_params_t;
 
@@ -281,10 +288,10 @@ typedef struct
 {
     float   ref[3];           /* sum during blanking, then the mean (reference) */
     float   lp[3];            /* low-passed accel vector */
-    float   up_lp;            /* low-passed up-axis reading, g */
-    uint8_t n_blank;          /* samples averaged so far */
+    float   v_mm_s;           /* estimated upward speed */
+    uint8_t n_blank;          /* samples averaged so far; 0xFF = reference ready */
     uint8_t n_tilt;
-    uint8_t n_up;
+    uint8_t n_over;
     uint8_t cause;            /* lift_cause_t once latched, else LIFT_NONE */
 } lift_ctx_t;
 

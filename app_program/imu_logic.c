@@ -310,6 +310,9 @@ hump_out_t tilt_hump_step(tilt_hump_t *p_t, const hump_params_t *p_par, float pi
 
 /* ---- lift / overturn ------------------------------------------------------- */
 
+#define LIFT_G_MM_S2     (9806.65f)
+#define LIFT_DT_S        (0.02f)
+
 void lift_reset(lift_ctx_t *p_l)
 {
     uint32_t i;
@@ -319,10 +322,10 @@ void lift_reset(lift_ctx_t *p_l)
         p_l->ref[i] = 0.0f;
         p_l->lp[i]  = 0.0f;
     }
-    p_l->up_lp   = 1.0f;
+    p_l->v_mm_s  = 0.0f;
     p_l->n_blank = 0u;
     p_l->n_tilt  = 0u;
-    p_l->n_up    = 0u;
+    p_l->n_over  = 0u;
     p_l->cause   = (uint8_t)LIFT_NONE;
 }
 
@@ -338,9 +341,11 @@ static uint8_t sat_inc(uint8_t n)
 
 lift_cause_t lift_step(lift_ctx_t *p_l, const lift_params_t *p_par, float ax, float ay, float az)
 {
-    float  a[3] = { ax, ay, az };
-    float  up;
-    float  n;
+    float    a[3] = { ax, ay, az };
+    float    up;
+    float    n;
+    float    tilt;
+    float    da;
     uint32_t i;
 
     if (p_l->cause != (uint8_t)LIFT_NONE)
@@ -370,20 +375,27 @@ lift_cause_t lift_step(lift_ctx_t *p_l, const lift_params_t *p_par, float ax, fl
     {
         p_l->lp[i] += p_par->alpha * (a[i] - p_l->lp[i]);
     }
-    n  = sqrtf((p_l->ref[0] * p_l->ref[0]) + (p_l->ref[1] * p_l->ref[1]) + (p_l->ref[2] * p_l->ref[2]));
-    up = (n > 0.25f) ? (((a[0] * p_l->ref[0]) + (a[1] * p_l->ref[1]) + (a[2] * p_l->ref[2])) / n) : 1.0f;
-    p_l->up_lp += p_par->up_alpha * (up - p_l->up_lp);
+    n    = sqrtf((p_l->ref[0] * p_l->ref[0]) + (p_l->ref[1] * p_l->ref[1]) + (p_l->ref[2] * p_l->ref[2]));
+    up   = (n > 0.25f) ? (((a[0] * p_l->ref[0]) + (a[1] * p_l->ref[1]) + (a[2] * p_l->ref[2])) / n) : 1.0f;
+    da   = up - 1.0f;
+    da   = (da > p_par->up_clip_g) ? p_par->up_clip_g : ((da < -p_par->up_clip_g) ? -p_par->up_clip_g : da);
+    p_l->v_mm_s = (p_par->v_leak * p_l->v_mm_s) + (da * LIFT_G_MM_S2 * LIFT_DT_S);
+    tilt = imu_tilt_deg(p_l->lp, p_l->ref);
 
-    p_l->n_tilt = (imu_tilt_deg(p_l->lp, p_l->ref) >= p_par->tilt_deg) ? sat_inc(p_l->n_tilt) : 0u;
-    p_l->n_up   = (p_l->up_lp >= (1.0f + p_par->up_g)) ? sat_inc(p_l->n_up) : 0u;
+    p_l->n_tilt = (tilt >= p_par->tilt_deg) ? sat_inc(p_l->n_tilt) : 0u;
+    p_l->n_over = (tilt >= p_par->over_deg) ? sat_inc(p_l->n_over) : 0u;
 
-    if (p_l->n_up >= p_par->up_samples)
+    if (p_l->n_over >= p_par->over_samples)
+    {
+        p_l->cause = (uint8_t)LIFT_OVER;
+    }
+    else if (p_l->v_mm_s >= p_par->v_lift_mm_s)
     {
         p_l->cause = (uint8_t)LIFT_UP;
     }
     else if (p_l->n_tilt >= p_par->tilt_samples)
     {
-        p_l->cause = (uint8_t)LIFT_OVER;
+        p_l->cause = (uint8_t)((tilt >= p_par->over_deg) ? LIFT_OVER : LIFT_TILT);
     }
     else
     {

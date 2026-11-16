@@ -1,8 +1,8 @@
 """Lift / overturn detector (imu_logic.c lift_step; 16 Nov requirement change).
 
 The IMU collision detection is removed. While driving, the robot stops its
-motors when it is lifted (pushed upwards: normal end of the run) or
-overturned (tilted 60 deg or more: E-stop). Synthetic
+motors when it is lifted (rising, or tipped 30 deg: normal end of the run) or
+overturned (60 deg or more: E-stop). Synthetic
 20 ms accelerometer samples (g) in several IMU mountings: flat driving with
 noise, the course hump, single jolts, a quick lift, a slow tip, an overturn.
 """
@@ -14,20 +14,20 @@ import random
 import pytest
 
 F, U8 = ctypes.c_float, ctypes.c_uint8
-LIFT_NONE, LIFT_OVER, LIFT_UP = 0, 1, 2
+LIFT_NONE, LIFT_OVER, LIFT_UP, LIFT_TILT = 0, 1, 2, 3
 
 
 class LiftParams(ctypes.Structure):
-    _fields_ = [("tilt_deg", F), ("up_g", F), ("alpha", F), ("up_alpha", F),
-                ("tilt_samples", U8), ("up_samples", U8), ("blank_samples", U8)]
+    _fields_ = [("v_lift_mm_s", F), ("v_leak", F), ("up_clip_g", F), ("tilt_deg", F), ("over_deg", F),
+                ("alpha", F), ("tilt_samples", U8), ("over_samples", U8), ("blank_samples", U8)]
 
 
 class LiftCtx(ctypes.Structure):
-    _fields_ = [("ref", F * 3), ("lp", F * 3), ("up_lp", F), ("n_blank", U8), ("n_tilt", U8),
-                ("n_up", U8), ("cause", U8)]
+    _fields_ = [("ref", F * 3), ("lp", F * 3), ("v_mm_s", F), ("n_blank", U8), ("n_tilt", U8),
+                ("n_over", U8), ("cause", U8)]
 
 
-PAR = LiftParams(60.0, 0.25, 0.2, 1.0, 10, 3, 20)     # robot_config.h LIFT_*
+PAR = LiftParams(150.0, 0.9, 0.5, 30.0, 60.0, 0.2, 5, 10, 20)     # robot_config.h LIFT_*
 BLANK = 20
 
 
@@ -101,45 +101,55 @@ def test_single_jolts_are_ignored(lf, mount):
 
 
 @pytest.mark.parametrize("mount", MOUNTS)
-@pytest.mark.parametrize("up_g", [0.4, 0.8])
-def test_quick_lift_stops_within_100_ms(lf, mount, up_g):
+@pytest.mark.parametrize("up_g", [0.3, 0.8])
+def test_quick_lift_stops_within_120_ms(lf, mount, up_g):
     rng = random.Random(4)
     before = floor(BLANK + 30, rng)
     lift = [(0.0, 0.0, 1.0 + up_g)] * 8 + [(0.0, 0.0, 1.0 - up_g)] * 8 + floor(50, rng)
     i, cause, _ = run(lf, before + lift, mount)
-    assert cause == LIFT_UP
-    assert len(before) <= i <= len(before) + 4          # 3 to 5 samples: 60 to 100 ms
+    assert cause == LIFT_UP and len(before) <= i <= len(before) + 5
 
 
 @pytest.mark.parametrize("mount", MOUNTS)
-@pytest.mark.parametrize("axis", ["roll", "pitch"])
-def test_tip_below_60_deg_is_not_a_stop(lf, mount, axis):
-    """Tipped to 45 deg with no upward push: not overturned (known limit for a gentle lift)."""
-    rng = random.Random(5)
-    tip = [tilted(min(k, 45), axis) for k in range(0, 120)]
-    i, cause, _ = run(lf, floor(BLANK + 30, rng) + tip, mount)
-    assert i is None and cause == LIFT_NONE
-
-
-@pytest.mark.parametrize("mount", MOUNTS)
-@pytest.mark.parametrize("axis", ["roll", "pitch"])
-def test_tip_past_60_deg_is_overturned(lf, mount, axis):
-    rng = random.Random(9)
+@pytest.mark.parametrize("seed", range(20))
+def test_uneven_pick_up_stops(lf, mount, seed):
+    """A real pick-up: 0.1 to 0.4 g with dips and hand shake for about 0.3 s
+    (the old rule, 3 samples in a row over 0.25 g, missed some of these)."""
+    rng = random.Random(100 + seed)
     before = floor(BLANK + 30, rng)
-    tip = [tilted(min(k, 80), axis) for k in range(0, 120)]          # 1 deg per sample
+    lift = [(rng.gauss(0, 0.06), rng.gauss(0, 0.06), 1.0 + rng.uniform(0.05, 0.35) + rng.gauss(0, 0.05))
+            for _ in range(15)]
+    i, cause, _ = run(lf, before + lift + floor(30, rng), mount)
+    assert cause == LIFT_UP and i - len(before) <= 15
+
+
+def test_gentle_steady_lift_stops(lf):
+    """0.1 g held for 0.3 s (a slow, level lift)."""
+    rng = random.Random(10)
+    before = floor(BLANK + 30, rng)
+    i, cause, _ = run(lf, before + [(0.0, 0.0, 1.1)] * 15 + floor(30, rng))
+    assert cause == LIFT_UP and i - len(before) <= 15
+
+
+@pytest.mark.parametrize("mount", MOUNTS)
+@pytest.mark.parametrize("axis", ["roll", "pitch"])
+def test_tip_up_in_a_hand_is_a_lift(lf, mount, axis):
+    """Tipped to 45 deg with no upward push: lifted (normal end), not overturned."""
+    rng = random.Random(5)
+    before = floor(BLANK + 30, rng)
+    tip = [tilted(min(k, 45), axis) for k in range(0, 120)]
     i, cause, c = run(lf, before + tip, mount)
-    assert cause == LIFT_OVER
-    assert 60 <= lf.lift_tilt_deg(ctypes.byref(c)) < 75
-    assert i - len(before) < 75
+    assert cause == LIFT_TILT and 30 <= lf.lift_tilt_deg(ctypes.byref(c)) < 45
+    assert i - len(before) < 45
 
 
 @pytest.mark.parametrize("mount", MOUNTS)
 def test_overturned_stops(lf, mount):
     rng = random.Random(6)
     before = floor(BLANK + 30, rng)
-    flip = [tilted(min(180.0, 12.0 * k), "roll") for k in range(40)]     # rolled over in 0.3 s
+    flip = [tilted(min(180.0, 30.0 * k), "roll") for k in range(40)]     # falls over in 0.1 s
     i, cause, _ = run(lf, before + flip, mount)
-    assert cause == LIFT_OVER and i - len(before) <= 20                  # within 0.4 s of starting to roll
+    assert cause == LIFT_OVER and i - len(before) <= 20
 
 
 def test_reference_is_the_start_posture(lf):

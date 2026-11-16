@@ -9,7 +9,7 @@
  * updates the run maximum (FR21, FR22). Region B classifies motion events
  * (FR24). Lift / overturn (16 Nov requirement change, replaces the IMU
  * collision detection): while driving, lift_step() (imu_logic.c).
- * Lifted (pushed upwards): lift_stop_put(true) -> TSK_MOTION_CTRL holds the
+ * Lifted (rising at 150 mm/s or more, or tipped 30 deg or more): lift_stop_put(true) -> TSK_MOTION_CTRL holds the
  * motors off at once and TSK_NAV_PLANNER ends the run normally
  * (MISSION_COMPLETE). Overturned (tilted 60 deg or more): EVF_OVERTURNED ->
  * TSK_SAFETY_MON E-stop "overturned (IMU)". Lifting ends the demo run.
@@ -124,12 +124,14 @@ void tsk_imu(INT stacd, void *exinf)
     hump_reset(&hump);
     mev_reset(&mev);
 #if LIFT_DETECT
+    lp.v_lift_mm_s   = LIFT_V_MM_S;
+    lp.v_leak        = LIFT_V_LEAK;
+    lp.up_clip_g     = LIFT_UP_CLIP_G;
     lp.tilt_deg      = LIFT_TILT_DEG;
-    lp.up_g          = LIFT_UP_G;
+    lp.over_deg      = LIFT_OVER_DEG;
     lp.alpha         = LIFT_ALPHA;
-    lp.up_alpha      = LIFT_UP_ALPHA;
     lp.tilt_samples  = (uint8_t)LIFT_TILT_SAMPLES;
-    lp.up_samples    = (uint8_t)LIFT_UP_SAMPLES;
+    lp.over_samples  = (uint8_t)LIFT_OVER_SAMPLES;
     lp.blank_samples = (uint8_t)LIFT_BLANK_SAMPLES;
     lift_reset(&lift);
     lift_stop_put(false);

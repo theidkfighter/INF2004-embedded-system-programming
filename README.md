@@ -343,10 +343,10 @@ Defaults are in `app_program/robot_config.h`; send measured values with `MQTT/ro
 The IMU firmware detects either GY-511 chip: LSM303DLHC (accel 0x19) or **LSM303D** (0x1E, which our board has).
 
 **Lift / overturn stop (IMU).** While the car drives, the first 0.4 s of each run sets the reference (the car standing on the floor). After that:
-- **Lifted** (pushed upwards: more than 0.25 g extra on the up axis for 60 ms, `LIFT_UP_G`, `LIFT_UP_SAMPLES`): the motors stop at once and the run **ends normally**, as with BTN1 Stop: three-note tune, `MISSION_COMPLETE` summary, event `LIFTED` "lifted: run ended". BTN1 returns to IDLE. This is how the demo run is ended.
-- **Overturned** (tilted 60° or more from the start posture for 200 ms, `LIFT_TILT_DEG`, `LIFT_TILT_SAMPLES`): **E-stop**, reason `overturned (IMU)`, event `LIFTED` "overturned: motors stop". Recover with BTN1 once the car is upright.
+- **Lifted**: rising at about 150 mm/s or more (estimated from the up-axis acceleration, `LIFT_V_MM_S`), or tipped 30° or more for 100 ms (`LIFT_TILT_DEG`): the motors stop at once and the run **ends normally**, as with BTN1 Stop: three-note tune, `MISSION_COMPLETE` summary, event `LIFTED` "lifted: run ended". BTN1 returns to IDLE. This is how the demo run is ended.
+- **Overturned** (tilted 60° or more from the start posture for 200 ms, `LIFT_OVER_DEG`, `LIFT_OVER_SAMPLES`): **E-stop**, reason `overturned (IMU)`, event `LIFTED` "overturned: motors stop". Recover with BTN1 once the car is upright.
 
-A single jolt and the course hump (6–8°) trigger neither. A very slow, gentle lift may not be seen: lift with a clear upward movement. Settings: `LIFT_*` in `robot_config.h` (`LIFT_DETECT 0` turns it off). The old IMU collision stop (2 g, INT1) is removed.
+A single jolt and the course hump (6–8°) trigger neither. A very slow, perfectly level lift (under about 0.1 g) may not be seen. Settings: `LIFT_*` in `robot_config.h` (`LIFT_DETECT 0` turns it off). The old IMU collision stop (2 g, INT1) is removed.
 
 ### 9.5 Main tuning parameters (`SET:` or `robot_params.txt`)
 

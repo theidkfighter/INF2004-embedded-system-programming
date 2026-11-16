@@ -242,15 +242,17 @@
    Lifted: normal end of the run (motors off at once, MISSION_COMPLETE
    summary, like BTN1 Stop). Overturned: E-stop. */
 #define LIFT_DETECT               (1)           /* 0 = no lift / overturn stop */
-#define LIFT_TILT_DEG             (60.0f)       /* OVERTURNED: tilt from the start posture this large
-                                                   (the course hump gives 6-8 deg) */
-#define LIFT_TILT_SAMPLES         (10u)         /* ... for this many 20 ms samples (200 ms) */
-#define LIFT_UP_G                 (0.25f)       /* upward acceleration this large = picked up (1.25 g on the up axis) */
-#define LIFT_UP_SAMPLES           (3u)          /* ... for this many 20 ms samples (60 ms; a jolt is 1 sample) */
+#define LIFT_V_MM_S               (150.0f)      /* LIFTED: estimated upward speed this fast (a hand lift
+                                                   reaches 200-500 mm/s; the course hump about 10) */
+#define LIFT_V_LEAK               (0.9f)        /* per 20 ms: the speed estimate leaks away (no drift) */
+#define LIFT_UP_CLIP_G            (0.5f)        /* each sample adds at most this much (a single jolt
+                                                   adds 98 mm/s, below LIFT_V_MM_S) */
+#define LIFT_TILT_DEG             (30.0f)       /* LIFTED too: tipped this far from the start posture ... */
+#define LIFT_TILT_SAMPLES         (5u)          /* ... for 100 ms (the course hump gives 6-8 deg) */
+#define LIFT_OVER_DEG             (60.0f)       /* OVERTURNED: tilt this large ... */
+#define LIFT_OVER_SAMPLES         (10u)         /* ... for 200 ms -> E-stop */
 #define LIFT_BLANK_SAMPLES        (20u)         /* 400 ms after driving starts: learn the reference, no check */
 #define LIFT_ALPHA                (0.2f)        /* low-pass on the accel vector for the tilt (about 100 ms) */
-#define LIFT_UP_ALPHA             (1.0f)        /* low-pass on the up-axis reading; 1 = none, so a single
-                                                   jolt cannot spread over LIFT_UP_SAMPLES samples */
 #define TURNING_DPS               (30.0f)
 #define ACCEL_G                   (0.05f)
 #define STATIONARY_MM_S           (10.0f)
