@@ -181,6 +181,11 @@
 #define OBST_REACQ_SWEEP_DEG      (25.0f)       /* dynamic turn: parallel again but the LEFT sensor (the one line
                                                    following tracks) sees no line: pivot this far towards the path
                                                    side, then the other way, stopping on the line. 0 = off */
+#define OBST_REACQ_SWEEP2_DEG     (45.0f)       /* dynamic turn: backup sweep when the first one (OBST_REACQ_SWEEP_DEG)
+                                                   finds nothing: out to this angle on the far side, then the same on the
+                                                   path side (16 Nov: back on the line but the first sweep missed it).
+                                                   The sensors are 60 mm ahead of the axle: 25 deg reaches ~25 mm
+                                                   sideways, 45 deg ~42 mm. 0 = off */
 #define OBST_TURN_MIN_DEG         (30.0f)       /* dynamic turn: smallest first turn angle */
 #define OBST_TURN_MAX_DEG         (70.0f)       /* dynamic turn: largest first turn angle */
 #define OBST_EDGE_PAD_MM          (20)          /* [P] added to each measured obstacle edge: a flat face stops echoing
