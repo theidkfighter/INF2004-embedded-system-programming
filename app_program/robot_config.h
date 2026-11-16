@@ -225,6 +225,11 @@
 #define HUMP_TILT_DETECT          (1)
 #define HUMP_TILT_START_DEG       (2.5f)        /* tilt above this for HUMP_START_SAMPLES starts a hump */
 #define HUMP_TILT_LEVEL_DEG       (1.5f)        /* tilt below this for HUMP_END_SAMPLES ends it (1.0 left too little margin over driving vibration) */
+#define HUMP_TILT_NOSE_DOWN_DEG   (1.0f)        /* a one-sided hump counts only if the nose went down this far
+                                                   (right rear wheel raised: -2.5 to -3.3 deg measured 3 Nov). The
+                                                   low barcode sensor catching at the front LEFT lifts the nose
+                                                   instead: 16 Nov runs counted 15 humps. A full-width climb
+                                                   (pitch height >= HUMP_TILT_MIN_MM) still counts. 0 = off */
 #define HUMP_TILT_MIN_MM          (7.0f)        /* smallest lift that counts as a hump (3 Nov: real 1 cm hump 10.2 mm, a false one 6.0 mm) */
 #define HUMP_TILT_MAX_TURN_DPS    (20.0f)       /* only pitch counts while turning faster (curve pull reads as tilt) */
 #define HUMP_TILT_ALPHA           (0.1f)        /* low-pass on the gravity VECTOR before the tilt angle

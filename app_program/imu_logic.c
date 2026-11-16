@@ -235,6 +235,14 @@ void tilt_hump_reset(tilt_hump_t *p_t)
     p_t->lift_mm    = 0.0f;
     p_t->peak_mm    = 0.0f;
     p_t->len_mm     = 0.0f;
+    p_t->pitch_min  = 0.0f;
+}
+
+static bool th_valid(const tilt_hump_t *p_t, const hump_params_t *p_par)
+{
+    return (p_t->peak_mm >= p_par->min_height_mm) &&
+           ((HUMP_TILT_NOSE_DOWN_DEG <= 0.0f) || (p_t->pitch_min <= -HUMP_TILT_NOSE_DOWN_DEG) ||
+            (p_t->h_pitch_mm >= p_par->min_height_mm));
 }
 
 static void th_end(tilt_hump_t *p_t, hump_out_t *p_out, bool b_valid)
@@ -271,6 +279,7 @@ hump_out_t tilt_hump_step(tilt_hump_t *p_t, const hump_params_t *p_par, float pi
             p_t->lift_mm    = 0.0f;
             p_t->peak_mm    = 0.0f;
             p_t->len_mm     = 0.0f;
+            p_t->pitch_min  = 0.0f;
             th_put(p_t, TH_SH_ON, 1u, 1u);
             th_put(p_t, TH_SH_PEAK, 1u, 0u);
             out.b_start = true;
@@ -279,6 +288,7 @@ hump_out_t tilt_hump_step(tilt_hump_t *p_t, const hump_params_t *p_par, float pi
     }
     p_t->h_pitch_mm += sinf(pitch_deg * DEG_TO_RAD) * ds_mm;
     p_t->len_mm     += ds_mm;
+    p_t->pitch_min   = (pitch_deg < p_t->pitch_min) ? pitch_deg : p_t->pitch_min;
     {
         float tilt_lift = imu_lift_mm(lever_mm, tilt_deg);
 
@@ -288,7 +298,7 @@ hump_out_t tilt_hump_step(tilt_hump_t *p_t, const hump_params_t *p_par, float pi
     {
         p_t->peak_mm = p_t->lift_mm;
     }
-    if ((th_get(p_t, TH_SH_PEAK, 1u) == 0u) && (p_t->peak_mm >= p_par->min_height_mm))
+    if ((th_get(p_t, TH_SH_PEAK, 1u) == 0u) && th_valid(p_t, p_par))
     {
         th_put(p_t, TH_SH_PEAK, 1u, 1u);
         out.b_peak = true;
@@ -299,7 +309,7 @@ hump_out_t tilt_hump_step(tilt_hump_t *p_t, const hump_params_t *p_par, float pi
     }
     else if (n_level >= p_par->end_samples)
     {
-        th_end(p_t, &out, p_t->peak_mm >= p_par->min_height_mm);
+        th_end(p_t, &out, th_valid(p_t, p_par));
     }
     else
     {

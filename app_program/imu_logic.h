@@ -217,7 +217,11 @@ float          ema(float y, float x, float alpha);
  * on the car (HUMP_TILT_LEVER_MM: 1 cm hump 5.8 deg, 3 cm box 17.7 deg ->
  * about 100 mm).
  * The caller passes |pitch| instead of the tilt while the robot turns,
- * because the sideways pull of a curve reads as tilt. */
+ * because the sideways pull of a curve reads as tilt.
+ * Valid (PEAK, counted at END) only if the nose went down by
+ * HUMP_TILT_NOSE_DOWN_DEG (the course hump is under the right REAR wheel)
+ * or the pitch climb alone reached min_height_mm (full-width hump): rocking
+ * from the front, e.g. the barcode sensor catching the mat, does not count. */
 float imu_tilt_deg(const float p_g[3], const float p_g0[3]);   /* 0 until g0 is learnt */
 float imu_lift_mm(float lever_mm, float tilt_deg);             /* lever_mm x sin(|tilt|) */
 
@@ -238,6 +242,7 @@ typedef struct
     float   lift_mm;
     float   peak_mm;
     float   len_mm;
+    float   pitch_min;        /* lowest pitch in this hump, deg (nose down < 0) */
 } tilt_hump_t;
 
 static inline bool tilt_hump_on(const tilt_hump_t *p_t)

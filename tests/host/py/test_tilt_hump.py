@@ -21,7 +21,8 @@ class HumpParams(ctypes.Structure):
 
 
 class TiltHump(ctypes.Structure):
-    _fields_ = [("f", ctypes.c_uint8), ("h_pitch_mm", F), ("lift_mm", F), ("peak_mm", F), ("len_mm", F)]
+    _fields_ = [("f", ctypes.c_uint8), ("h_pitch_mm", F), ("lift_mm", F), ("peak_mm", F), ("len_mm", F),
+                ("pitch_min", F)]
 
 
 class HumpOut(ctypes.Structure):
@@ -127,3 +128,17 @@ def test_tilt_any_mounting(lib, g0, deg):
         along = abs(dict(zip("xyz", g0))[axis]) > 0.5               # rotating about gravity itself: no tilt
         assert got == pytest.approx(0.0 if along else deg, abs=0.05)
     assert fn(ctypes.byref((F * 3)(*g0)), ctypes.byref((F * 3)(0.0, 0.0, 0.0))) == 0.0   # no level yet
+
+
+@pytest.mark.parametrize("lift", [8.5, 10.0, 12.0])
+def test_front_rocking_is_not_a_hump(th, lift):
+    """16 Nov: the barcode sensor (front left, set very low) catching the mat
+    tips the car nose UP; the course hump (right rear wheel) tips it nose DOWN.
+    Same tilt size, but only the nose-down one counts (HUMP_TILT_NOSE_DOWN_DEG)."""
+    rocking = [(+0.45 * t, t) for _, t in one_sided(lift)]          # nose up, short (no pitch climb)
+    outs, _ = run(th, rocking, ds=1.0)
+    assert not any(o.b_peak for o in outs)
+    ends = [o for o in outs if o.b_end]
+    assert ends and not any(o.b_valid for o in ends)
+    outs, _ = run(th, one_sided(lift), ds=1.0)                       # the real hump still counts
+    assert [o.b_valid for o in outs if o.b_end] == [True]
