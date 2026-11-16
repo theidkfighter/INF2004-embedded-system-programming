@@ -237,14 +237,15 @@ The formats above show the JSON shape the tools display. On the wire, every mess
 
 **Play clip (dashboard):** plays `MQTT/clip.mp3` on the laptop, the whole file within 5 s (sped up when longer, up to 16x, pitch kept). The slider next to it sets the volume (default 30 %, remembered in that browser). Put your own audio file there under that name; it is in `.gitignore` and is not committed. The robot is not involved.
 
-**Play on car:** sends `PLAY`; the robot plays the same clip on its buzzer (GP22), 5 s, at 8 kHz. The audio is built into the firmware from a header you generate once from your `clip.mp3` (needs ffmpeg), then rebuild and flash:
+**Play on car:** sends `PLAY`; the robot plays the same clip on its buzzer (GP22), 5 s, at 16 kHz, shaped for the piezo (bass cut, 1.5-4 kHz lifted, compressed so it is loud throughout). The audio is built into the firmware from a header you generate once from your `clip.mp3` (needs ffmpeg), then rebuild and flash:
 
 ```
 python tools/make_clip.py                 # MQTT/clip.mp3 -> app_program/clip_pcm.h (git-ignored)
 python tools/make_clip.py --volume 60     # quieter
+python tools/make_clip.py --drive 1.5     # cleaner but quieter (default 2.5; 4 = loudest, rough)
 ```
 
-Without the header the firmware still builds and `PLAY` answers `nack: no clip in this firmware`. The robot refuses it in E-STOP/ERROR, an E-stop or error alarm cuts it off, and the usual beeps stay silent while it plays. The buzzer is a small piezo: expect it tinny and fairly quiet, and the board's buzzer mute switch must be off.
+Without the header the firmware still builds and `PLAY` answers `nack: no clip in this firmware`. The robot refuses it in E-STOP/ERROR, an E-stop or error alarm cuts it off, and the usual beeps stay silent while it plays. The buzzer is a small piezo: expect it tinny, with no bass.
 
 **Dependencies:** Python 3 and `paho-mqtt` for the tools. The dashboard needs nothing: no build step and no server, only `is02_codec.js` next to `dashboard.html`, and it runs from `file://`.
 

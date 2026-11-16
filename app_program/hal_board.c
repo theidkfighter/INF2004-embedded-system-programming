@@ -380,9 +380,11 @@ void hal_servo_range(uint32_t min_us, uint32_t max_us)
 }
 
 /* ---- clip playback (PLAY) ----------------------------------------------------
-   clip_pcm.h (tools/make_clip.py, git-ignored) holds 8 kHz samples 0..255. While
-   the clip plays, the buzzer slice runs at 125 MHz / 256 = 488 kHz (inaudible)
-   and a DMA channel paced by a DMA timer writes one sample per 125 us into its
+   clip_pcm.h (tools/make_clip.py, git-ignored) holds samples 0..255 at
+   CLIP_PCM_RATE_HZ (16 kHz). While the clip plays, the buzzer slice runs at
+   125 MHz / 4 / 256 = 122 kHz (inaudible, and slow enough for a transistor
+   buzzer driver to switch fully, which 488 kHz may not be) and a
+   DMA channel paced by a DMA timer writes one sample per period into its
    counter-compare register, so the duty follows the audio with no CPU work.
    The 16-bit write lands in both halves of CC; B is GP23 (CYW43 WL_REG_ON, an
    SIO pin, not PWM), so only A on GP22 is driven. At the end the slice goes
@@ -395,10 +397,13 @@ void hal_servo_range(uint32_t min_us, uint32_t max_us)
 #endif
 
 #ifdef HAVE_CLIP
-_Static_assert(CLIP_PCM_RATE_HZ == 8000u, "DMA timer below is set for 8 kHz");
 #define CLIP_WRAP        (255u)
-#define CLIP_TIMER_X     (1u)
-#define CLIP_TIMER_Y     (SYS_HZ / CLIP_PCM_RATE_HZ)    /* 125 MHz / 15625 = 8 kHz */
+#define CLIP_CLKDIV      (4u)                            /* PWM carrier 122 kHz */
+#define CLIP_TIMER_X     (2u)                            /* DMA timer: clk_sys x X / Y */
+#define CLIP_TIMER_Y     (((2u * SYS_HZ) + (CLIP_PCM_RATE_HZ / 2u)) / CLIP_PCM_RATE_HZ)   /* 16 kHz: 15625 */
+_Static_assert((CLIP_PCM_RATE_HZ >= 4000u) && (CLIP_PCM_RATE_HZ <= 48000u), "clip rate 4..48 kHz");
+_Static_assert(CLIP_TIMER_Y <= 65535u, "DMA timer Y is 16 bits");
+_Static_assert((SYS_HZ / (CLIP_CLKDIV * (CLIP_WRAP + 1u))) > (4u * CLIP_PCM_RATE_HZ), "PWM carrier too slow");
 
 static int  g_clip_ch = -1;
 static int  g_clip_tmr = -1;
@@ -430,7 +435,7 @@ bool hal_clip_play(void)
         dma_timer_set_fraction((uint)g_clip_tmr, (uint16_t)CLIP_TIMER_X, (uint16_t)CLIP_TIMER_Y);
     }
     dma_channel_abort((uint)g_clip_ch);
-    pwm_set_clkdiv(slice, 1.0f);
+    pwm_set_clkdiv(slice, (float)CLIP_CLKDIV);
     pwm_set_wrap(slice, (uint16_t)CLIP_WRAP);
     pwm_set_gpio_level(PIN_BUZZER, 128u);
     g_b_clip = true;

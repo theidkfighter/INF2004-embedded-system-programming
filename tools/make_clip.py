@@ -2,12 +2,19 @@
 """Turn MQTT/clip.mp3 into app_program/clip_pcm.h for the car's buzzer (GP22).
 
 The PLAY command (dashboard "Play on car") plays this clip on the buzzer:
-DMA feeds one sample per 125 us (8 kHz) into the buzzer's PWM duty, and the
-PWM runs at 125 MHz / 256 = 488 kHz, far above hearing, so the buzzer
-follows the sample values.
+DMA feeds one sample per 62.5 us (16 kHz) into the buzzer's PWM duty, and
+the PWM runs at 125 MHz / 4 / 256 = 122 kHz, far above hearing, so the
+buzzer follows the sample values.
 
-    python tools/make_clip.py                      # MQTT/clip.mp3, 5 s, volume 100 %
-    python tools/make_clip.py my.mp3 --volume 60
+A piezo buzzer is quiet and has almost no bass, so the clip is shaped for it:
+  - bass below 500 Hz removed (the buzzer cannot play it; it only eats headroom)
+  - 1.5..4 kHz lifted, where the buzzer is loudest and speech/vocals are clear
+  - compressed and limited so the quiet parts come up close to the loud ones
+  - driven to full scale, with a soft clip on the few peaks above it (--drive)
+
+    python tools/make_clip.py                      # MQTT/clip.mp3, 5 s, loudest
+    python tools/make_clip.py my.mp3 --volume 60   # quieter
+    python tools/make_clip.py --drive 1.5          # cleaner, a little quieter
 
 Needs ffmpeg on the PATH (stdlib only otherwise). The header holds the audio
 itself, so it is git-ignored like clip.mp3: each of you generates it from
@@ -18,14 +25,26 @@ Rebuild the firmware (make) after generating it.
 """
 
 import argparse
+import array
+import math
 import pathlib
 import subprocess
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-RATE = 8000                      # samples per second; must match CLIP_RATE_HZ in hal_board.c
+RATE = 16000                     # samples per second (the firmware reads CLIP_PCM_RATE_HZ)
 MAX_S = 5.0                      # sped up (pitch kept) to fit in this many seconds
-MAX_SAMPLES = int(RATE * MAX_S)  # 40000 x 2 bytes = 80 KB of flash
+MAX_SAMPLES = int(RATE * MAX_S)  # 80000 x 2 bytes = 156 KB of flash
+
+# ffmpeg filters after the speed-up, for a small piezo buzzer
+SHAPE = [
+    "highpass=f=500:poles=2", "highpass=f=500:poles=2",          # 24 dB/octave below 500 Hz
+    "equalizer=f=2700:t=o:w=1.5:g=8",                            # the buzzer's loud band, and the words
+    "lowpass=f=6500",                                            # keep under half the 16 kHz rate
+    "acompressor=threshold=0.05:ratio=8:attack=3:release=80:makeup=4",
+    "dynaudnorm=f=100:g=5:p=0.95:m=30",                         # even out what the compressor left
+    "alimiter=limit=0.95:attack=1:release=30:level=disabled",
+]
 
 
 def duration(src):
@@ -44,35 +63,45 @@ def tempo_chain(speed):
     return ",".join(stages)
 
 
+def rms_dbfs(x):
+    return 20.0 * math.log10(max(1e-9, math.sqrt(sum(v * v for v in x) / max(1, len(x)))))
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("src", nargs="?", default=str(ROOT / "MQTT" / "clip.mp3"))
     ap.add_argument("--out", default=str(ROOT / "app_program" / "clip_pcm.h"))
     ap.add_argument("--volume", type=int, default=100, help="0..100 %% of full scale (default 100)")
+    ap.add_argument("--drive", type=float, default=2.5,
+                    help="soft-clip drive, 1 = none; higher is louder and rougher (default 2.5)")
     args = ap.parse_args()
 
     src = pathlib.Path(args.src)
     if not src.is_file():
         sys.exit(f"{src} not found")
     vol = max(0, min(100, args.volume)) / 100.0
+    drive = max(1.0, args.drive)
     secs = duration(src)
     speed = max(1.0, secs / MAX_S)
-    # the buzzer barely reproduces bass, so drop it and keep the headroom for the rest;
-    # short fades stop the click at the start and the end
-    filt = ",".join([tempo_chain(speed) if speed > 1.0 else "anull", "highpass=f=300", "lowpass=f=3600",
-                     "afade=t=in:d=0.02", f"areverse,afade=t=in:d=0.05,areverse"])
+    filt = ",".join([tempo_chain(speed) if speed > 1.0 else "anull"] + SHAPE +
+                    ["afade=t=in:d=0.02", "areverse,afade=t=in:d=0.05,areverse"])  # no click at either end
     raw = subprocess.run(["ffmpeg", "-v", "error", "-i", str(src), "-af", filt, "-ac", "1", "-ar", str(RATE),
-                          "-f", "s16le", "-"], capture_output=True, check=True).stdout
-    pcm = [int.from_bytes(raw[i:i + 2], "little", signed=True) for i in range(0, len(raw) - 1, 2)]
-    pcm = pcm[:MAX_SAMPLES]
-    peak = max(1, max(abs(s) for s in pcm))
-    scale = vol * 127.0 / peak
-    samples = [max(0, min(255, 128 + round(s * scale))) for s in pcm]
+                          "-f", "f32le", "-"], capture_output=True, check=True).stdout
+    pcm = array.array("f")
+    pcm.frombytes(raw[:len(raw) // 4 * 4])
+    pcm = list(pcm[:MAX_SAMPLES])
+    peak = max(1e-6, max(abs(s) for s in pcm))
+    # full scale, then a tanh soft clip: drive 2.5 lifts the body of the clip ~4 dB more and rounds off peaks
+    norm = math.tanh(drive)
+    shaped = [math.tanh(drive * s / peak) / norm for s in pcm]
+    samples = [max(0, min(255, 128 + round(vol * 127.0 * s))) for s in shaped]
+    level = rms_dbfs([(v - 128) / 127.0 for v in samples])
 
     lines = [
         f"/* Generated by tools/make_clip.py from {src.name}: {secs:.2f} s played in {len(samples) / RATE:.2f} s",
-        f"   ({speed:.2f}x, pitch kept), {RATE} Hz mono, volume {round(vol * 100)} %. Git-ignored: the audio is",
-        "   your own file. Each value is the buzzer PWM level, 0..255 with 128 = silence. */",
+        f"   ({speed:.2f}x, pitch kept), {RATE} Hz mono, shaped for the piezo, volume {round(vol * 100)} %,",
+        f"   drive {drive:g}, loudness {level:.1f} dBFS RMS. Git-ignored: the audio is your own file.",
+        "   Each value is the buzzer PWM level, 0..255 with 128 = silence. */",
         "#ifndef CLIP_PCM_H",
         "#define CLIP_PCM_H",
         "",
@@ -88,7 +117,7 @@ def main():
     lines += ["};", "", "#endif", ""]
     pathlib.Path(args.out).write_text("\n".join(lines), encoding="ascii")
     print(f"{args.out}: {len(samples)} samples ({len(samples) / RATE:.2f} s, {len(samples) * 2 // 1024} KB), "
-          f"{speed:.2f}x, volume {round(vol * 100)} %")
+          f"{speed:.2f}x, volume {round(vol * 100)} %, drive {drive:g}, loudness {level:.1f} dBFS RMS")
 
 
 if __name__ == "__main__":
