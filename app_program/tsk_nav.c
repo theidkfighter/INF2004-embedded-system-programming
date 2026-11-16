@@ -281,6 +281,10 @@ LOCAL void execute(char code, bool b_at_junction, float cross_mm)
         nav_event(NAVK_DONE, code, act);
         (void)sys_set_state(SYS_LINE_FOLLOWING, false);
     }
+    else if (lift_stop())
+    {
+        /* lifted during the turn: the main loop ends the run normally */
+    }
     else
     {
         nav_event(NAVK_FAILED, code, act);
@@ -378,6 +382,14 @@ void tsk_nav(INT stacd, void *exinf)
         }
 
         st = sys_state();
+        if (driving(st) && lift_stop())
+        {
+            /* robot lifted (16 Nov requirement change): normal end of the run,
+               as BTN1 Stop. The motion task already holds the motors off. */
+            complete_run();
+            flag_clear(EVF_BYPASS_ABORT | EVF_LINE_LOST | EVF_OBSTACLE_TRIGGER);
+            st = sys_state();
+        }
         if (!driving(st))
         {
             g_pending = 0;

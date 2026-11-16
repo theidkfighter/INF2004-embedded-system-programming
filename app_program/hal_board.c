@@ -234,7 +234,7 @@ void hal_init(void)
     input_pin(PIN_US_ECHO, false);
 
     /* IMU INT1 (push-pull from the LSM303); pull-down so an unplugged IMU
-       cannot float the pin high and fake a collision */
+       cannot float the pin high (INT1 is no longer used, 16 Nov) */
     gpio_init(PIN_IMU_INT1);
     gpio_set_dir(PIN_IMU_INT1, GPIO_IN);
     gpio_pull_down(PIN_IMU_INT1);

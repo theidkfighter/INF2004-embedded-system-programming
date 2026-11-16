@@ -31,7 +31,7 @@
 #                         tk_cre_tsk called only inside start_task
 #                         (Requirement 19.1).
 #   evf_bits              The 18 EVF_* bits of g_flg_sys are defined at the
-#                         baseline positions (bit 0 EVF_COLLISION to bit 17
+#                         baseline positions (bit 0 EVF_OVERTURNED, was EVF_COLLISION, to bit 17
 #                         EVF_LOCAL_STOP) and no other single-bit EVF_* macro
 #                         exists (Requirement 19.2).
 #
@@ -67,7 +67,7 @@ ACCESSOR_HEADERS=(bitpack.h crit.h fault_mask.h status.h shared.h msg_codec.h
                   evt.h wire_ids.h wire.h perf.h isr_ring.h)
 
 # EVF_* names in bit order: index = bit position in g_flg_sys.
-EVF_BASE=(EVF_COLLISION EVF_PROXIMITY EVF_REMOTE_ESTOP EVF_BATTERY_CRITICAL
+EVF_BASE=(EVF_OVERTURNED EVF_PROXIMITY EVF_REMOTE_ESTOP EVF_BATTERY_CRITICAL
           EVF_BUZZER_REQ EVF_ESTOP EVF_MOTION_DONE EVF_LINE_FOUND EVF_LINE_LOST
           EVF_OBSTACLE_TRIGGER EVF_BYPASS_COMPLETE EVF_HUMP_START EVF_HUMP_PEAK
           EVF_HUMP_END EVF_IMU_FAULT EVF_BYPASS_ABORT EVF_ERROR_REQ EVF_LOCAL_STOP)

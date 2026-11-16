@@ -74,7 +74,8 @@ const EVENT_CASES = [
     ["RECOVERED", {}, "re-check passed"],
     ["RECOVERY_REFUSED", { why: 0b11 }, "obstacle closer than 8 cm. IMU INT1 still active. "],
     ["RECOVERY_REFUSED", { why: (1 << 2) | (1 << 14) }, "MOTOR_MAPPING_CONFIRMED, IMU_FORWARD_SIGN"],
-    ["IMPACT", {}, "while not driving"],
+    ["LIFTED", { overturned: 0 }, "lifted: run ended"],
+    ["LIFTED", { overturned: 1 }, "overturned: motors stop"],
     ["BARCODE", { code: 20, rev: 0 }, "K (read forwards)"],
     ["BARCODE", { code: 20, rev: 1 }, "K (read backwards)"],
     ["BARCODE_UNKNOWN", { code: 7, rev: 0 }, "7 (read forwards)"],
@@ -431,7 +432,7 @@ test("decode telemetry", () => {
         bc: "K",
         hump: { pitch: -90, h: -1500, peak: 1500, max: 123.4 },
         obst: { cm: -1, scan: [-1, 431, 0, 12.3, -1], side: "R" },
-        imu: { ev: "SUDDEN_IMPACT", tr: -720 },
+        imu: { ev: "LIFTED", tr: -720 },
         faults: 0xA005, vbat: 6600, rssi: -128, buf: 64,
     });
 });

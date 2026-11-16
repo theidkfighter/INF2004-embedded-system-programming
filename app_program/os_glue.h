@@ -28,7 +28,7 @@
 #define PRI_TELEMETRY   (10)
 
 /* ---- EVF_* bits in g_flg_sys ---- */
-#define EVF_COLLISION        (1u << 0)    /* IMU INT1 ISR or software backup */
+#define EVF_OVERTURNED       (1u << 0)    /* robot overturned (TSK_TERRAIN_IMU; was the IMU collision) */
 #define EVF_PROXIMITY        (1u << 1)    /* ultrasonic < 8 cm */
 #define EVF_REMOTE_ESTOP     (1u << 2)    /* MQTT ESTOP */
 #define EVF_BATTERY_CRITICAL (1u << 3)

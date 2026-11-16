@@ -1037,6 +1037,10 @@ LOCAL void abort_avoidance(abort_reason_t why)
 {
     motion_stop(SRC_OBSTACLE);
     servo_move(0.0f, 0.0f);
+    if (lift_stop())
+    {
+        return;                               /* lifted: the nav task ends the run normally */
+    }
     fault_set(FAULT_BYPASS_ABORT);
     (void)evt_post1(EVC_AVOIDANCE_ABORT, (uint32_t)why, 4u);
     flag_set(EVF_BYPASS_ABORT);

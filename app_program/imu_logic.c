@@ -134,16 +134,16 @@ void mev_reset(mev_ctx_t *p_m)
     p_m->still_ms = 0u;
 }
 
-motion_event_t mev_step(mev_ctx_t *p_m, bool b_impact, hump_state_t hump, float turn_dps,
+motion_event_t mev_step(mev_ctx_t *p_m, bool b_lifted, hump_state_t hump, float turn_dps,
                         float a_fwd_g, float v_mm_s, uint32_t dt_ms)
 {
     motion_event_t ev;
 
     p_m->still_ms = (fabsf(v_mm_s) < STATIONARY_MM_S) ? (p_m->still_ms + dt_ms) : 0u;
 
-    if (b_impact)
+    if (b_lifted)
     {
-        ev = MEV_IMPACT;
+        ev = MEV_LIFTED;
     }
     else if ((hump == HUMP_ASCENT) || (hump == HUMP_CREST))
     {
@@ -174,9 +174,9 @@ motion_event_t mev_step(mev_ctx_t *p_m, bool b_impact, hump_state_t hump, float 
         ev = MEV_CRUISING;
     }
 
-    if (ev == MEV_IMPACT)
+    if (ev == MEV_LIFTED)
     {
-        (void)mev_set_current(p_m, ev);       /* an impact is reported at once */
+        (void)mev_set_current(p_m, ev);       /* a lift is reported at once */
         (void)mev_set_n_candidate(p_m, 0u);
     }
     else if (ev == mev_candidate(p_m))
@@ -306,4 +306,88 @@ hump_out_t tilt_hump_step(tilt_hump_t *p_t, const hump_params_t *p_par, float pi
         /* still on the hump */
     }
     return out;
+}
+
+/* ---- lift / overturn ------------------------------------------------------- */
+
+void lift_reset(lift_ctx_t *p_l)
+{
+    uint32_t i;
+
+    for (i = 0u; i < 3u; i++)
+    {
+        p_l->ref[i] = 0.0f;
+        p_l->lp[i]  = 0.0f;
+    }
+    p_l->up_lp   = 1.0f;
+    p_l->n_blank = 0u;
+    p_l->n_tilt  = 0u;
+    p_l->n_up    = 0u;
+    p_l->cause   = (uint8_t)LIFT_NONE;
+}
+
+float lift_tilt_deg(const lift_ctx_t *p_l)
+{
+    return (p_l->n_blank == 0xFFu) ? imu_tilt_deg(p_l->lp, p_l->ref) : 0.0f;
+}
+
+static uint8_t sat_inc(uint8_t n)
+{
+    return (n < 0xFEu) ? (uint8_t)(n + 1u) : n;
+}
+
+lift_cause_t lift_step(lift_ctx_t *p_l, const lift_params_t *p_par, float ax, float ay, float az)
+{
+    float  a[3] = { ax, ay, az };
+    float  up;
+    float  n;
+    uint32_t i;
+
+    if (p_l->cause != (uint8_t)LIFT_NONE)
+    {
+        return LIFT_NONE;                         /* latched: reported once */
+    }
+    if (p_l->n_blank != 0xFFu)                    /* 0xFF = reference ready */
+    {
+        for (i = 0u; i < 3u; i++)
+        {
+            p_l->ref[i] += a[i];
+            p_l->lp[i]   = a[i];
+        }
+        p_l->n_blank++;
+        if (p_l->n_blank >= p_par->blank_samples)
+        {
+            for (i = 0u; i < 3u; i++)
+            {
+                p_l->ref[i] /= (float)p_l->n_blank;
+            }
+            p_l->n_blank = 0xFFu;
+        }
+        return LIFT_NONE;
+    }
+
+    for (i = 0u; i < 3u; i++)
+    {
+        p_l->lp[i] += p_par->alpha * (a[i] - p_l->lp[i]);
+    }
+    n  = sqrtf((p_l->ref[0] * p_l->ref[0]) + (p_l->ref[1] * p_l->ref[1]) + (p_l->ref[2] * p_l->ref[2]));
+    up = (n > 0.25f) ? (((a[0] * p_l->ref[0]) + (a[1] * p_l->ref[1]) + (a[2] * p_l->ref[2])) / n) : 1.0f;
+    p_l->up_lp += p_par->up_alpha * (up - p_l->up_lp);
+
+    p_l->n_tilt = (imu_tilt_deg(p_l->lp, p_l->ref) >= p_par->tilt_deg) ? sat_inc(p_l->n_tilt) : 0u;
+    p_l->n_up   = (p_l->up_lp >= (1.0f + p_par->up_g)) ? sat_inc(p_l->n_up) : 0u;
+
+    if (p_l->n_up >= p_par->up_samples)
+    {
+        p_l->cause = (uint8_t)LIFT_UP;
+    }
+    else if (p_l->n_tilt >= p_par->tilt_samples)
+    {
+        p_l->cause = (uint8_t)LIFT_OVER;
+    }
+    else
+    {
+        /* on the floor */
+    }
+    return (lift_cause_t)p_l->cause;
 }

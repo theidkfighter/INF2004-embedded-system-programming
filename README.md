@@ -259,10 +259,10 @@ The map is retained on the broker, so a robot restart keeps it. A letter not in 
 3. **Check the dashboard:** robot online, state IDLE, line sensors change over black/white, mapping shown under "Robot is using".
 4. **Place the car** with both line sensors either side of the black line (both read white).
 5. **Start:** **BTN1** (GP20) or **Start** on the dashboard. Rising chirp, LEDs green.
-6. **During the run** it follows the line, reads each barcode (short beep) and stores the letter, does the mapped turn at the next cross-junction (cyan), bypasses obstacles (orange) and slows to 60 % on humps.
-7. **End:** **BTN1** again or **Stop run**. Three-note tune, LEDs white, a `MISSION_COMPLETE` summary (time, distance, barcodes, highest hump, obstacles). BTN1 once more returns to IDLE.
+6. **During the run** it follows the line, reads each barcode (short beep) and stores the letter, does the mapped turn at the next cross-junction (cyan), bypasses obstacles (orange) and slows to 80 % on humps.
+7. **End:** **BTN1** again or **Stop run**. Lifting the car off the floor also ends the run: motors off at once, then the same summary. Three-note tune, LEDs white, a `MISSION_COMPLETE` summary (time, distance, barcodes, highest hump, obstacles). BTN1 once more returns to IDLE.
 
-**Emergency stop:** **BTN2** (GP21), the dashboard **E-STOP** / **Esc**, or `e` in the monitor. The car also stops itself on a collision (IMU), an obstacle closer than 8 cm or a stalled task. **To recover:** remove the hazard and press **BTN1**; the car re-checks itself and returns to IDLE. `RESUME` over MQTT is refused on purpose.
+**Emergency stop:** **BTN2** (GP21), the dashboard **E-STOP** / **Esc**, or `e` in the monitor. The car also E-stops itself when it is **overturned** (IMU, 60°; reason `overturned (IMU)`), an obstacle is closer than 8 cm or a task stalls. Lifting the car is a normal stop, not an E-stop (see 9.4, 16 Nov requirement change; the IMU collision detection was removed). **To recover:** remove the hazard and press **BTN1**; the car re-checks itself and returns to IDLE. `RESUME` over MQTT is refused on purpose.
 
 **Line lost:** it searches left and right; if it can't find the line it stops, beeps and returns to IDLE. Put it back and press BTN1.
 
@@ -277,7 +277,7 @@ The map is retained on the broker, so a robot restart keeps it. A letter not in 
 | Dim white | Booting |
 | **Blue** | IDLE, MQTT connected |
 | **Magenta** | IDLE, no MQTT (check hotspot, broker, firewall) |
-| **Yellow blinking** (with blue/magenta) | IDLE, IMU not answering: no hump or collision detection. Check the I2C wiring; it retries every 2 s |
+| **Yellow blinking** (with blue/magenta) | IDLE, IMU not answering: no hump or lift detection. Check the I2C wiring; it retries every 2 s |
 | **Green** | Line following |
 | **Cyan** | Barcode turn at a junction |
 | **Orange** | Obstacle avoidance |
@@ -341,6 +341,12 @@ Defaults are in `app_program/robot_config.h`; send measured values with `MQTT/ro
 | `IMU_FORWARD_AXIS`, `IMU_FORWARD_SIGN` | 1 (X) / +1 | Tilt the car nose-up and check the pitch sign |
 
 The IMU firmware detects either GY-511 chip: LSM303DLHC (accel 0x19) or **LSM303D** (0x1E, which our board has).
+
+**Lift / overturn stop (IMU).** While the car drives, the first 0.4 s of each run sets the reference (the car standing on the floor). After that:
+- **Lifted** (pushed upwards: more than 0.25 g extra on the up axis for 60 ms, `LIFT_UP_G`, `LIFT_UP_SAMPLES`): the motors stop at once and the run **ends normally**, as with BTN1 Stop: three-note tune, `MISSION_COMPLETE` summary, event `LIFTED` "lifted: run ended". BTN1 returns to IDLE. This is how the demo run is ended.
+- **Overturned** (tilted 60° or more from the start posture for 200 ms, `LIFT_TILT_DEG`, `LIFT_TILT_SAMPLES`): **E-stop**, reason `overturned (IMU)`, event `LIFTED` "overturned: motors stop". Recover with BTN1 once the car is upright.
+
+A single jolt and the course hump (6–8°) trigger neither. A very slow, gentle lift may not be seen: lift with a clear upward movement. Settings: `LIFT_*` in `robot_config.h` (`LIFT_DETECT 0` turns it off). The old IMU collision stop (2 g, INT1) is removed.
 
 ### 9.5 Main tuning parameters (`SET:` or `robot_params.txt`)
 

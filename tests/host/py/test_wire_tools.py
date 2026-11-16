@@ -23,7 +23,7 @@ HOST = Path(__file__).resolve().parents[1]
 BUILD = HOST / "build"
 
 # design D2 stop reasons and D10 abort reasons (the Baseline_Build texts)
-STOP_TEXTS = ["", "remote E-stop (MQTT)", "BTN2 stop", "collision (IMU)", "obstacle closer than 8 cm",
+STOP_TEXTS = ["", "remote E-stop (MQTT)", "BTN2 stop", "overturned (IMU)", "obstacle closer than 8 cm",
               "watchdog: a control task stopped running", "calibration missing",
               "IMU fault (3 failed I2C recoveries)", "battery critical", "fault reported (see faults in telemetry)"]
 ABORT_TEXTS = ["bypass leg failed (timeout, E-stop or proximity)", "realign failed",

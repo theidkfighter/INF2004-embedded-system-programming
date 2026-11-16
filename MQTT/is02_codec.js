@@ -98,7 +98,7 @@
         ["BATTERY_LOW", 0, false], ["START_REFUSED", 0, false], ["MAP_WARNING", 78, false],
         ["MISSION_COMPLETE", 59, false], ["TURN_SNAP", 1, false], ["NAV_ACTION", 8, false], ["NAV", 10, false],
         ["EMERGENCY_STOP", 4, false], ["ERROR", 4, false], ["RECOVERED", 0, false], ["RECOVERY_REFUSED", 15, false],
-        ["IMPACT", 0, false], ["BC_DBG", 203, true], ["BARCODE", 7, false], ["BARCODE_UNKNOWN", 7, false],
+        ["LIFTED", 1, false], ["BC_DBG", 203, true], ["BARCODE", 7, false], ["BARCODE_UNKNOWN", 7, false],
         ["BARCODE_FAULT", 0, false], ["BARCODE_FAILED", 0, false], ["LINE_FOUND", 0, false], ["LINE_LOST", 0, false],
         ["LINE_SEARCH", 1, false], ["FINE_SCAN", 110, true], ["SIDE_FOLLOW", 64, false], ["SIDE_LOOK", 27, false],
         ["BYPASS_EXTEND", 10, false], ["BYPASS_SIDESTEP", 10, false], ["BYPASS_RETURN", 0, false],
@@ -156,7 +156,7 @@
     var WCMD_UNPARSED = 15;
 
     var STOP_REASONS = [
-        "", "remote E-stop (MQTT)", "BTN2 stop", "collision (IMU)", "obstacle closer than 8 cm",
+        "", "remote E-stop (MQTT)", "BTN2 stop", "overturned (IMU)", "obstacle closer than 8 cm",
         "watchdog: a control task stopped running", "calibration missing",
         "IMU fault (3 failed I2C recoveries)", "battery critical", "fault reported (see faults in telemetry)"
     ];
@@ -172,7 +172,7 @@
     var STATES = ["INITIALISING", "IDLE", "LINE_FOLLOWING", "MANEUVER", "OBSTACLE_AVOIDANCE",
         "MISSION_COMPLETE", "EMERGENCY_STOP", "ERROR"];
     var MOTION_EVENTS = ["STATIONARY", "CRUISING", "ACCELERATING", "DECELERATING", "TURNING",
-        "CLIMBING_HUMP", "DESCENDING_HUMP", "SUDDEN_IMPACT"];
+        "CLIMBING_HUMP", "DESCENDING_HUMP", "LIFTED"];
     var ACTIONS = ["NONE", "FWD", "UTURN", "LEFT", "RIGHT"];    // nav_action_t
     var ACT_NONE = 0;
     var C39_CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-. $/+%";
@@ -413,6 +413,7 @@
         MAP_WARNING: MAP78,
         MISSION_COMPLETE: [["t", 17], ["dist", 14], ["bc", 6], ["humps", 4], ["max", 14], ["obst", 4]],
         TURN_SNAP: [["not_seen", 1]],
+        LIFTED: [["overturned", 1]],
         NAV_ACTION: [["letter", 5], ["action", 3]],
         NAV: [["variant", 2], ["letter", 5], ["action", 3]],
         EMERGENCY_STOP: [["reason", 4]],
@@ -919,7 +920,6 @@
         ["BATTERY_LOW", "below VBAT_LOW_MV"],
         ["START_REFUSED", "calibration missing (see console)"],
         ["RECOVERED", "re-check passed"],
-        ["IMPACT", "while not driving"],
         ["BARCODE_FAULT", "3 ambiguous barcodes: going straight (C)"],
         ["BARCODE_FAILED", "window did not decode"],
         ["LINE_FOUND", "search"],
@@ -1097,6 +1097,7 @@
         ["TURN_SNAP", function (a, emit) {
             return a.not_seen ? "line not seen, encoder angle kept" : "stopped on the line";
         }],
+        ["LIFTED", function (a, emit) { return a.overturned ? "overturned: motors stop" : "lifted: run ended"; }],
         ["NAV_ACTION", textNavAction],
         ["NAV", textNav],
         ["EMERGENCY_STOP", function (a, emit) { return String(lookup(STOP_REASONS, a.reason, "stop reason", emit)); }],

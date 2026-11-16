@@ -154,7 +154,7 @@ edge = [0.0, 3.0, -3.0, 5.0, -5.0, 2.9999998, 3.0000002, 4.9999995, 5.0000005,
         -2.9999998, -3.0000002, -4.9999995, -5.0000005, 8.0, -8.0, 12.0, -12.0, 90.0, -90.0]
 pitches = st.one_of(st.sampled_from(edge), st.floats(-90, 90, **fin))
 steps = st.one_of(st.sampled_from([0.0, 2.0, 5.0, 20.0, -5.0]), st.floats(-60, 60, **fin))
-resets = st.sampled_from([False] * 19 + [True])       # I2C fault or collision in tsk_imu.c
+resets = st.sampled_from([False] * 19 + [True])       # I2C fault or lift in tsk_imu.c
 
 
 @pytest.mark.prop(15, TITLE, unit="hump_ctx_t.f, held pitch runs")

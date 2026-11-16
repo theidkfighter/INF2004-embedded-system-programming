@@ -19,7 +19,7 @@ static const char * const STATE_NAMES[SYS_STATE_COUNT] =
 static const char * const MEV_NAMES[MEV_COUNT] =
 {
     "STATIONARY", "CRUISING", "ACCELERATING", "DECELERATING", "TURNING",
-    "CLIMBING_HUMP", "DESCENDING_HUMP", "SUDDEN_IMPACT"
+    "CLIMBING_HUMP", "DESCENDING_HUMP", "LIFTED"
 };
 
 const char *sys_state_name(sys_state_t state)

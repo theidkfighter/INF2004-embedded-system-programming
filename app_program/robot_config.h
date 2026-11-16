@@ -236,7 +236,21 @@
 #define HUMP_TILT_LEVER_MM        (100.0f)      /* raised wheel to tipping line; calibrated 3 Nov:
                                                    1 cm hump 5.8 deg, 3 cm box 17.7 deg -> 99 / 100 mm */
 #define IMU_EMA_ALPHA             (0.3f)        /* DR 6.3: alpha = 0.3 */
-#define IMPACT_G                  (2.0f)        /* FR23 software backup threshold */
+/* Lift / overturn stop (16 Nov requirement change: replaces the IMU collision
+   detection). Only while driving; the reference is the gravity vector averaged
+   over the first LIFT_BLANK_SAMPLES after driving starts (robot on the floor).
+   Lifted: normal end of the run (motors off at once, MISSION_COMPLETE
+   summary, like BTN1 Stop). Overturned: E-stop. */
+#define LIFT_DETECT               (1)           /* 0 = no lift / overturn stop */
+#define LIFT_TILT_DEG             (60.0f)       /* OVERTURNED: tilt from the start posture this large
+                                                   (the course hump gives 6-8 deg) */
+#define LIFT_TILT_SAMPLES         (10u)         /* ... for this many 20 ms samples (200 ms) */
+#define LIFT_UP_G                 (0.25f)       /* upward acceleration this large = picked up (1.25 g on the up axis) */
+#define LIFT_UP_SAMPLES           (3u)          /* ... for this many 20 ms samples (60 ms; a jolt is 1 sample) */
+#define LIFT_BLANK_SAMPLES        (20u)         /* 400 ms after driving starts: learn the reference, no check */
+#define LIFT_ALPHA                (0.2f)        /* low-pass on the accel vector for the tilt (about 100 ms) */
+#define LIFT_UP_ALPHA             (1.0f)        /* low-pass on the up-axis reading; 1 = none, so a single
+                                                   jolt cannot spread over LIFT_UP_SAMPLES samples */
 #define TURNING_DPS               (30.0f)
 #define ACCEL_G                   (0.05f)
 #define STATIONARY_MM_S           (10.0f)

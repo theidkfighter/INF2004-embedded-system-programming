@@ -3,12 +3,13 @@
  * @brief   TSK_SAFETY_MON (DR Section 3 / 5, highest application priority,
  *          10 ms): emergency stop, error state, watchdog, buttons, buzzer.
  *
- * E-stop sources (NFR21, FR23, NFR17): IMU collision (INT1 ISR or the
- * software backup) while driving, critical proximity (< 8 cm), a control
+ * E-stop sources (NFR21, NFR17): robot overturned while driving
+ * (TSK_TERRAIN_IMU; 16 Nov requirement change, replaces the IMU collision
+ * detection; a lift is a normal end of the run, tsk_nav.c), critical proximity (< 8 cm), a control
  * task heartbeat missing for 300 ms while driving, a remote MQTT ESTOP, or
  * BTN2. Action: motor outputs low at once (direct PWM write, before anything
  * else), EVF_ESTOP latched, alarm. Recovery: hazard gone + BTN1 + automated
- * re-check (proximity clear, INT1 released, IMU answering) -> IDLE.
+ * re-check (proximity clear, calibration complete) -> IDLE.
  *
  * ERROR: entered on EVF_ERROR_REQ (encoder loss, motion timeout, bypass
  * abort, ...), EVF_IMU_FAULT or EVF_BATTERY_CRITICAL. Motors off, error
@@ -108,17 +109,6 @@ LOCAL bool driving(sys_state_t st)
     return (st == SYS_LINE_FOLLOWING) || (st == SYS_MANEUVER) || (st == SYS_OBSTACLE_AVOIDANCE);
 }
 
-LOCAL void clear_int1(void)
-{
-    uint8_t src;
-
-    if (tk_loc_mtx(g_mtx_i2c, 20) >= E_OK)
-    {
-        (void)hal_imu_int1_src(&src);         /* reading INT1_SRC_A releases the latch */
-        (void)tk_unl_mtx(g_mtx_i2c);
-    }
-}
-
 LOCAL void kill(void)
 {
     hal_motor_kill();                         /* direct PWM write first (NFR21) */
@@ -159,7 +149,7 @@ LOCAL void enter_error(stop_reason_t reason)
 
 /* Automated re-check before leaving E-STOP / ERROR (DR Section 5). */
 /* *p_bits: RECOVERY_REFUSED argument U15 (design D10) = bit 0 obstacle
-   < 8 cm, bit 1 INT1 still active, bits 2..14 missing calibration items in
+   < 8 cm, bit 1 unused (was IMU INT1; collision detection removed), bits 2..14 missing calibration items in
    config_check() order (app_check.h item i -> bit i + 2). */
 LOCAL bool recheck(char *p_why, uint32_t size, uint32_t *p_bits)
 {
@@ -176,16 +166,6 @@ LOCAL bool recheck(char *p_why, uint32_t size, uint32_t *p_bits)
         *p_bits |= 1u << 0;
         b_ok = false;
     }
-    if ((st_faults() & FAULT_IMU_DEAD) == 0u)
-    {
-        clear_int1();
-        if (hal_imu_int1_level())
-        {
-            jb_raw(&jb, "IMU INT1 still active. ");
-            *p_bits |= 1u << 1;
-            b_ok = false;
-        }
-    }
     if (!config_check(&p_why[jb_len(&jb)], size - jb_len(&jb)))
     {
         b_ok = false;                         /* the list of missing values was appended */
@@ -201,7 +181,7 @@ LOCAL void try_recover(void)
 
     if (recheck(why, sizeof(why), &bits))
     {
-        flag_clear(EVF_ESTOP | EVF_COLLISION | EVF_PROXIMITY | EVF_REMOTE_ESTOP | EVF_LOCAL_STOP |
+        flag_clear(EVF_ESTOP | EVF_OVERTURNED | EVF_PROXIMITY | EVF_REMOTE_ESTOP | EVF_LOCAL_STOP |
                    EVF_ERROR_REQ | EVF_BATTERY_CRITICAL | EVF_IMU_FAULT);
         fault_clear(FAULT_BASE_MASK & ~FAULT_IMU_DEAD);   /* IMU state is owned by TSK_TERRAIN_IMU; link and
                                                             no-echo bits are not recovery faults (D1) */
@@ -256,11 +236,6 @@ void tsk_safety(INT stacd, void *exinf)
         (void)tk_slp_tsk(TMO_FEVR);          /* every 10 ms, or at once on a hazard */
         st = sys_state();
         f  = flag_peek();
-        if (((f & EVF_COLLISION) != 0u) && ((st_faults() & FAULT_IMU_DEAD) != 0u))
-        {
-            flag_clear(EVF_COLLISION);            /* no IMU: INT1 is not trustworthy */
-            f &= ~EVF_COLLISION;
-        }
 
         /* ---- hazards first ---- */
         if ((st == SYS_ESTOP) && ((f & EVF_REMOTE_ESTOP) != 0u) && estop_rx_take(&rx_us))
@@ -277,11 +252,10 @@ void tsk_safety(INT stacd, void *exinf)
             {
                 enter_estop(SR_BTN2);
             }
-            else if (((f & EVF_COLLISION) != 0u) && driving(st))
+            else if (((f & EVF_OVERTURNED) != 0u) && driving(st))
             {
-                enter_estop(SR_COLLISION);
-                clear_int1();
-                st_set_motion_event(MEV_IMPACT);
+                enter_estop(SR_OVERTURNED);           /* motors off at once (kill() first) */
+                st_set_motion_event(MEV_LIFTED);
             }
             else if (((f & EVF_PROXIMITY) != 0u) && driving(st))
             {
@@ -289,11 +263,9 @@ void tsk_safety(INT stacd, void *exinf)
             }
             else
             {
-                if ((f & EVF_COLLISION) != 0u)
+                if ((f & EVF_OVERTURNED) != 0u)
                 {
-                    flag_clear(EVF_COLLISION);   /* bump while not driving: report only */
-                    clear_int1();
-                    (void)evt_post0(EVC_IMPACT);   /* "while not driving" */
+                    flag_clear(EVF_OVERTURNED);      /* not driving: motors are already off */
                 }
                 if ((f & EVF_PROXIMITY) != 0u)
                 {

@@ -6,7 +6,7 @@
  * -> CREST (|theta| <= 3 deg with h > 15 mm) -> DESCENT (theta <= -5 deg for
  * 3 samples) -> completion (|theta| <= 3 deg for 5 samples). Height is
  * integrated as h += sin(theta) * ds from the encoder distance.
- * Region B (motion events): IMPACT > CLIMBING/DESCENDING > TURNING >
+ * Region B (motion events): LIFTED > CLIMBING/DESCENDING > TURNING >
  * ACCELERATING/DECELERATING > STATIONARY > CRUISING, held 3 samples.
  *
  * Pure logic: unit-tested on the PC (tests/).
@@ -197,7 +197,7 @@ static inline bool mev_set_n_candidate(mev_ctx_t *p_m, uint32_t n)
 
 void           mev_reset(mev_ctx_t *p_m);
 /* Returns the reported event (changes only after 3 identical samples). */
-motion_event_t mev_step(mev_ctx_t *p_m, bool b_impact, hump_state_t hump, float turn_dps,
+motion_event_t mev_step(mev_ctx_t *p_m, bool b_lifted, hump_state_t hump, float turn_dps,
                         float a_fwd_g, float v_mm_s, uint32_t dt_ms);
 
 /* EMA low-pass: y += alpha * (x - y) */
@@ -248,5 +248,53 @@ static inline bool tilt_hump_on(const tilt_hump_t *p_t)
 void       tilt_hump_reset(tilt_hump_t *p_t);
 hump_out_t tilt_hump_step(tilt_hump_t *p_t, const hump_params_t *p_par, float pitch_deg,
                           float tilt_deg, float lever_mm, float ds_mm);
+
+/* ---- lift / overturn (16 Nov requirement change) ---------------------------
+ * Replaces the IMU collision detection. Called every 20 ms while driving.
+ * The first blank_samples average the accel vector into the reference
+ * (the robot is on the floor when it starts driving; any IMU mounting).
+ * Then, latched until lift_reset():
+ *   LIFT_UP:   accel along the reference up axis (1 g at rest)
+ *              >= 1 + up_g for up_samples (lifted: the caller ends the run);
+ *   LIFT_OVER: angle(low-passed accel, reference) >= tilt_deg (60 deg)
+ *              for tilt_samples (overturned: the caller raises an E-stop).
+ * A single jolt (one sample) does neither. */
+typedef enum
+{
+    LIFT_NONE = 0,
+    LIFT_OVER,
+    LIFT_UP
+} lift_cause_t;
+
+typedef struct
+{
+    float   tilt_deg;
+    float   up_g;
+    float   alpha;            /* low-pass on the accel vector (tilt) */
+    float   up_alpha;         /* low-pass on the up-axis reading */
+    uint8_t tilt_samples;
+    uint8_t up_samples;
+    uint8_t blank_samples;
+} lift_params_t;
+
+typedef struct
+{
+    float   ref[3];           /* sum during blanking, then the mean (reference) */
+    float   lp[3];            /* low-passed accel vector */
+    float   up_lp;            /* low-passed up-axis reading, g */
+    uint8_t n_blank;          /* samples averaged so far */
+    uint8_t n_tilt;
+    uint8_t n_up;
+    uint8_t cause;            /* lift_cause_t once latched, else LIFT_NONE */
+} lift_ctx_t;
+
+void         lift_reset(lift_ctx_t *p_l);
+lift_cause_t lift_step(lift_ctx_t *p_l, const lift_params_t *p_par, float ax, float ay, float az);
+float        lift_tilt_deg(const lift_ctx_t *p_l);   /* current tilt from the reference (0 while blanking) */
+
+static inline bool lift_latched(const lift_ctx_t *p_l)
+{
+    return p_l->cause != (uint8_t)LIFT_NONE;
+}
 
 #endif /* IMU_LOGIC_H */

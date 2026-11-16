@@ -142,7 +142,7 @@ typedef enum
     MEV_TURNING,
     MEV_CLIMBING,
     MEV_DESCENDING,
-    MEV_IMPACT,
+    MEV_LIFTED,
     MEV_COUNT
 } motion_event_t;
 

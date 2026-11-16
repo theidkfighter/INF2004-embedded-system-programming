@@ -52,7 +52,7 @@ EVENTS = [
     ("BATTERY_LOW", 0, False), ("START_REFUSED", 0, False), ("MAP_WARNING", 78, False),
     ("MISSION_COMPLETE", 59, False), ("TURN_SNAP", 1, False), ("NAV_ACTION", 8, False), ("NAV", 10, False),
     ("EMERGENCY_STOP", 4, False), ("ERROR", 4, False), ("RECOVERED", 0, False), ("RECOVERY_REFUSED", 15, False),
-    ("IMPACT", 0, False), ("BC_DBG", 203, True), ("BARCODE", 7, False), ("BARCODE_UNKNOWN", 7, False),
+    ("LIFTED", 1, False), ("BC_DBG", 203, True), ("BARCODE", 7, False), ("BARCODE_UNKNOWN", 7, False),
     ("BARCODE_FAULT", 0, False), ("BARCODE_FAILED", 0, False), ("LINE_FOUND", 0, False), ("LINE_LOST", 0, False),
     ("LINE_SEARCH", 1, False), ("FINE_SCAN", 110, True), ("SIDE_FOLLOW", 64, False), ("SIDE_LOOK", 27, False),
     ("BYPASS_EXTEND", 10, False), ("BYPASS_SIDESTEP", 10, False), ("BYPASS_RETURN", 0, False),
@@ -108,7 +108,7 @@ WCMD = {c[0]: code for code, c in enumerate(COMMANDS)}
 WCMD_UNPARSED = 15
 
 STOP_REASONS = [
-    "", "remote E-stop (MQTT)", "BTN2 stop", "collision (IMU)", "obstacle closer than 8 cm",
+    "", "remote E-stop (MQTT)", "BTN2 stop", "overturned (IMU)", "obstacle closer than 8 cm",
     "watchdog: a control task stopped running", "calibration missing",
     "IMU fault (3 failed I2C recoveries)", "battery critical", "fault reported (see faults in telemetry)",
 ]
@@ -124,7 +124,7 @@ ABORT_REASONS = [
 STATES = ["INITIALISING", "IDLE", "LINE_FOLLOWING", "MANEUVER", "OBSTACLE_AVOIDANCE",
           "MISSION_COMPLETE", "EMERGENCY_STOP", "ERROR"]
 MOTION_EVENTS = ["STATIONARY", "CRUISING", "ACCELERATING", "DECELERATING", "TURNING",
-                 "CLIMBING_HUMP", "DESCENDING_HUMP", "SUDDEN_IMPACT"]
+                 "CLIMBING_HUMP", "DESCENDING_HUMP", "LIFTED"]
 ACTIONS = ["NONE", "FWD", "UTURN", "LEFT", "RIGHT"]     # nav_action_t
 ACT_NONE = 0
 C39_CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-. $/+%"
@@ -339,6 +339,7 @@ EVENT_ARGS = {
     "MAP_WARNING": MAP78,
     "MISSION_COMPLETE": (("t", 17), ("dist", 14), ("bc", 6), ("humps", 4), ("max", 14), ("obst", 4)),
     "TURN_SNAP": (("not_seen", 1),),
+    "LIFTED": (("overturned", 1),),
     "NAV_ACTION": (("letter", 5), ("action", 3)),
     "NAV": (("variant", 2), ("letter", 5), ("action", 3)),
     "EMERGENCY_STOP": (("reason", 4),),
@@ -746,7 +747,6 @@ FIXED_DETAIL = {
     "BATTERY_LOW": "below VBAT_LOW_MV",
     "START_REFUSED": "calibration missing (see console)",
     "RECOVERED": "re-check passed",
-    "IMPACT": "while not driving",
     "BARCODE_FAULT": "3 ambiguous barcodes: going straight (C)",
     "BARCODE_FAILED": "window did not decode",
     "LINE_FOUND": "search",
@@ -911,6 +911,7 @@ EVENT_TEXT = {
     "MAP_WARNING": lambda a, emit: describe_map(a["map"], emit) or "no barcode map yet (send MAP:...)",
     "MISSION_COMPLETE": text_mission,
     "TURN_SNAP": lambda a, emit: "line not seen, encoder angle kept" if a["not_seen"] else "stopped on the line",
+    "LIFTED": lambda a, emit: "overturned: motors stop" if a["overturned"] else "lifted: run ended",
     "NAV_ACTION": text_nav_action,
     "NAV": text_nav,
     "EMERGENCY_STOP": lambda a, emit: str(lookup(STOP_REASONS, a["reason"], "stop reason", emit)),

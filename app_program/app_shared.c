@@ -24,6 +24,7 @@ volatile uint8_t  g_net_flags;
 volatile uint32_t g_estop_rx_us;
 volatile uint16_t g_estop_pwm_off_us;
 volatile uint32_t g_done;
+volatile uint8_t  g_lift;
 
 /* ---- buzzer --------------------------------------------------------------- */
 
@@ -104,6 +105,18 @@ void estop_pwm_off_put(uint32_t us)
 uint16_t estop_pwm_off(void)
 {
     return g_estop_pwm_off_us;
+}
+
+/* ---- lift stop -------------------------------------------------------------- */
+
+void lift_stop_put(bool b_lifted)
+{
+    g_lift = b_lifted ? 1u : 0u;              /* one byte store */
+}
+
+bool lift_stop(void)
+{
+    return (g_lift & 1u) != 0u;
 }
 
 void config_due_set(void)
