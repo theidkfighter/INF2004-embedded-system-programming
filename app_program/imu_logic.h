@@ -6,7 +6,7 @@
  * -> CREST (|theta| <= 3 deg with h > 15 mm) -> DESCENT (theta <= -5 deg for
  * 3 samples) -> completion (|theta| <= 3 deg for 5 samples). Height is
  * integrated as h += sin(theta) * ds from the encoder distance.
- * Region B (motion events): IMPACT > CLIMBING/DESCENDING > TURNING >
+ * Region B (motion events): LIFTED > CLIMBING/DESCENDING > TURNING >
  * ACCELERATING/DECELERATING > STATIONARY > CRUISING, held 3 samples.
  *
  * Pure logic: unit-tested on the PC (tests/).
@@ -197,7 +197,7 @@ static inline bool mev_set_n_candidate(mev_ctx_t *p_m, uint32_t n)
 
 void           mev_reset(mev_ctx_t *p_m);
 /* Returns the reported event (changes only after 3 identical samples). */
-motion_event_t mev_step(mev_ctx_t *p_m, bool b_impact, hump_state_t hump, float turn_dps,
+motion_event_t mev_step(mev_ctx_t *p_m, bool b_lifted, hump_state_t hump, float turn_dps,
                         float a_fwd_g, float v_mm_s, uint32_t dt_ms);
 
 /* EMA low-pass: y += alpha * (x - y) */
@@ -217,7 +217,11 @@ float          ema(float y, float x, float alpha);
  * on the car (HUMP_TILT_LEVER_MM: 1 cm hump 5.8 deg, 3 cm box 17.7 deg ->
  * about 100 mm).
  * The caller passes |pitch| instead of the tilt while the robot turns,
- * because the sideways pull of a curve reads as tilt. */
+ * because the sideways pull of a curve reads as tilt.
+ * Valid (PEAK, counted at END) only if the nose went down by
+ * HUMP_TILT_NOSE_DOWN_DEG (the course hump is under the right REAR wheel)
+ * or the pitch climb alone reached min_height_mm (full-width hump): rocking
+ * from the front, e.g. the barcode sensor catching the mat, does not count. */
 float imu_tilt_deg(const float p_g[3], const float p_g0[3]);   /* 0 until g0 is learnt */
 float imu_lift_mm(float lever_mm, float tilt_deg);             /* lever_mm x sin(|tilt|) */
 
@@ -238,6 +242,7 @@ typedef struct
     float   lift_mm;
     float   peak_mm;
     float   len_mm;
+    float   pitch_min;        /* lowest pitch in this hump, deg (nose down < 0) */
 } tilt_hump_t;
 
 static inline bool tilt_hump_on(const tilt_hump_t *p_t)
@@ -248,5 +253,60 @@ static inline bool tilt_hump_on(const tilt_hump_t *p_t)
 void       tilt_hump_reset(tilt_hump_t *p_t);
 hump_out_t tilt_hump_step(tilt_hump_t *p_t, const hump_params_t *p_par, float pitch_deg,
                           float tilt_deg, float lever_mm, float ds_mm);
+
+/* ---- lift / overturn (16 Nov requirement change) ---------------------------
+ * Replaces the IMU collision detection. Called every 20 ms while driving.
+ * The first blank_samples average the accel vector into the reference
+ * (the robot is on the floor when it starts driving; any IMU mounting).
+ * Then, latched until lift_reset():
+ *   LIFT_UP:   estimated upward speed v >= v_lift_mm_s, where every sample
+ *              v = leak * v + clamp(up - 1 g, +-up_clip_g) * g * 20 ms and up
+ *              = accel along the reference up axis (lifted: the caller ends
+ *              the run). Tolerant of an uneven pick-up; a single jolt adds at
+ *              most up_clip_g x 196 mm/s.
+ *   LIFT_TILT: tilt = angle(low-passed accel, reference) >= tilt_deg for
+ *              tilt_samples (tipped up in a hand: lifted, ends the run).
+ *   LIFT_OVER: tilt >= over_deg for over_samples, or already >= over_deg
+ *              when LIFT_TILT fires (overturned: the caller raises an E-stop). */
+typedef enum
+{
+    LIFT_NONE = 0,
+    LIFT_OVER,
+    LIFT_UP,
+    LIFT_TILT
+} lift_cause_t;
+
+typedef struct
+{
+    float   v_lift_mm_s;
+    float   v_leak;
+    float   up_clip_g;
+    float   tilt_deg;
+    float   over_deg;
+    float   alpha;            /* low-pass on the accel vector (tilt) */
+    uint8_t tilt_samples;
+    uint8_t over_samples;
+    uint8_t blank_samples;
+} lift_params_t;
+
+typedef struct
+{
+    float   ref[3];           /* sum during blanking, then the mean (reference) */
+    float   lp[3];            /* low-passed accel vector */
+    float   v_mm_s;           /* estimated upward speed */
+    uint8_t n_blank;          /* samples averaged so far; 0xFF = reference ready */
+    uint8_t n_tilt;
+    uint8_t n_over;
+    uint8_t cause;            /* lift_cause_t once latched, else LIFT_NONE */
+} lift_ctx_t;
+
+void         lift_reset(lift_ctx_t *p_l);
+lift_cause_t lift_step(lift_ctx_t *p_l, const lift_params_t *p_par, float ax, float ay, float az);
+float        lift_tilt_deg(const lift_ctx_t *p_l);   /* current tilt from the reference (0 while blanking) */
+
+static inline bool lift_latched(const lift_ctx_t *p_l)
+{
+    return p_l->cause != (uint8_t)LIFT_NONE;
+}
 
 #endif /* IMU_LOGIC_H */

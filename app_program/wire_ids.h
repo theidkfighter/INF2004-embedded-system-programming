@@ -109,7 +109,7 @@
     X(16, ERROR,             4u, 0) \
     X(17, RECOVERED,         0u, 0) \
     X(18, RECOVERY_REFUSED, 15u, 0) \
-    X(19, IMPACT,            0u, 0) \
+    X(19, LIFTED,            1u, 0) \
     X(20, BC_DBG,           WIRE_BC_DBG_ARG_MAX, 1) \
     X(21, BARCODE,           7u, 0) \
     X(22, BARCODE_UNKNOWN,   7u, 0) \
@@ -242,7 +242,7 @@ typedef enum
     X(0, NONE,            "") \
     X(1, REMOTE_ESTOP,    "remote E-stop (MQTT)") \
     X(2, BTN2,            "BTN2 stop") \
-    X(3, COLLISION,       "collision (IMU)") \
+    X(3, OVERTURNED,      "overturned (IMU)") \
     X(4, OBSTACLE,        "obstacle closer than 8 cm") \
     X(5, WATCHDOG,        "watchdog: a control task stopped running") \
     X(6, CALIBRATION,     "calibration missing") \

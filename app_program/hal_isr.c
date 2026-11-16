@@ -4,7 +4,7 @@
  *
  * GPIO (IO_BANK0, IRQ 13): one dispatcher for every edge interrupt, as agreed
  * in DR Section 4 - wheel encoders (4x quadrature), HC-SR04 Echo (pulse
- * timing) and IMU INT1 (collision, FR23).
+ * timing) and IMU INT1 (no longer used: collision detection removed 16 Nov).
  *
  * TIMER alarm 3 (IRQ 3), 1 kHz: samples the barcode sensor on ADC0, finds
  * black/white edges with hysteresis and queues each edge with the encoder

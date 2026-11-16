@@ -181,6 +181,11 @@
 #define OBST_REACQ_SWEEP_DEG      (25.0f)       /* dynamic turn: parallel again but the LEFT sensor (the one line
                                                    following tracks) sees no line: pivot this far towards the path
                                                    side, then the other way, stopping on the line. 0 = off */
+#define OBST_REACQ_SWEEP2_DEG     (45.0f)       /* dynamic turn: backup sweep when the first one (OBST_REACQ_SWEEP_DEG)
+                                                   finds nothing: out to this angle on the far side, then the same on the
+                                                   path side (16 Nov: back on the line but the first sweep missed it).
+                                                   The sensors are 60 mm ahead of the axle: 25 deg reaches ~25 mm
+                                                   sideways, 45 deg ~42 mm. 0 = off */
 #define OBST_TURN_MIN_DEG         (30.0f)       /* dynamic turn: smallest first turn angle */
 #define OBST_TURN_MAX_DEG         (70.0f)       /* dynamic turn: largest first turn angle */
 #define OBST_EDGE_PAD_MM          (20)          /* [P] added to each measured obstacle edge: a flat face stops echoing
@@ -225,6 +230,11 @@
 #define HUMP_TILT_DETECT          (1)
 #define HUMP_TILT_START_DEG       (2.5f)        /* tilt above this for HUMP_START_SAMPLES starts a hump */
 #define HUMP_TILT_LEVEL_DEG       (1.5f)        /* tilt below this for HUMP_END_SAMPLES ends it (1.0 left too little margin over driving vibration) */
+#define HUMP_TILT_NOSE_DOWN_DEG   (1.0f)        /* a one-sided hump counts only if the nose went down this far
+                                                   (right rear wheel raised: -2.5 to -3.3 deg measured 3 Nov). The
+                                                   low barcode sensor catching at the front LEFT lifts the nose
+                                                   instead: 16 Nov runs counted 15 humps. A full-width climb
+                                                   (pitch height >= HUMP_TILT_MIN_MM) still counts. 0 = off */
 #define HUMP_TILT_MIN_MM          (7.0f)        /* smallest lift that counts as a hump (3 Nov: real 1 cm hump 10.2 mm, a false one 6.0 mm) */
 #define HUMP_TILT_MAX_TURN_DPS    (20.0f)       /* only pitch counts while turning faster (curve pull reads as tilt) */
 #define HUMP_TILT_ALPHA           (0.1f)        /* low-pass on the gravity VECTOR before the tilt angle
@@ -236,7 +246,23 @@
 #define HUMP_TILT_LEVER_MM        (100.0f)      /* raised wheel to tipping line; calibrated 3 Nov:
                                                    1 cm hump 5.8 deg, 3 cm box 17.7 deg -> 99 / 100 mm */
 #define IMU_EMA_ALPHA             (0.3f)        /* DR 6.3: alpha = 0.3 */
-#define IMPACT_G                  (2.0f)        /* FR23 software backup threshold */
+/* Lift / overturn stop (16 Nov requirement change: replaces the IMU collision
+   detection). Only while driving; the reference is the gravity vector averaged
+   over the first LIFT_BLANK_SAMPLES after driving starts (robot on the floor).
+   Lifted: normal end of the run (motors off at once, MISSION_COMPLETE
+   summary, like BTN1 Stop). Overturned: E-stop. */
+#define LIFT_DETECT               (1)           /* 0 = no lift / overturn stop */
+#define LIFT_V_MM_S               (150.0f)      /* LIFTED: estimated upward speed this fast (a hand lift
+                                                   reaches 200-500 mm/s; the course hump about 10) */
+#define LIFT_V_LEAK               (0.9f)        /* per 20 ms: the speed estimate leaks away (no drift) */
+#define LIFT_UP_CLIP_G            (0.5f)        /* each sample adds at most this much (a single jolt
+                                                   adds 98 mm/s, below LIFT_V_MM_S) */
+#define LIFT_TILT_DEG             (30.0f)       /* LIFTED too: tipped this far from the start posture ... */
+#define LIFT_TILT_SAMPLES         (5u)          /* ... for 100 ms (the course hump gives 6-8 deg) */
+#define LIFT_OVER_DEG             (60.0f)       /* OVERTURNED: tilt this large ... */
+#define LIFT_OVER_SAMPLES         (10u)         /* ... for 200 ms -> E-stop */
+#define LIFT_BLANK_SAMPLES        (20u)         /* 400 ms after driving starts: learn the reference, no check */
+#define LIFT_ALPHA                (0.2f)        /* low-pass on the accel vector for the tilt (about 100 ms) */
 #define TURNING_DPS               (30.0f)
 #define ACCEL_G                   (0.05f)
 #define STATIONARY_MM_S           (10.0f)

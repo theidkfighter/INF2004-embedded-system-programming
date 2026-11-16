@@ -48,6 +48,13 @@ bool     estop_ack_take(void);              /* telemetry: true once, after the s
 void     estop_pwm_off_put(uint32_t us);    /* TSK_SAFETY_MON only; holds at 65,535 */
 uint16_t estop_pwm_off(void);
 
+/* ---- lift stop (16 Nov requirement change) ----
+   g_lift (8): lifted F1 [0], written by TSK_TERRAIN_IMU (one store). While
+   set, TSK_MOTION_CTRL holds the motors off and TSK_NAV_PLANNER ends the run
+   normally (MISSION_COMPLETE). Cleared by TSK_TERRAIN_IMU once not driving. */
+void     lift_stop_put(bool b_lifted);
+bool     lift_stop(void);
+
 void     config_due_set(void);
 void     config_due_clear(void);
 bool     config_due(void);

@@ -138,19 +138,13 @@ LOCAL void cyc_tick(void *exinf)
     }
 }
 
-LOCAL void on_int1(void)
-{
-    (void)tk_set_flg(g_flg_sys, EVF_COLLISION);
-    (void)tk_wup_tsk(g_tsk_safety);                 /* react now, not at the next tick */
-}
-
 bool os_start_interrupts(void)
 {
     T_DINT dint;
     T_CCYC ccyc = { 0 };
     ER     er;
 
-    hal_set_int1_callback(on_int1);
+    /* IMU INT1 (collision) is no longer used: 16 Nov requirement change */
 
     dint.intatr = TA_HLNG;
     dint.inthdr = (FP)hal_gpio_isr;

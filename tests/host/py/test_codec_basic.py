@@ -74,7 +74,8 @@ EVENT_CASES = [
     ("RECOVERED", {}, "re-check passed"),
     ("RECOVERY_REFUSED", {"why": 0b11}, "obstacle closer than 8 cm. IMU INT1 still active. "),
     ("RECOVERY_REFUSED", {"why": (1 << 2) | (1 << 14)}, "MOTOR_MAPPING_CONFIRMED, IMU_FORWARD_SIGN"),
-    ("IMPACT", {}, "while not driving"),
+    ("LIFTED", {"overturned": 0}, "lifted: run ended"),
+    ("LIFTED", {"overturned": 1}, "overturned: motors stop"),
     ("BARCODE", {"code": 20, "rev": 0}, "K (read forwards)"),
     ("BARCODE", {"code": 20, "rev": 1}, "K (read backwards)"),
     ("BARCODE_UNKNOWN", {"code": 7, "rev": 0}, "7 (read forwards)"),
@@ -445,7 +446,7 @@ def test_decode_telemetry_shape():
     assert m["bc"] == "K"
     assert m["hump"] == {"pitch": -90.0, "h": -1500.0, "peak": 1500.0, "max": 123.4}
     assert m["obst"] == {"cm": -1.0, "scan": [-1.0, 431.0, 0.0, 12.3, -1.0], "side": "R"}
-    assert m["imu"] == {"ev": "SUDDEN_IMPACT", "tr": -720.0}
+    assert m["imu"] == {"ev": "LIFTED", "tr": -720.0}
     assert (m["faults"], m["vbat"], m["rssi"], m["buf"]) == (0xA005, 6600, -128, 64)
 
 

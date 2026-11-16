@@ -956,15 +956,25 @@ LOCAL leg_res_t run_bypass(const bypass_plan_t *p_plan, float gap_mm, float marg
                    side first (the usual miss is short), then the other way;
                    stop where a sensor finds the line and leave the small
                    angle to line following. Nothing: back to parallel. */
-                static const float SWEEP[2] = { 1.0f, -2.0f };
+                /* pivots, in deg x toward: first sweep +D1, -2 D1 (ends at -D1);
+                   16 Nov backup sweep when it found nothing: -(D2 - D1) out to
+                   -D2, then +2 D2 to +D2 (wider reach for the sensors) */
+                const float D1 = OBST_REACQ_SWEEP_DEG;
+                const float D2 = (OBST_REACQ_SWEEP2_DEG > OBST_REACQ_SWEEP_DEG) ? OBST_REACQ_SWEEP2_DEG : 0.0f;
+                const float SWEEP[4] = { D1, -2.0f * D1, -(D2 - D1), 2.0f * D2 };
+                uint32_t    n_sw = (D2 > 0.0f) ? 4u : 2u;
 
                 hit = 0u;
-                for (uint32_t k = 0u; (k < 2u) && ((hit & EVF_LINE_FOUND) == 0u); k++)
+                for (uint32_t k = 0u; (k < n_sw) && ((hit & EVF_LINE_FOUND) == 0u); k++)
                 {
+                    if (k == 2u)
+                    {
+                        log_line("[obstacle] reacquire: first sweep missed the line, wider backup sweep");
+                    }
                     g_reacq_seq++;                  /* TSK_LINE: fresh line watch */
                     (void)tk_dly_tsk(30);
                     flag_clear(EVF_LINE_FOUND);
-                    if (step(motion_start_turn(SWEEP[k] * toward * OBST_REACQ_SWEEP_DEG, g_params.turn_mm_s, SRC_OBSTACLE),
+                    if (step(motion_start_turn(SWEEP[k] * toward, g_params.turn_mm_s, SRC_OBSTACLE),
                              false, 0.0f, EVF_LINE_FOUND, &hit) != LEG_OK)
                     {
                         g_why = ABR_REALIGN;
@@ -1037,6 +1047,10 @@ LOCAL void abort_avoidance(abort_reason_t why)
 {
     motion_stop(SRC_OBSTACLE);
     servo_move(0.0f, 0.0f);
+    if (lift_stop())
+    {
+        return;                               /* lifted: the nav task ends the run normally */
+    }
     fault_set(FAULT_BYPASS_ABORT);
     (void)evt_post1(EVC_AVOIDANCE_ABORT, (uint32_t)why, 4u);
     flag_set(EVF_BYPASS_ABORT);

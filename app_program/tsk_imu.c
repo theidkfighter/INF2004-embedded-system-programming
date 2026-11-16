@@ -1,16 +1,21 @@
 /**
  * @file    tsk_imu.c
  * @brief   TSK_TERRAIN_IMU (DR Section 3 / 6.3, 20 ms): pitch, hump
- *          detection and height, collision backup, motion events.
+ *          detection and height, lift / overturn stop, motion events.
  *
  * Every 20 ms, under MTX_I2C_BUS: read the accelerometer, pitch =
  * atan2(a_fwd_axis - a_fwd, sqrt(other^2 + z^2)) - theta0, EMA filtered.
  * Region A (hump profiler, imu_logic.c) sets EVF_HUMP_START / PEAK / END and
  * updates the run maximum (FR21, FR22). Region B classifies motion events
- * (FR24). Software collision backup: |a - lowpass(a)| >= 2 g -> EVF_COLLISION.
+ * (FR24). Lift / overturn (16 Nov requirement change, replaces the IMU
+ * collision detection): while driving, lift_step() (imu_logic.c).
+ * Lifted (rising at 150 mm/s or more, or tipped 30 deg or more): lift_stop_put(true) -> TSK_MOTION_CTRL holds the
+ * motors off at once and TSK_NAV_PLANNER ends the run normally
+ * (MISSION_COMPLETE). Overturned (tilted 60 deg or more): EVF_OVERTURNED ->
+ * TSK_SAFETY_MON E-stop "overturned (IMU)". Lifting ends the demo run.
  * I2C fault: bus recovery (9 SCL clocks + re-init). After 3 failed recoveries
  * (or if the IMU did not answer at start-up) the robot keeps driving without
- * hump / collision detection (FAULT_IMU_DEAD in telemetry, NeoPixel blinks
+ * hump / lift detection (FAULT_IMU_DEAD in telemetry, NeoPixel blinks
  * blue/yellow in IDLE) and the IMU is re-tried every 2 s. 21 Oct change:
  * the DR sends this case to ERROR; degraded operation was chosen so a loose
  * IMU wire does not stop the whole run.
@@ -31,7 +36,6 @@
 
 #define OFFSET_SAMPLES   (50u)
 #define MAX_RECOVERIES   (3u)
-#define HP_ALPHA         (0.05f)     /* slow low-pass = gravity estimate */
 
 LOCAL bool imu_read(float *p_x, float *p_y, float *p_z)
 {
@@ -91,12 +95,14 @@ void tsk_imu(INT stacd, void *exinf)
     float         theta0 = 0.0f;
     float         off_sum = 0.0f;
     uint32_t      off_n = 0u;
-    float         lp[3] = { 0.0f, 0.0f, 1.0f };
     uint32_t      fails = 0u;
     uint32_t      recoveries = 0u;
     bool          b_dead = ((st_faults() & FAULT_IMU_DEAD) != 0u);
     uint32_t      retry_n = 0u;
-    uint32_t      warm = 0u;
+#if LIFT_DETECT
+    lift_params_t lp;
+    lift_ctx_t    lift;
+#endif
 #if HUMP_TILT_DETECT
     /* tilt hump detector (robot_config.h HUMP_TILT_DETECT, imu_logic.h) */
     hump_params_t tp;
@@ -117,6 +123,19 @@ void tsk_imu(INT stacd, void *exinf)
     hp.max_len_mm    = 1500.0f;
     hump_reset(&hump);
     mev_reset(&mev);
+#if LIFT_DETECT
+    lp.v_lift_mm_s   = LIFT_V_MM_S;
+    lp.v_leak        = LIFT_V_LEAK;
+    lp.up_clip_g     = LIFT_UP_CLIP_G;
+    lp.tilt_deg      = LIFT_TILT_DEG;
+    lp.over_deg      = LIFT_OVER_DEG;
+    lp.alpha         = LIFT_ALPHA;
+    lp.tilt_samples  = (uint8_t)LIFT_TILT_SAMPLES;
+    lp.over_samples  = (uint8_t)LIFT_OVER_SAMPLES;
+    lp.blank_samples = (uint8_t)LIFT_BLANK_SAMPLES;
+    lift_reset(&lift);
+    lift_stop_put(false);
+#endif
 #if HUMP_TILT_DETECT
     tp               = hp;
     tp.start_deg     = HUMP_TILT_START_DEG;
@@ -132,8 +151,7 @@ void tsk_imu(INT stacd, void *exinf)
         float       az;
         float       raw;
         float       ds;
-        float       hp_mag;
-        bool        b_impact = false;
+        bool        b_lifted = false;
         sys_state_t st;
         hump_out_t  ho;
 
@@ -155,7 +173,6 @@ void tsk_imu(INT stacd, void *exinf)
                 {
                     b_dead     = false;
                     recoveries = 0u;
-                    warm       = 0u;
                     fault_clear(FAULT_IMU_DEAD | FAULT_IMU_I2C);
                     {
                         evt_b_t b;                    /* chip E2, accel address U7 */
@@ -165,7 +182,7 @@ void tsk_imu(INT stacd, void *exinf)
                         evt_u(&b, hal_imu_addr(), 7u);
                         (void)evt_post(&b);
                     }
-                    log_line("[imu] GY-511 answering: hump and collision detection on");
+                    log_line("[imu] GY-511 answering: hump and lift detection on");
                 }
             }
             continue;
@@ -194,7 +211,7 @@ void tsk_imu(INT stacd, void *exinf)
                         b_dead = true;
                         fault_set(FAULT_IMU_DEAD);
                         (void)evt_post0(EVC_FAULT_IMU);       /* "3 failed recoveries: driving without the IMU" */
-                        log_line("[imu] GY-511 lost: driving without hump/collision detection");
+                        log_line("[imu] GY-511 lost: driving without hump/lift detection");
                     }
                 }
             }
@@ -202,30 +219,39 @@ void tsk_imu(INT stacd, void *exinf)
         }
         fails = 0u;
 
-        /* software collision backup: high-pass magnitude (gravity removed) */
-        lp[0] = ema(lp[0], ax, HP_ALPHA);
-        lp[1] = ema(lp[1], ay, HP_ALPHA);
-        lp[2] = ema(lp[2], az, HP_ALPHA);
+#if LIFT_DETECT
+        /* lift / overturn: only while driving (motors are off otherwise) */
+        if ((st == SYS_LINE_FOLLOWING) || (st == SYS_OBSTACLE_AVOIDANCE) || (st == SYS_MANEUVER))
         {
-            float dx = ax - lp[0];
-            float dy = ay - lp[1];
-            float dz = az - lp[2];
+            lift_cause_t cause = lift_step(&lift, &lp, ax, ay, az);
 
-            hp_mag = (dx * dx) + (dy * dy) + (dz * dz);
-        }
-        if (warm < OFFSET_SAMPLES)
-        {
-            warm++;                          /* let the gravity estimate settle first */
-        }
-        else if (hp_mag >= (IMPACT_G * IMPACT_G))
-        {
-            b_impact = true;
-            flag_set(EVF_COLLISION);
-            hump_reset(&hump);
+            if (cause != LIFT_NONE)
+            {
+                lift_stop_put(true);                      /* motion: motors off now; nav: end the run */
+                (void)evt_post1(EVC_LIFTED, (cause == LIFT_OVER) ? 1u : 0u, 1u);   /* overturned F1 */
+                if (cause == LIFT_OVER)
+                {
+                    flag_set(EVF_OVERTURNED);             /* overturned: E-stop */
+                    (void)tk_wup_tsk(g_tsk_safety);
+                    log_line("[imu] overturned: E-stop");
+                }
+                else
+                {
+                    log_line("[imu] lifted: motors off, run ended");
+                }
+                hump_reset(&hump);
 #if HUMP_TILT_DETECT
-            tilt_hump_reset(&th);
+                tilt_hump_reset(&th);
 #endif
+            }
+            b_lifted = lift_latched(&lift);
         }
+        else
+        {
+            lift_reset(&lift);                            /* new reference at the next start */
+            lift_stop_put(false);
+        }
+#endif
 
         if ((prm_int(PRM_IMU_FORWARD_AXIS) < 1) ||
             (prm_tri(PRM_IMU_FORWARD_SIGN) == 0))
@@ -382,7 +408,7 @@ void tsk_imu(INT stacd, void *exinf)
 
         /* Region B: motion events (turn rate from the encoders, DR A10 fallback) */
 #if HUMP_TILT_DETECT
-        st_set_motion_event(mev_step(&mev, b_impact, tilt_hump_on(&th) ? HUMP_CREST : HUMP_FLAT, odo.turn_dps,
+        st_set_motion_event(mev_step(&mev, b_lifted, tilt_hump_on(&th) ? HUMP_CREST : HUMP_FLAT, odo.turn_dps,
                                      odo.a_fwd_g, odo.v_mm_s, 20u));
         st_set_imu(pitch, th.lift_mm, odo.turn_dps);   /* telemetry hump height = current lift estimate */
         if (tilt_hump_on(&th))
@@ -390,7 +416,7 @@ void tsk_imu(INT stacd, void *exinf)
             st_set_hump_peak(th.peak_mm);
         }
 #else
-        st_set_motion_event(mev_step(&mev, b_impact, hump_state(&hump), odo.turn_dps,
+        st_set_motion_event(mev_step(&mev, b_lifted, hump_state(&hump), odo.turn_dps,
                                      odo.a_fwd_g, odo.v_mm_s, 20u));
         st_set_imu(pitch, hump.h_mm, odo.turn_dps);
         if (hump_state(&hump) != HUMP_FLAT)

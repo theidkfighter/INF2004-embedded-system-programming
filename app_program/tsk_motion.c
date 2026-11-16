@@ -429,7 +429,8 @@ void tsk_motion(INT stacd, void *exinf)
         }
 
         /* 3. what to drive */
-        b_stop = ((flag_peek() & EVF_ESTOP) != 0u) || hal_motor_killed() || (mmpc <= 0.0f);
+        b_stop = ((flag_peek() & EVF_ESTOP) != 0u) || hal_motor_killed() || (mmpc <= 0.0f) ||
+                 lift_stop();                 /* lifted: motors off at once, the nav task ends the run */
         if (b_stop)
         {
             finish(MOTION_STOPPED);

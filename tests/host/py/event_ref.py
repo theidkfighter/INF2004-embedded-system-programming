@@ -191,6 +191,8 @@ def ref_text(rec):
     if name == "MISSION_COMPLETE":
         return (f"t {a['t']}s dist {jf(a['dist'] / 100, 2)}m bc {a['bc']} humps {a['humps']} "
                 f"max {jf(a['max'] / 10, 1)}mm obst {a['obst']}")
+    if name == "LIFTED":
+        return "overturned: motors stop" if a["overturned"] else "lifted: run ended"
     if name == "TURN_SNAP":
         return "line not seen, encoder angle kept" if a["not_seen"] else "stopped on the line"
     if name == "NAV_ACTION":

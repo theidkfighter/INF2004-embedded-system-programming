@@ -21,7 +21,8 @@
  *   NAV_ACTION       L5, ACT3                                             (8)
  *   NAV              variant U2 (evt_nav_kind_t), L5, ACT3               (10)
  *   EMERGENCY_STOP, ERROR  stop reason E4                                 (4)
- *   RECOVERY_REFUSED why U15: bit 0 obstacle < 8 cm, bit 1 INT1 active,
+ *   LIFTED           overturned F1 (0 lifted, 1 overturned >= 60 deg)      (1)
+ *   RECOVERY_REFUSED why U15: bit 0 obstacle < 8 cm, bit 1 unused (was INT1),
  *                    bits 2..14 missing calibration items                (15)
  *   BC_DBG           variant U3, then:
  *                      0 off: nothing

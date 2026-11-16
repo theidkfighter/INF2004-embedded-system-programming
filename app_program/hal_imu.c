@@ -14,9 +14,11 @@
  *     (28 Oct test_imu: "0xF6 0xF6 0xF6"). Set-up: 100 Hz, BDU, +-4 g
  *     (0.122 mg/LSB, 16 bit), ST LSM303D datasheet CTRL1 / CTRL2. Its INT1
  *     threshold step and pin polarity are not stated clearly in the
- *     datasheet, so INT1 is NOT used with this chip: collisions come from the
- *     software backup in tsk_imu.c (|a - low-pass| >= 2 g), and
- *     hal_imu_int1_level() / the GP6 interrupt are ignored.
+ *     datasheet, so INT1 is NOT used with this chip.
+ * 16 Nov requirement change: the IMU collision detection is removed, so INT1
+ * is not used with either chip (no callback is registered; the DLHC set-up
+ * still configures it, harmlessly). The IMU now detects lifting / overturning
+ * in software (lift_step() in imu_logic.c, called by tsk_imu.c).
  * hal_imu_init() tries the DLHC first, then the LSM303D at 0x1E and 0x1D.
  * Every transfer has a 2 ms timeout (DR: i2c_read_blocking_until).
  */
