@@ -101,4 +101,9 @@ void evt_map26(evt_b_t *p_b, const uint8_t p_act[26]);
 /* Barcode character as C6: Code 39 index 0..42, 63 for none / not a Code 39 character. */
 uint32_t evt_char6(char c);
 
+/* Defined in os_glue.c (host tests: stubs). post_evt() queues one event for
+   TSK_TELEMETRY; evt_now_ms() is the event time base. */
+bool     post_evt(const evt_msg_t *p_m);
+uint32_t evt_now_ms(void);
+
 #endif /* EVT_H */

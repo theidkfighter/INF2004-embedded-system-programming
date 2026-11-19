@@ -61,8 +61,6 @@ typedef struct
     uint32_t over;          /* samples with us > limit */
 } perf_stat_t;
 
-extern perf_stat_t g_perf[PERF_COUNT];
-
 /* PERF_BEGIN declares the start timestamp v; PERF_END records the time since v. */
 #define PERF_BEGIN(v)            uint32_t v = hal_time_us32()
 #define PERF_END(id, v, lim)     perf_add((uint32_t)(id), hal_time_us32() - (v), (lim))

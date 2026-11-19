@@ -20,8 +20,6 @@
 /* ---- set-up ---- */
 void     hal_init(void);                         /* pins, PWM, ADC, I2C, PIO; motors braked */
 void     hal_irq_enable_sources(void);           /* per-pin edge IRQs + the 1 kHz alarm */
-void     hal_gpio_isr(uint32_t intno);           /* registered with tk_def_int() */
-void     hal_timer_isr(uint32_t intno);          /* registered with tk_def_int() */
 
 uint64_t hal_time_us(void);
 uint32_t hal_time_us32(void);                    /* low 32 bits of the us timer (one read, wraps every 71 min) */

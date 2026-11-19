@@ -17,6 +17,8 @@
  */
 #include <tk/tkernel.h>
 
+#include "app_tasks.h"
+
 #include "os_glue.h"
 #include "status.h"
 #include "msg_codec.h"
@@ -355,7 +357,7 @@ LOCAL void on_nav_event(const nav_event_t *p_ev)
     }
 }
 
-void tsk_nav(INT stacd, void *exinf)
+void tsk_nav_task(INT stacd, void *exinf)
 {
     (void)stacd;
     (void)exinf;

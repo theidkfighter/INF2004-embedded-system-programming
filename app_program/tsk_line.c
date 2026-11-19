@@ -20,6 +20,8 @@
  */
 #include <tk/tkernel.h>
 
+#include "app_tasks.h"
+
 #include "os_glue.h"
 #include "status.h"
 #include "motion_api.h"
@@ -490,7 +492,7 @@ LOCAL void follow(bool b_l, bool b_r, bool b_jl, bool b_jr, float ds_mm, float d
     (void)motion_line(left, right);
 }
 
-void tsk_line(INT stacd, void *exinf)
+void tsk_line_task(INT stacd, void *exinf)
 {
     odometry_t  odo;
     uint32_t    odo_prev = 0u;

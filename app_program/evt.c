@@ -9,8 +9,6 @@
 #include "bitpack.h"
 #include "code39.h"
 
-bool post_evt(const evt_msg_t *p_m);          /* os_glue.c (host: stubs) */
-uint32_t evt_now_ms(void);                    /* os_glue.c (host: stubs) */
 
 void evt_begin(evt_b_t *p_b, evt_code_t code)
 {

@@ -22,6 +22,7 @@
 #include "crit.h"
 #include "hal.h"
 #include "hal_internal.h"
+#include "hal_isr.h"
 #include "isr_ring.h"
 #include "perf.h"
 #include "pins.h"

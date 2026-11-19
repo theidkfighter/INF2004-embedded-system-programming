@@ -20,6 +20,8 @@
  */
 #include <tk/tkernel.h>
 
+#include "app_tasks.h"
+
 #include "os_glue.h"
 #include "status.h"
 #include "motion_api.h"
@@ -198,7 +200,7 @@ LOCAL void try_recover(void)
     }
 }
 
-void tsk_safety(INT stacd, void *exinf)
+void tsk_safety_task(INT stacd, void *exinf)
 {
     uint32_t hb_last[HB_COUNT] = { 0u, 0u, 0u };
     uint32_t hb_quiet_ms[HB_COUNT] = { 0u, 0u, 0u };

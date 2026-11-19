@@ -13,6 +13,8 @@
 #include "msg_codec.h"
 #include "bitpack.h"
 #include "hal.h"
+#include "hal_isr.h"
+#include "app_tasks.h"
 #include "jfmt.h"
 #include "perf.h"
 
@@ -20,15 +22,6 @@
 #define STACK_DEFAULT   (3072)
 #define STACK_TLM       (4096)
 #define TICK_MS         (10)
-
-/* task bodies (tsk_*.c) */
-IMPORT void tsk_safety(INT stacd, void *exinf);
-IMPORT void tsk_motion(INT stacd, void *exinf);
-IMPORT void tsk_line(INT stacd, void *exinf);
-IMPORT void tsk_obstacle(INT stacd, void *exinf);
-IMPORT void tsk_imu(INT stacd, void *exinf);
-IMPORT void tsk_nav(INT stacd, void *exinf);
-IMPORT void tsk_telemetry(INT stacd, void *exinf);
 
 volatile uint8_t g_hb[HB_COUNT];
 volatile uint8_t g_reacq_seq;
@@ -39,7 +32,13 @@ ID g_mbx_nav;
 ID g_mbx_obstacle;
 ID g_mbx_tlm;
 ID g_mtx_i2c;
-ID g_tsk_safety, g_tsk_motion, g_tsk_line, g_tsk_obstacle, g_tsk_imu, g_tsk_nav, g_tsk_tlm;
+ID g_tsk_safety;                     /* woken by TSK_TERRAIN_IMU */
+ID g_tsk_tlm;                        /* woken by the radio task */
+static ID g_tsk_motion;
+static ID g_tsk_line;
+static ID g_tsk_obstacle;
+static ID g_tsk_imu;
+static ID g_tsk_nav;
 
 LOCAL ID                g_mpf_msg;
 LOCAL ID                g_cyc_tick;
@@ -102,13 +101,13 @@ LOCAL ID start_task(const char *p_name, FP task, PRI pri, SZ stack)
 
 bool os_start_tasks(void)
 {
-    g_tsk_safety   = start_task("TSK_SAFETY_MON",   (FP)tsk_safety,    PRI_SAFETY,    STACK_DEFAULT);
-    g_tsk_motion   = start_task("TSK_MOTION_CTRL",  (FP)tsk_motion,    PRI_MOTION,    STACK_DEFAULT);
-    g_tsk_line     = start_task("TSK_LINE_BARCODE", (FP)tsk_line,      PRI_LINE,      STACK_DEFAULT);
-    g_tsk_obstacle = start_task("TSK_OBSTACLE_SCAN",(FP)tsk_obstacle,  PRI_OBSTACLE,  STACK_DEFAULT);
-    g_tsk_imu      = start_task("TSK_TERRAIN_IMU",  (FP)tsk_imu,       PRI_IMU,       STACK_DEFAULT);
-    g_tsk_nav      = start_task("TSK_NAV_PLANNER",  (FP)tsk_nav,       PRI_NAV,       STACK_DEFAULT);
-    g_tsk_tlm      = start_task("TSK_TELEMETRY",    (FP)tsk_telemetry, PRI_TELEMETRY, STACK_TLM);
+    g_tsk_safety   = start_task("TSK_SAFETY_MON",   (FP)tsk_safety_task,    PRI_SAFETY,    STACK_DEFAULT);
+    g_tsk_motion   = start_task("TSK_MOTION_CTRL",  (FP)tsk_motion_task,    PRI_MOTION,    STACK_DEFAULT);
+    g_tsk_line     = start_task("TSK_LINE_BARCODE", (FP)tsk_line_task,      PRI_LINE,      STACK_DEFAULT);
+    g_tsk_obstacle = start_task("TSK_OBSTACLE_SCAN",(FP)tsk_obstacle_task,  PRI_OBSTACLE,  STACK_DEFAULT);
+    g_tsk_imu      = start_task("TSK_TERRAIN_IMU",  (FP)tsk_imu_task,       PRI_IMU,       STACK_DEFAULT);
+    g_tsk_nav      = start_task("TSK_NAV_PLANNER",  (FP)tsk_nav_task,       PRI_NAV,       STACK_DEFAULT);
+    g_tsk_tlm      = start_task("TSK_TELEMETRY",    (FP)tsk_telemetry_task, PRI_TELEMETRY, STACK_TLM);
     return (g_tsk_safety > 0) && (g_tsk_motion > 0) && (g_tsk_line > 0) && (g_tsk_obstacle > 0) &&
            (g_tsk_imu > 0) && (g_tsk_nav > 0) && (g_tsk_tlm > 0);
 }
@@ -118,7 +117,7 @@ bool os_start_tasks(void)
 /* (safety + line every 10 ms, motion + IMU every 20 ms on alternate ticks). */
 /* ------------------------------------------------------------------------ */
 
-LOCAL void cyc_tick(void *exinf)
+LOCAL void cyc_tick_isr(void *exinf)
 {
     (void)exinf;
     g_tick_n++;
@@ -168,7 +167,7 @@ bool os_start_interrupts(void)
     EnableInt(HAL_IRQ_TIMER3, 2);
 
     ccyc.cycatr = TA_HLNG | TA_STA;
-    ccyc.cychdr = (FP)cyc_tick;
+    ccyc.cychdr = (FP)cyc_tick_isr;
     ccyc.cyctim = TICK_MS;
     ccyc.cycphs = TICK_MS;
     g_cyc_tick  = tk_cre_cyc(&ccyc);
@@ -430,10 +429,10 @@ void log_line(const char *p_text)
 #define PERF_REL_TASKS   (4u)
 #define PERF_REL_SLOTS   (4u)                                 /* power of 2 */
 
-perf_stat_t g_perf[PERF_COUNT];
+static perf_stat_t g_perf[PERF_COUNT];
 
 /* Release timestamps of one periodic task: a single-producer single-consumer
-   ring. cyc_tick pushes one per release, the task pops the oldest at the end
+   ring. cyc_tick_isr pushes one per release, the task pops the oldest at the end
    of each cycle, so a cycle that overruns into the next release is still
    measured from its own release. A wake-up without a release (TSK_TERRAIN_IMU
    wakes the safety monitor on an overturn) finds the ring empty and records
@@ -441,9 +440,9 @@ perf_stat_t g_perf[PERF_COUNT];
 typedef struct
 {
     uint32_t          t_us[PERF_REL_SLOTS];
-    volatile uint32_t head;          /* cyc_tick */
+    volatile uint32_t head;          /* cyc_tick_isr */
     volatile uint32_t tail;          /* the task */
-    volatile uint32_t lost;          /* cyc_tick: ring full, timestamp dropped */
+    volatile uint32_t lost;          /* cyc_tick_isr: ring full, timestamp dropped */
     uint32_t          lost_seen;     /* the task */
 } perf_rel_t;
 

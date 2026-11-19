@@ -63,7 +63,8 @@ extern ID g_mbx_nav;        /* MBX_NAV_EVENT  */
 extern ID g_mbx_obstacle;   /* MBX_OBSTACLE   */
 extern ID g_mbx_tlm;        /* MBX_TELEMETRY  */
 extern ID g_mtx_i2c;        /* MTX_I2C_BUS    */
-extern ID g_tsk_safety, g_tsk_motion, g_tsk_line, g_tsk_obstacle, g_tsk_imu, g_tsk_nav, g_tsk_tlm;
+extern ID g_tsk_safety;     /* TSK_SAFETY_MON: woken by TSK_TERRAIN_IMU */
+extern ID g_tsk_tlm;        /* TSK_TELEMETRY: woken by the radio task */
 
 typedef struct
 {

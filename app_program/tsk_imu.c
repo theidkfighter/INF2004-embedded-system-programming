@@ -25,6 +25,8 @@
  */
 #include <tk/tkernel.h>
 
+#include "app_tasks.h"
+
 #include "os_glue.h"
 #include "status.h"
 #include "imu_logic.h"
@@ -84,7 +86,7 @@ LOCAL void hump_event(evt_code_t code, bool b_valid, float value_mm)
     (void)evt_post(&b);
 }
 
-void tsk_imu(INT stacd, void *exinf)
+void tsk_imu_task(INT stacd, void *exinf)
 {
     hump_params_t hp;
     hump_ctx_t    hump;

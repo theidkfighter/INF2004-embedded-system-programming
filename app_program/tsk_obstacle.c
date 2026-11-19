@@ -60,6 +60,8 @@
  */
 #include <tk/tkernel.h>
 
+#include "app_tasks.h"
+
 #include "os_glue.h"
 #include "status.h"
 #include "motion_api.h"
@@ -1524,7 +1526,7 @@ LOCAL void avoid(void)
     abort_avoidance(ABR_TOO_MANY);
 }
 
-void tsk_obstacle(INT stacd, void *exinf)
+void tsk_obstacle_task(INT stacd, void *exinf)
 {
     (void)stacd;
     (void)exinf;

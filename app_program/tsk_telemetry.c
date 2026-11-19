@@ -25,6 +25,8 @@
  */
 #include <tk/tkernel.h>
 
+#include "app_tasks.h"
+
 #include "code39.h"
 #include "os_glue.h"
 #include "status.h"
@@ -716,7 +718,7 @@ LOCAL void console_status(void)
     perf_report();                            /* APP_PERF: one [perf] line per probe */
 }
 
-void tsk_telemetry(INT stacd, void *exinf)
+void tsk_telemetry_task(INT stacd, void *exinf)
 {
     uint32_t t_frame = hal_time_ms();
     uint32_t t_hb = t_frame;

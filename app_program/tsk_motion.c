@@ -17,6 +17,8 @@
  */
 #include <tk/tkernel.h>
 
+#include "app_tasks.h"
+
 #include "os_glue.h"
 #include "status.h"
 #include "msg_codec.h"
@@ -349,7 +351,7 @@ LOCAL void run_primitive(int32_t enc_r, int32_t enc_l, float mmpc, uint32_t now)
     }
 }
 
-void tsk_motion(INT stacd, void *exinf)
+void tsk_motion_task(INT stacd, void *exinf)
 {
     speed_params_t sp;
     odometry_t     odo = { 0 };              /* full precision here; odometry_put() packs a copy */
