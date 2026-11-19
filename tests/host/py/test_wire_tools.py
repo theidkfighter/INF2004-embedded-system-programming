@@ -152,7 +152,8 @@ def test_vectors_event_and_rejects(tools):
 
 
 def test_dump_param_limits(dump, lib, base):
-    """min / max in wire_dump equal PARAMS[] (float32) and the Baseline_Build limits."""
+    """min / max in wire_dump equal PARAMS[] (float32) and, for every parameter the
+    Baseline_Build already had (matched by name), the Baseline_Build limits."""
     import ctypes
     for name in ("params_min", "params_max"):
         fn = lib[name]
@@ -164,4 +165,7 @@ def test_dump_param_limits(dump, lib, base):
     for p in dump["params"]:
         i = p["id"]
         assert f32(p["min"]) == pmin(i) and f32(p["max"]) == pmax(i), p["name"]
-        assert (pmin(i), pmax(i)) == (base.base_bh_param_min(i), base.base_bh_param_max(i)), p["name"]
+        j = base.base_bh_param_find(p["name"].encode())
+        if j < 0:
+            continue                                               # added after the Baseline_Build
+        assert (pmin(i), pmax(i)) == (base.base_bh_param_min(j), base.base_bh_param_max(j)), p["name"]
