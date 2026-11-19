@@ -386,14 +386,14 @@ void tsk_imu_task(INT stacd, void *exinf)
             if (ho.b_peak)
             {
                 flag_set(EVF_HUMP_PEAK);
-                hump_event(EVC_HUMP_PEAK, true, th.peak_mm);
+                hump_event(EVC_HUMP_PEAK, true, th.peak_mm * HUMP_HEIGHT_SCALE);
             }
             if (ho.b_end)
             {
                 if (ho.b_valid)
                 {
-                    st_hump_done(ho.height_mm);
-                    hump_event(EVC_HUMP_END, true, ho.height_mm);
+                    st_hump_done(ho.height_mm * HUMP_HEIGHT_SCALE);
+                    hump_event(EVC_HUMP_END, true, ho.height_mm * HUMP_HEIGHT_SCALE);
                 }
                 else
                 {
@@ -429,14 +429,14 @@ void tsk_imu_task(INT stacd, void *exinf)
             if (ho.b_peak)
             {
                 flag_set(EVF_HUMP_PEAK);
-                hump_event(EVC_HUMP_PEAK, true, hump.peak_mm);
+                hump_event(EVC_HUMP_PEAK, true, hump.peak_mm * HUMP_HEIGHT_SCALE);
             }
             if (ho.b_end)
             {
                 if (ho.b_valid)
                 {
-                    st_hump_done(ho.height_mm);   /* humps + 1, run max (FR22), last peak */
-                    hump_event(EVC_HUMP_END, true, ho.height_mm);
+                    st_hump_done(ho.height_mm * HUMP_HEIGHT_SCALE);   /* humps + 1, run max (FR22), last peak */
+                    hump_event(EVC_HUMP_END, true, ho.height_mm * HUMP_HEIGHT_SCALE);
                 }
                 else
                 {
@@ -461,7 +461,7 @@ void tsk_imu_task(INT stacd, void *exinf)
 #if HUMP_TILT_DETECT
         st_set_motion_event(mev_step(&mev, b_lifted, tilt_hump_on(&th) ? HUMP_CREST : HUMP_FLAT, odo.turn_dps,
                                      odo.a_fwd_g, odo.v_mm_s, 20u));
-        st_set_imu(pitch, th.lift_mm, odo.turn_dps);   /* telemetry hump height = current lift estimate */
+        st_set_imu(pitch, th.lift_mm * HUMP_HEIGHT_SCALE, odo.turn_dps);   /* telemetry hump height = current lift estimate */
         if (tilt_hump_on(&th))
         {
             st_set_hump_peak(th.peak_mm);
@@ -469,7 +469,7 @@ void tsk_imu_task(INT stacd, void *exinf)
 #else
         st_set_motion_event(mev_step(&mev, b_lifted, hump_state(&hump), odo.turn_dps,
                                      odo.a_fwd_g, odo.v_mm_s, 20u));
-        st_set_imu(pitch, hump.h_mm, odo.turn_dps);
+        st_set_imu(pitch, hump.h_mm * HUMP_HEIGHT_SCALE, odo.turn_dps);
         if (hump_state(&hump) != HUMP_FLAT)
         {
             st_set_hump_peak(hump.peak_mm);

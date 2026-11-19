@@ -267,6 +267,9 @@
 #define HUMP_TURN_ALPHA           (0.3f)        /* low-pass on the encoder turn rate (20 ms samples) */
 #define HUMP_TILT_BLANK_MS        (400u)       /* no hump detection this long after driving starts
                                                    (the course hump starts about 1 s in, so keep this short) */
+#define HUMP_HEIGHT_SCALE         (0.83f)       /* 19 Nov: reported hump height x this. The 1 cm demo hump read ~12 mm
+                                                   (3 Nov: 10.2 mm with the same lever): 10 / 12 = 0.83. Recalibrate as
+                                                   known height / mean of 5 readings; 1.0 = as before */
 #define HUMP_TILT_LEVER_MM        (100.0f)      /* raised wheel to tipping line; calibrated 3 Nov:
                                                    1 cm hump 5.8 deg, 3 cm box 17.7 deg -> 99 / 100 mm */
 #define IMU_EMA_ALPHA             (0.3f)        /* DR 6.3: alpha = 0.3 */
