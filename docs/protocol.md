@@ -152,7 +152,7 @@ Arguments start at bit 34 of the Event_Frame. Argument layouts per code: `app_pr
 | 16 | `ERROR` | 4 | no |
 | 17 | `RECOVERED` | 0 | no |
 | 18 | `RECOVERY_REFUSED` | 15 | no |
-| 19 | `IMPACT` | 0 | no |
+| 19 | `LIFTED` | 1 | no |
 | 20 | `BC_DBG` | 203 | yes |
 | 21 | `BARCODE` | 7 | no |
 | 22 | `BARCODE_UNKNOWN` | 7 | no |
@@ -236,7 +236,7 @@ Arguments start at bit 34 of the Event_Frame. Argument layouts per code: `app_pr
 | 0 | `NONE` | (empty) |
 | 1 | `REMOTE_ESTOP` | remote E-stop (MQTT) |
 | 2 | `BTN2` | BTN2 stop |
-| 3 | `COLLISION` | collision (IMU) |
+| 3 | `OVERTURNED` | overturned (IMU) |
 | 4 | `OBSTACLE` | obstacle closer than 8 cm |
 | 5 | `WATCHDOG` | watchdog: a control task stopped running |
 | 6 | `CALIBRATION` | calibration missing |
@@ -262,7 +262,7 @@ Arguments start at bit 34 of the Event_Frame. Argument layouts per code: `app_pr
 
 ## Parameter_IDs
 
-55 parameters; the parameter table CRC (CRC-16/CCITT-FALSE over the NAMEs in ID order, each followed by `'\n'`) is **9469** (0x24FD). Store width 32 means a float32 member; the SET and Config_Frame value is float32 for every parameter.
+60 parameters; the parameter table CRC (CRC-16/CCITT-FALSE over the NAMEs in ID order, each followed by `'\n'`) is **10256** (0x2810). Store width 32 means a float32 member; the SET and Config_Frame value is float32 for every parameter.
 
 | ID | NAME | Store width (bits) | Min | Max |
 |---|---|---|---|---|
@@ -321,3 +321,8 @@ Arguments start at bit 34 of the Event_Frame. Argument layouts per code: `app_pr
 | 52 | `OBST_EDGE_PAD_MM` | 32 | 0 | 100 |
 | 53 | `ROBOT_LEFT_HALF_MM` | 32 | 0 | 250 |
 | 54 | `IR_TO_AXLE_MM` | 32 | 0 | 200 |
+| 55 | `JUNCTION_MIN_MM` | 32 | 0 | 30 |
+| 56 | `JUNCTION_MAX_TURN_DEG` | 32 | 0 | 90 |
+| 57 | `JUNCTION_BLACK_HIGH` | 1 | 0 | 1 |
+| 58 | `TURN_PAUSE_MS` | 32 | 0 | 1000 |
+| 59 | `JUNCTION_MAX_MM` | 32 | 0 | 100 |

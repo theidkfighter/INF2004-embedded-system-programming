@@ -1,41 +1,41 @@
 # Correctness evidence (Requirements 3.3, 3.7, 3.8, 9.8, 10.7, 10.9, 10.10, 19, 24.1 to 24.3, 24.5, 24.8)
 
-Builds and commits are listed in [README.md](README.md). Unless a procedure says otherwise, the Baseline_Build is the recorded baseline commit and the Revised_Build is the Week 13 commit, both built with `APP_PERF=0` and `APP_SELFTEST=0`. For Baseline_Build runs, start the laptop tools with `--legacy-json`.
+Builds and commits are listed in [README.md](README.md). Unless a procedure says otherwise, the Baseline_Build is the recorded baseline commit and the Revised_Build is the Week 13 commit, both built with `APP_PERF=0` and `APP_SELFTEST=0`. For Baseline_Build runs, use the laptop tools of the Baseline_Build commit (`git worktree add ../is02_baseline bca7964`, then `python ../is02_baseline/MQTT/<tool>.py`), which read its JSON directly; today's tools are binary-only (`--legacy-json` was removed in `af2cfab`).
 
 Use the same track layout, barcode map and `robot_params.txt` for both builds. Put every raw file (console logs, monitor CSV and log files, `is02_tool.py log` files) in `docs/evidence/raw/`.
-
-The `--legacy-json` option exists only after the laptop tools are switched to the Laptop_Codec (Step 7). Before that, the unchanged tools read the Baseline_Build JSON directly.
 
 Where to read values: the `telemetry_monitor.py` CSV has `enc_l`, `enc_r`, `barcode` and `obst_cm` but no `faults` column. Read `faults` from a parallel `python MQTT/is02_tool.py --broker <ip> log <file>.csv` recording (the `faults` key of each `is02/telemetry` and `is02/status` payload, decoded for the Revised_Build), or from the dashboard.
 
 ## 1. Firmware build check (Requirement 19.5)
 
-Filled by: `tools/evidence/build_check.sh` (runs `make clean && make APP_ROBOT=1` in `build_make/`, counts warnings, compares with the Baseline_Build count and lists warnings in new or changed files). Run on 2 Nov 2026 in WSL Ubuntu 24.04 on a clean `git worktree` of the commit below, with placeholder `config/*.h` files. The full make log is about 730 KB and is not committed.
+Filled by: `tools/evidence/build_check.sh` (runs `make clean && make APP_ROBOT=1` in `build_make/`, counts warnings, compares with the Baseline_Build count and lists warnings in new or changed files). Run on 19 Nov 2026 on a clean working tree of the commit below, with placeholder `config/*.h` files. Summary in `docs/evidence/raw/revised_build_and_frame_2026-11-19.txt`; the full make log is not committed.
 
 | Item | Value |
 |---|---|
-| Commit checked | `36a380bc3d8daf0f945e6c6853db1ab53914633e` |
+| Commit checked | `456beae1d7d0fef249cd2ab050807a54c5f29fe1` (firmware = `main` at `b7bbcad`) |
 | Build exit status | 0 (`build: ok`) |
 | Compiler warnings, Baseline_Build clean build | 0 (`tools/evidence/baseline_warnings.txt`) |
 | Compiler warnings, Revised_Build clean build | 0 |
-| Warnings that name a file added or changed since the baseline commit | 0 (187 files changed since `bca7964`) |
+| Warnings that name a file added or changed since the baseline commit | 0 (180 files changed since `bca7964`) |
 | Script exit status | 0 |
 | Result | **pass** |
 
-Command: `cd <worktree> && PICO_SDK_PATH=$HOME/pico/pico-sdk bash tools/evidence/build_check.sh -- -j8`. Earlier sessions also built with `APP_PERF=1`, `APP_LEGACY_TEXT_CMD=1` and `APP_SELFTEST=1` through the same script, each with 0 warnings (ledger sessions 1 to 4); those variants were not repeated for this document.
+Command: `PICO_SDK_PATH=$HOME/pico/pico-sdk bash tools/evidence/build_check.sh -- -j8`. The `APP_PERF=1` build of the same commit also builds with 0 warnings (`make APP_ROBOT=1 APP_PERF=1 -j8`, 19 Nov). The first check (2 Nov, commit `36a380b`) also passed with 0 warnings.
 
 ## 2. Host_Test_Suite results (Requirements 24.1, 24.8)
 
-Filled by: `tests/host/run_all.sh` (run in WSL from the repository root; optional `--seed <s>`). The summary lines `P<n> <title> | <payload type or Storage_Unit> | cases=<n> | failed=<n> | seed=<s>` are in the raw output file; the tables below add them up per property. Python rows are the C-library side run by pytest, JavaScript rows the Node side (`node --test`).
+Filled by: `tests/host/run_all.sh` (optional `--seed <s>`). The summary lines `P<n> <title> | <payload type or Storage_Unit> | cases=<n> | failed=<n> | seed=<s>` are in the raw output file; the tables below add them up per property. Python rows are the C-library side run by pytest, JavaScript rows the Node side (`node --test`).
 
 | Item | Value |
 |---|---|
-| Commit tested | `36a380bc3d8daf0f945e6c6853db1ab53914633e` (the sources at the start of this session) |
-| Command line | `rm -rf tests/host/build && PYTHON=~/is02venv/bin/python bash tests/host/run_all.sh --seed 12345` |
-| Seed | 12345 |
-| Exit status | 0, last line `Host_Test_Suite: PASSED (seed=12345)` |
-| Totals | properties=543 failed=0; other tests passed=1489 failed=0 skipped=0 (pytest 1,924 passed in 139 s; Node 262 pass; `test_static.sh` 24 pass; `test_compile_fail.sh` 8 pass) |
-| Raw output file | `docs/evidence/raw/revised_host_tests_2026-11-02.log` |
+| Commit tested | `456beae1d7d0fef249cd2ab050807a54c5f29fe1` (firmware = `main` at `b7bbcad`) |
+| Command line | `rm -rf tests/host/build && bash tests/host/run_all.sh --seed 20261119` |
+| Seed | 20261119 |
+| Exit status | 0, last line `Host_Test_Suite: PASSED (seed=20261119)` |
+| Totals | properties=565 failed=0; other tests passed=1619 failed=0 skipped=0 (pytest 2,076 passed in 141 s; Node 262 pass; `test_static.sh` 24 pass; `test_compile_fail.sh` 8 pass) |
+| Raw output file | `docs/evidence/raw/revised_host_tests_2026-11-19.log` |
+
+Two host-test fixes were needed on 19 Nov before this run, both in test code: `tests/host/baseline/base_motion.c` declared `g_hb` with the Revised_Build type, so the Baseline_Build library (`libbase`) did not build; and `test_wire_tools.py::test_dump_param_limits` compared parameters with the Baseline_Build by position, which fails for the parameters added after it (`JUNCTION_*`). It now matches them by name.
 
 ### 2.1 Requirement 18 properties and codec pairs (Requirement 24.1)
 
@@ -53,27 +53,33 @@ The Python rows exercise the C Wire_Codec against the Python Laptop_Codec; the J
 
 ### 2.2 All property summary lines
 
-One row per property that printed summary lines. Cases are summed over the rows of the property (one row per payload type, field or Storage_Unit, and per runner). `Units` is the number of distinct payload types, fields or Storage_Units. Every property has at least 100 cases except P9, which is exhaustive over the 43 Code 39 characters (86 cases = 43 characters × 2 checks).
+One row per property that printed summary lines. Cases are summed over the rows of the property (one row per payload type, field or Storage_Unit, and per runner). `Units` is the number of distinct payload types, fields or Storage_Units. Every property has at least 100 cases except P9, which is exhaustive over the 43 Code 39 characters (86 cases = 43 characters × 2 checks). OD1 to OD6 are the properties of the dynamic obstacle turn (`test_obst_dynamic_turn.py`, added after 2 Nov), numbered P1 to P6 inside that file.
 
 | Property | Title | Units | Cases, C with Python | Cases, C with JavaScript | Failed | Seed | Result |
 |---|---|---|---|---|---|---|---|
-| P1 | Continuous stores round to the nearest step | 71 | 14200 (71 rows) | - | 0 | 12345 | pass |
-| P2 | Out-of-range and NaN stores saturate and are counted | 72 | 143071 (214 rows) | - | 0 | 12345 | pass |
-| P3 | Sentinel codes never collide with values | 22 | 23724 (44 rows) | - | 0 | 12345 | pass |
-| P9 | Code 39 index mapping is a bijection | 1 | 86 (2 rows) | - | 0 | 12345 | pass |
-| P10 | Inter-task messages round-trip | 3 | 800 (3 rows) | - | 0 | 12345 | pass |
-| P14 | Obstacle planning matches the Baseline_Build | 2 | 2000 (2 rows) | - | 0 | 12345 | pass |
-| P15 | Hump detection matches the Baseline_Build | 2 | 2000 (2 rows) | - | 0 | 12345 | pass |
-| P16 | Event detail text can be rebuilt | 46 | 9000 (45 rows) | 4500 (1 rows) | 0 | 12345 | pass |
-| P18 | Critical sections are balanced and cover every shared update | 6 | 600 (6 rows) | - | 0 | 12345 | pass |
-| P19 | Every encoded frame has the fixed header and length | 3 | 200 (3 rows) | - | 0 | 12345 | pass |
-| P24 | The parameter table version detects table edits | 1 | 1000 (1 rows) | 1000 (1 rows) | 0 | 12345 | pass |
-| P25 | Robot-to-laptop frames round-trip through both Laptop_Codecs | 48 | 7500 (48 rows) | 7500 (48 rows) | 0 | 12345 | pass |
-| P26 | Laptop-to-robot frames round-trip into the Wire_Codec | 13 | 13000 (13 rows) | 13000 (13 rows) | 0 | 12345 | pass |
-| P27 | Decode then encode is the identity on bytes | 7 | 7000 (7 rows) | 7000 (7 rows) | 0 | 12345 | pass |
-| P28 | The three codecs agree on the shared vectors | 1 | 445 (1 rows) | 345 (1 rows) | 0 | 12345 | pass |
-| P29 | Tool inputs parse to Parameter_IDs or report the bad line | 2 | 1000 (2 rows) | 1000 (2 rows) | 0 | 12345 | pass |
-| P30 | Unknown codes are shown numerically | 3 | 600 (3 rows) | 600 (3 rows) | 0 | 12345 | pass |
+| P1 | Continuous stores round to the nearest step | 71 | 14200 (71 rows) | - | 0 | 20261119 | pass |
+| P2 | Out-of-range and NaN stores saturate and are counted | 72 | 143071 (214 rows) | - | 0 | 20261119 | pass |
+| P3 | Sentinel codes never collide with values | 22 | 23640 (44 rows) | - | 0 | 20261119 | pass |
+| P9 | Code 39 index mapping is a bijection | 1 | 86 (2 rows) | - | 0 | 20261119 | pass |
+| P10 | Inter-task messages round-trip | 3 | 800 (3 rows) | - | 0 | 20261119 | pass |
+| P14 | Obstacle planning matches the Baseline_Build | 2 | 2000 (2 rows) | - | 0 | 20261119 | pass |
+| P15 | Hump detection matches the Baseline_Build | 2 | 2000 (2 rows) | - | 0 | 20261119 | pass |
+| P16 | Event detail text can be rebuilt | 46 | 9000 (45 rows) | 4500 (1 rows) | 0 | 20261119 | pass |
+| P18 | Critical sections are balanced and cover every shared update | 6 | 600 (6 rows) | - | 0 | 20261119 | pass |
+| P19 | Every encoded frame has the fixed header and length | 3 | 200 (3 rows) | - | 0 | 20261119 | pass |
+| P24 | The parameter table version detects table edits | 1 | 1000 (1 rows) | 1000 (1 rows) | 0 | 20261119 | pass |
+| P25 | Robot-to-laptop frames round-trip through both Laptop_Codecs | 48 | 7500 (48 rows) | 7500 (48 rows) | 0 | 20261119 | pass |
+| P26 | Laptop-to-robot frames round-trip into the Wire_Codec | 13 | 13000 (13 rows) | 13000 (13 rows) | 0 | 20261119 | pass |
+| P27 | Decode then encode is the identity on bytes | 7 | 7000 (7 rows) | 7000 (7 rows) | 0 | 20261119 | pass |
+| P28 | The three codecs agree on the shared vectors | 1 | 445 (1 rows) | 345 (1 rows) | 0 | 20261119 | pass |
+| P29 | Tool inputs parse to Parameter_IDs or report the bad line | 2 | 1000 (2 rows) | 1000 (2 rows) | 0 | 20261119 | pass |
+| P30 | Unknown codes are shown numerically | 3 | 600 (3 rows) | 600 (3 rows) | 0 | 20261119 | pass |
+| OD1 | Scaled reverse with the smallest clearing turn angle | 7 | 1015 (16 rows) | - | 0 | 20261119 | pass |
+| OD2 | Switch off or legacy is the original, bit for bit | 1 | 1000 (1 rows) | - | 0 | 20261119 | pass |
+| OD3 | Never more reverse than the original | 1 | 1000 (1 rows) | - | 0 | 20261119 | pass |
+| OD4 | A longer reverse never gives a steeper turn | 1 | 1000 (1 rows) | - | 0 | 20261119 | pass |
+| OD5 | Legs for theta reach the same shift and forward point | 1 | 1000 (1 rows) | - | 0 | 20261119 | pass |
+| OD6 | Body clear of the front while pivoting past 45 | 2 | 1001 (2 rows) | - | 0 | 20261119 | pass |
 
 Properties with no summary line (no result is claimed for them):
 
@@ -111,21 +117,21 @@ Filled by: `tests/host/run_all.sh` (non-property test results). pytest counts be
 | `test_estop_classify.py` | not written | skipped (ledger 18.7) |
 | `test_legacy_text.py` | not written | skipped (ledger 18.7) |
 | `test_pool_empty.py` | not written | skipped (ledger 8.8) |
-| `test_tools.py` | pass | 97 tests |
-| `run_all.sh --selfcheck` | not run in this session | `test_selfcheck.sh` is part of the checked-in suite; the gate command above does not call it |
+| `test_tools.py` | pass | 70 tests (the legacy JSON tool tests were removed with `--legacy-json`) |
+| `run_all.sh --selfcheck` | pass (`test_selfcheck.sh`, 19 Nov) | run separately; the gate command above does not call it |
 
-Other pytest files in the run (tests, all passed): `test_baseline_lib.py` 6, `test_bitpack.py` 20, `test_codec_basic.py` 376, `test_codec_cross.py` 1, `test_codec_events.py` 85, `test_diff_barcode.py` 313, `test_isr_ring.py` 7, `test_msg_codec.py` 24, `test_nav_map.py` 243, `test_prop01_rounding.py` 71, `test_prop03_sentinels.py` 22, `test_prop09_c39_bijection.py` 1, `test_prop14_obstacle.py` 2, `test_prop15_hump.py` 16, `test_prop18_critical_sections.py` 9, `test_spec_conformance.py` 22, `test_status_snapshot.py` 15, `test_stubs.py` 9, `test_wire_basic.py` 22, `test_wire_tools.py` 5.
+Other pytest files in the run (tests, all passed): `test_baseline_lib.py` 6, `test_bitpack.py` 20, `test_codec_basic.py` 375, `test_codec_cross.py` 1, `test_codec_events.py` 86, `test_codec_tables.py` 10, `test_diff_barcode.py` 313, `test_isr_ring.py` 7, `test_junction.py` 20, `test_lift.py` 115, `test_msg_codec.py` 24, `test_nav_map.py` 243, `test_prop01_rounding.py` 71, `test_prop03_sentinels.py` 22, `test_prop09_c39_bijection.py` 1, `test_prop14_obstacle.py` 2, `test_prop15_hump.py` 16, `test_prop18_critical_sections.py` 9, `test_spec_conformance.py` 23, `test_status_snapshot.py` 15, `test_stubs.py` 9, `test_tilt_hump.py` 21, `test_wire_basic.py` 22, `test_wire_tools.py` 5.
 
 ## 3. Track runs (Requirement 19.7)
 
-> **To be measured on the car.** Nothing in this section has been recorded yet; the tables stay empty until the run. Fill from: `python MQTT/telemetry_monitor.py --broker <LAPTOP_IP>` (add `--legacy-json` for the Baseline_Build); procedure below.
+> **To be measured on the car.** Nothing in this section has been recorded yet; the tables stay empty until the run. Fill from: `python MQTT/telemetry_monitor.py --broker <LAPTOP_IP>` (Baseline_Build: `python ../is02_baseline/MQTT/telemetry_monitor.py`); procedure below.
 
 Do 3 full track runs with each build on the same track, with the same barcode map and the same `robot_params.txt`. A run starts when the robot enters LINE_FOLLOWING at the track start and ends when it stops at the track end.
 
 Procedure for each run:
 
 1. Flash the build and let it boot to IDLE with the hotspot and broker up.
-2. Start the monitor: `python MQTT/telemetry_monitor.py --broker <ip>` (add `--legacy-json` for the Baseline_Build). Note the CSV and log file names it prints.
+2. Start the monitor: `python MQTT/telemetry_monitor.py --broker <ip>` (Baseline_Build: `python ../is02_baseline/MQTT/telemetry_monitor.py`). Note the CSV and log file names it prints.
 3. Publish the barcode map and `robot_params.txt` (`robot_map.py`, `robot_params.py`) the same way for both builds.
 4. Start the run (START command or BTN1). During the run press `p` once (PING, for check L5) and, after the robot has driven at least half the track, press `e` (ESTOP, for check L6), then recover the robot the way the Baseline_Build requires and continue the run.
 5. When the robot stops at the track end, press `q` and keep the printed summary.
@@ -201,7 +207,7 @@ Set-up:
 
 1. Mark a straight 1,000 mm course on the floor with a start line and an end line. Use the same course and surface for both builds.
 2. Choose one drive method that moves the robot straight over the course at `SPEED_MAX_MM_S` (250 mm/s) and use it unchanged for both builds. The firmware has no laptop command for a straight leg at this speed, and line following is capped at 150 mm/s. Record the method: `<fill in>`.
-3. Read the encoder error counter `hal_enc_errors()` (variable `g_enc_err` in `hal_isr.c`). No baseline console or MQTT output prints it, so read it over SWD with a debugger, for example `arm-none-eabi-gdb build_make/mtkernel_3.elf`, then `print 'hal_isr.c'::g_enc_err`. If no debugger is available, write "not measured" and record the reason in section 7.
+3. Read the encoder error counter `hal_enc_errors()` (variable `g_enc_err` in `hal_isr.c`). No baseline console or MQTT output prints it, so read it over SWD with a debugger, for example `arm-none-eabi-gdb build_make/is02_robot_smp0.elf`, then `print 'hal_isr.c'::g_enc_err`. If no debugger is available, write "not measured" and record the reason in section 7.
 
 Procedure, 5 runs per build:
 
@@ -384,29 +390,7 @@ For each trigger, the motors must turn off, the state must become EMERGENCY STOP
 
 ### 6.8 On-target concurrency self-test, `APP_SELFTEST=1` (Requirement 9.8)
 
-> **To be measured on the car.** Fill from: `cd build_make && make clean && make APP_ROBOT=1 APP_SELFTEST=1`, then read the `[selftest]` line on the USB console.
-
-Build: Revised_Build with `make clean && make APP_ROBOT=1 APP_SELFTEST=1`. This build is used only for this check.
-
-Procedure:
-
-1. Build and flash the self-test image.
-2. Open the USB serial console before or right after reset, with logging to `docs/evidence/raw/revised_selftest_<date>.log`.
-3. At boot, before the application tasks start, the self-test runs two tasks at different priorities (the higher one woken every 1 ms). Each updates a different Packed_Field of one shared Storage_Unit 10,000 times.
-4. Read the `[selftest] PASS` or `[selftest] FAIL` line and the final field values it prints. Expected: PASS, each updated field equal to the last value its task wrote, every other field equal to its value before the test.
-5. Check that the robot then boots normally to IDLE.
-6. Rebuild and flash the normal image (`APP_SELFTEST=0`) afterwards.
-
-| Item | Value |
-|---|---|
-| Commit | `<fill in>` |
-| `make` command line | `<fill in>` |
-| Console line printed | `<paste the [selftest] line>` |
-| Final value, field written by the higher-priority task (expected / observed) | |
-| Final value, field written by the lower-priority task (expected / observed) | |
-| Other fields unchanged | |
-| Normal boot to IDLE afterwards | |
-| Result | `<pass/fail>` |
+**Not applicable to the submitted firmware.** The on-target self-test was skipped (minimum scope, ledger task 8.5), and `APP_SELFTEST` has no code behind it on `main`. The same rule (every update of a shared Storage_Unit inside a balanced critical section) is checked on the host by Property 18 (`test_prop18_critical_sections.py`, section 2.2: 600 cases, 0 failed), and the critical-section times on the robot are measured by the `cs_dsp` and `cs_irq` probes in [performance.md](performance.md).
 
 ## 7. Failures and identified causes (Requirements 24.5, 24.8)
 

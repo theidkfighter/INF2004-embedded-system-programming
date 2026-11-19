@@ -416,6 +416,6 @@ Delete these leftovers (they are not part of the repo): `pico_sdk_import.cmake` 
 ### 11.4 Data representation (Change Requirement 1)
 
 - **Data representation (Change Requirement 1):**
-  - [docs/data_representation.md](docs/data_representation.md): every application field with its valid range, resolution, required bits, baseline type and new bit layout, the shared Storage_Units with their writers and protection, the 55 parameters, and the scope decisions;
+  - [docs/data_representation.md](docs/data_representation.md): every application field with its valid range, resolution, required bits, baseline type and new bit layout, the shared Storage_Units with their writers and protection, the 60 parameters, and the scope decisions;
   - [docs/protocol.md](docs/protocol.md): the binary MQTT payload formats, code tables and Parameter_IDs;
   - [docs/evidence/README.md](docs/evidence/README.md): RAM, message size, correctness and performance evidence (the car measurements are marked "to be measured" until they are taken).

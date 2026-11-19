@@ -2,10 +2,10 @@
 
 | Record | Value |
 |---|---|
-| Headers | `app_program/` at commit `36a380bc3d8daf0f945e6c6853db1ab53914633e` |
+| Headers | `app_program` (working tree at `456beae1d7d0fef249cd2ab050807a54c5f29fe1`, clean) |
 | Build | Revised_Build (msg_codec.h present) |
 | Compiler (`arm-none-eabi-gcc --version`) | arm-none-eabi-gcc (15:13.2.rel1-2) 13.2.1 20231009 |
-| Flags | `-mcpu=cortex-m0plus -mthumb -std=gnu11 -O2 -ffreestanding -fno-common -DAPP_LEGACY_TEXT_CMD=0 -DAPP_PERF=0 -DAPP_SELFTEST=0 -I /tmp/type_sizes.1jC12H/app_program` |
+| Flags | `-mcpu=cortex-m0plus -mthumb -std=gnu11 -O2 -ffreestanding -fno-common -DAPP_PERF=0 -DAPP_SELFTEST=0 -I app_program` |
 | Size source | `arm-none-eabi-nm -S` on `type_sizes.o` |
 
 ## Message body types (Requirement 23.1)

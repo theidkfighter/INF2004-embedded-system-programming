@@ -9,10 +9,10 @@ Filled by: `tools/evidence/perf_report.py <console.log>`, run on the USB console
 1. Build and flash the Step 0 commit with `make clean && make APP_ROBOT=1 APP_PERF=1` (exact line in [README.md](README.md)).
 2. Open the USB serial console with logging to a file, for example `docs/evidence/raw/step0_console_perf_<date>.log`. Keep it open for all runs of this build.
 3. Leave the robot in IDLE for at least 15 s after boot. TSK_TELEMETRY runs the encode benchmark 10 s after boot and prints `[perf] tlm_bench n=1000 max=.. avg=..` once.
-4. Start `telemetry_monitor.py` (with `--legacy-json` for the Step 0 build once the tools use the Laptop_Codec, Step 7 on) so check L1 and the watchdog count are recorded for the same runs.
+4. Start `telemetry_monitor.py` so check L1 and the watchdog count are recorded for the same runs. For the Step 0 build, use the laptop tools of the Baseline_Build commit (`git worktree add ../is02_baseline 542368f`, then `python ../is02_baseline/MQTT/<tool>.py`), which read its JSON directly; today's tools are binary-only (`--legacy-json` was removed in `af2cfab`).
 5. Do 3 consecutive full track runs. A run starts when the robot enters LINE_FOLLOWING at the track start (START command or BTN1) and ends when it stops at the track end. `start_run()` resets the probe counters, so the last `[perf]` block printed before the next START holds the totals of that run. Do not send ESTOP during these runs, so each run stays a full track run. The E-stop PWM-off times come from the track runs in [correctness.md](correctness.md) section 3, which include one remote ESTOP while driving.
 6. Note for each run: track layout, start and end time, and whether any run had to be repeated.
-7. Repeat steps 1 to 6 with the Revised_Build (`make clean && make APP_ROBOT=1 APP_PERF=1`, no `--legacy-json`).
+7. Repeat steps 1 to 6 with the Revised_Build (`make clean && make APP_ROBOT=1 APP_PERF=1`) and today's tools in `MQTT/`.
 8. Run `python tools/evidence/perf_report.py <console.log>` on each log and paste the output below.
 
 Critical-section maxima (section 5) must include driving at `SPEED_MAX_MM_S` (250 mm/s). Line following is capped at 150 mm/s (`LINE_BASE_SAFE_MAX_MM_S` in `robot_config.h`), so the `[perf] cs_dsp` and `cs_irq` lines are also taken from the encoder course runs in [correctness.md](correctness.md) section 6.1, which drive at `SPEED_MAX_MM_S` with the same `APP_PERF=1` builds.

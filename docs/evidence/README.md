@@ -8,7 +8,7 @@ This folder holds the Evidence_Report for Change Requirement 1: the RAM usage co
 |---|---|---|---|
 | Baseline_Build | `bca79643d6f9bdd3938c353fa5f6fe791fc68f94` | `Poh-Loon` | HEAD before any feature code was committed (2026-11-01, "Merge remote-tracking branch 'origin/codex/ultrasonic-refinement' into Poh-Loon") |
 | Baseline_Build with timing probes (Step 0 commit) | `542368fee64defa2c6a089db6a9769fc1819a36a` | `Poh-Loon` | Baseline code plus `perf.h` probes, build switches, test scaffolding and these templates |
-| Revised_Build | `36a380bc3d8daf0f945e6c6853db1ab53914633e` (firmware; RAM, `sizeof`, host tests and build check were run on it) | `cr1/fw-rest` | The Week 13 documents that follow it change `docs/` and `tools/evidence/` only. Record the final submitted hash here if it differs |
+| Revised_Build | `456beae1d7d0fef249cd2ab050807a54c5f29fe1` (RAM, `sizeof`, frame budget, host tests and build check were run on it, 19 Nov 2026) | `main` | `main` at `b7bbcad` (16 Nov) plus this evidence folder and two host-test fixes; the firmware is the same as `b7bbcad`. The first Revised_Build measurements (2 Nov) were on `36a380b`. If the firmware changes again before submission, re-run the no-car scripts and record the final hash here |
 
 Machine-readable form, used by `tests/host/baseline/fetch_baseline.sh` (via the `tests/host/Makefile` baseline target):
 
@@ -23,9 +23,8 @@ BASELINE_COMMIT=bca79643d6f9bdd3938c353fa5f6fe791fc68f94
 | RAM (`ram_usage.md`) | Baseline_Build commit above, `APP_PERF=0` | Revised_Build, `APP_PERF=0` | The Step 0 commit adds probe code. Measuring RAM on the parent commit keeps the baseline free of any change made for this feature |
 | Message sizes (`message_sizes.md`) | Baseline_Build commit above, `APP_PERF=0` | Revised_Build, `APP_PERF=0` | Same reason as RAM |
 | Timing (`performance.md`) | Step 0 commit, `APP_PERF=1` | Revised_Build, `APP_PERF=1` | Both builds must carry the same probes so they are measured the same way. With `APP_PERF=0` the Step 0 build is identical in behaviour to its parent |
-| Track runs, L1 to L6, functional checklist, barcode, ultrasonic and fault checks (`correctness.md`) | Baseline_Build commit above, `APP_PERF=0`, laptop tools with `--legacy-json` (from Step 7 on; the unchanged tools read JSON directly) | Revised_Build, `APP_PERF=0` | Same track, barcode map and `robot_params.txt` for both builds |
+| Track runs, L1 to L6, functional checklist, barcode, ultrasonic and fault checks (`correctness.md`) | Baseline_Build commit above, `APP_PERF=0`, laptop tools of the Baseline_Build commit (`../is02_baseline/MQTT/`: today's tools are binary-only) | Revised_Build, `APP_PERF=0` | Same track, barcode map and `robot_params.txt` for both builds |
 | Encoder course at `SPEED_MAX_MM_S` (`correctness.md` 6.1) | Step 0 commit, `APP_PERF=1` | Revised_Build, `APP_PERF=1` | The same runs also give the critical-section maxima at `SPEED_MAX_MM_S` for `performance.md` |
-| Concurrency self-test (`correctness.md`) | none | Revised_Build, `APP_SELFTEST=1` | Self-test build only. Never used for the RAM, size or track evidence |
 
 ## How each build is made
 
@@ -43,13 +42,12 @@ Record the exact command lines here. Baseline and Revised builds must use the sa
 | Purpose | Directory | Command line |
 |---|---|---|
 | RAM and size, Baseline_Build | `build_make/` (worktree of `bca7964`) | `make clean && make APP_ROBOT=1 APP_PERF=0 -j8` (measured 2 Nov 2026) |
-| RAM and size, Revised_Build | `build_make/` (worktree of `36a380b`) | `make clean && make APP_ROBOT=1 APP_PERF=0 -j8` (measured 2 Nov 2026) |
+| RAM and size, Revised_Build | `build_make/` (clean working tree of `456beae`) | `make clean && make APP_ROBOT=1 APP_PERF=0 -j8` (measured 19 Nov 2026) |
 | Timing, Step 0 commit | `build_make/` | `make clean && make APP_ROBOT=1 APP_PERF=1` (planned, not run yet) |
 | Timing, Revised_Build | `build_make/` | `make clean && make APP_ROBOT=1 APP_PERF=1` (planned, not run yet) |
 | Track runs, Revised_Build | `build_make/` | `make clean && make APP_ROBOT=1` (planned, not run yet) |
-| Self-test, Revised_Build | `build_make/` | `make clean && make APP_ROBOT=1 APP_SELFTEST=1` (planned, not run yet) |
 
-The linked image is `build_make/mtkernel_3.elf`, with the map file `build_make/mtkernel_3.map` and the flashable `build_make/mtkernel_3.uf2`.
+The linked image is `build_make/is02_robot_smp0.elf`, with the map file `build_make/is02_robot_smp0.map` and the flashable `build_make/is02_robot_smp0.uf2`.
 
 ## Toolchain
 
@@ -68,7 +66,7 @@ Paste the first line of `arm-none-eabi-gcc --version` for each machine used. All
 | Script | Fills | Run against |
 |---|---|---|
 | `tools/evidence/build_check.sh` | Build result and warning count (`correctness.md` section 1) | Each build |
-| `tools/evidence/ram_report.sh <elf> <map>` | `ram_usage.md` | `mtkernel_3.elf` and `mtkernel_3.map` of each build |
+| `tools/evidence/ram_report.sh <elf> <map>` | `ram_usage.md` | `is02_robot_smp0.elf` and `is02_robot_smp0.map` of each build |
 | `tools/evidence/type_sizes.sh` | Target `sizeof` and pool block size (`message_sizes.md` section 1) | Headers of each build |
 | `tools/evidence/msg_sizes.py <log.csv>` | MQTT payload sizes per topic (`message_sizes.md` section 2) | `is02_tool.py log` file of one track run per build |
 | `tools/evidence/frame_budget.py` | Telemetry_Frame bit budget (`message_sizes.md` section 3) | `wire_dump` output of the Revised_Build |
@@ -87,11 +85,26 @@ Paste the first line of `arm-none-eabi-gcc --version` for each machine used. All
 
 Raw inputs (console logs, `is02_tool.py log` CSV files, `telemetry_monitor.py` CSV and log files, script outputs) go in `docs/evidence/raw/`, named `<build>_<what>_<date>.<ext>`, for example `baseline_console_perf_2026-11-10.log`.
 
-## Status (2 Nov 2026)
+## Status (19 Nov 2026)
 
 | File | State |
 |---|---|
-| [ram_usage.md](ram_usage.md) | measured |
-| [message_sizes.md](message_sizes.md) | sections 1 and 3 measured; section 2 and the 25 % check (section 4) wait for the car run |
-| [correctness.md](correctness.md) | sections 1 and 2 (build check, host tests) measured; sections 3 to 7 wait for the car |
+| [ram_usage.md](ram_usage.md) | measured (Revised_Build re-measured on 19 Nov) |
+| [message_sizes.md](message_sizes.md) | sections 1 and 3 measured (19 Nov); section 2 and the 25 % check (section 4) wait for the car run |
+| [correctness.md](correctness.md) | sections 1 and 2 (build check, host tests) measured (19 Nov); sections 3 to 7 wait for the car |
 | [performance.md](performance.md) | waits for the car; section 4 has the instruction counts from the ledger, marked as counted |
+| [../data_representation.md](../data_representation.md), [../protocol.md](../protocol.md) | regenerated by `tools/evidence/gen_docs.py` on 19 Nov (264 fields, 60 parameters) |
+
+`APP_SELFTEST` has no code behind it any more (the on-target self-test was skipped, ledger 8.5); concurrency is covered by Property 18 in the host tests, so no self-test build is part of this evidence.
+
+**Re-running the no-car evidence** after a firmware change (for example the coding-standard fixes), from a clean working tree with placeholder `config/*.h`:
+
+```sh
+bash tools/evidence/build_check.sh -- -j8                                  # correctness.md section 1
+tools/evidence/ram_report.sh -m "make clean && make APP_ROBOT=1 APP_PERF=0 -j8" -r "g_raw=g_raw" \
+    build_make/is02_robot_smp0.elf build_make/is02_robot_smp0.map > docs/evidence/raw/revised_ram_report_<date>.md
+tools/evidence/type_sizes.sh -e build_make/is02_robot_smp0.elf > docs/evidence/raw/revised_type_sizes_<date>.md
+make -C tests/host tools && tests/host/build/wire_dump | python3 tools/evidence/frame_budget.py
+python3 tools/evidence/gen_docs.py                                         # data_representation.md, protocol.md
+bash tests/host/run_all.sh --seed <s> > docs/evidence/raw/revised_host_tests_<date>.log
+```

@@ -1,0 +1,13 @@
+$ tests/host/build/wire_dump | python3 tools/evidence/frame_budget.py
+telemetry: 37 fields, 432 bits, 54 bytes, 0 padding bits
+heartbeat: 18 fields, 195 bits, 25 bytes, 5 padding bits
+
+$ bash tools/evidence/build_check.sh -- -j8   (summary)
+== build_check summary ==
+log:               build_make/build_check.log
+make:              cd build_make && make clean -j8 && make APP_ROBOT=1 -j8
+baseline commit:   bca79643d6f9bdd3938c353fa5f6fe791fc68f94 (docs/evidence/README.md)
+build:             ok
+warnings:          0 (Baseline_Build: 0)
+changed files:     180 since bca7964
+PASS
