@@ -59,7 +59,7 @@ void bcm_set_adapt_swing(bcm_t *p_m, float swing_frac)
     adt_init(&p_m->adt, p_m->white, p_m->black, p_m->det_hys, swing_frac);
 }
 
-bool bcm_open(const bcm_t *p_m)
+static bool bcm_open(const bcm_t *p_m)
 {
     for (uint32_t i = 0u; i < p_m->n_levels; i++)
     {

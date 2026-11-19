@@ -279,27 +279,35 @@ void st_run_reset(void)
 sys_state_t    st_state(void)        { return (sys_state_t)BP_GET(g_status.sys, ST_SH_STATE, ST_W_STATE); }
 uint32_t       st_faults(void)       { return BP_GET(g_status.sys, ST_SH_FAULTS, ST_W_FAULTS); }
 uint32_t       st_stop(void)         { return BP_GET(g_status.sys, ST_SH_STOP, ST_W_STOP); }
+#ifdef HOST_TEST   /* host tests only: not used by the firmware */
 motion_event_t st_motion_event(void) { return (motion_event_t)BP_GET(g_status.sys, ST_SH_MEV, ST_W_MEV); }
+#endif /* HOST_TEST */
 float          st_dist_mm(void)      { return deq_u(g_status.mot_e, ST_SH_DIST, ST_W_DIST, 10); }
 bool           st_line_l(void)       { return BP_GET(g_status.line_a, ST_SH_LINE_L, ST_W_LINE) != 0u; }
 bool           st_line_r(void)       { return BP_GET(g_status.line_a, ST_SH_LINE_R, ST_W_LINE) != 0u; }
 uint32_t       st_ir_adc(void)       { return BP_GET(g_status.line_a, ST_SH_IR, ST_W_IR); }
 uint32_t       st_bc_thr_black(void) { return BP_GET(g_status.line_b, ST_SH_THR_BLACK, ST_W_THR); }
 uint32_t       st_bc_thr_white(void) { return BP_GET(g_status.line_b, ST_SH_THR_WHITE, ST_W_THR); }
+#ifdef HOST_TEST   /* host tests only: not used by the firmware */
 bool           st_bc_enabled(void)   { return BP_GET(g_status.line_a, ST_SH_BC_ON, ST_W_BC_ON) != 0u; }
+#endif /* HOST_TEST */
 uint32_t       st_barcodes_read(void){ return BP_GET(g_status.line_a, ST_SH_BC_N, ST_W_BC_N); }
 float          st_pitch_deg(void)    { return deq_s(g_status.imu_a, ST_SH_PITCH, ST_W_PITCH, 10); }
 float          st_hump_max_mm(void)  { return deq_u(g_status.imu_b, ST_SH_HUMP_MAX, ST_W_HUMP_U, 10); }
 uint32_t       st_humps(void)        { return BP_GET(g_status.imu_c, ST_SH_HUMPS, ST_W_HUMPS); }
 uint32_t       st_obstacles(void)    { return BP_GET(g_status.obs_c, ST_SH_OBSTACLES, ST_W_OBSTACLES); }
+#ifdef HOST_TEST   /* host tests only: not used by the firmware */
 uint32_t       st_vbat(void)         { return BP_GET(g_status.misc, ST_SH_VBAT, ST_W_VBAT); }
+#endif /* HOST_TEST */
 
+#ifdef HOST_TEST   /* host tests only: not used by the firmware */
 char st_barcode(void)
 {
     uint32_t c = BP_GET(g_status.line_a, ST_SH_BARCODE, ST_W_BARCODE);
 
     return (c == 0u) ? '\0' : (char)(c + ' ');
 }
+#endif /* HOST_TEST */
 
 static float us_value(uint32_t code)
 {
@@ -311,6 +319,7 @@ float st_obst_cm(void)
     return us_value(BP_GET(g_status.obs_a, ST_SH_OBST, ST_W_US));
 }
 
+#ifdef HOST_TEST   /* host tests only: not used by the firmware */
 float st_scan_cm(uint32_t i)
 {
     switch (i)
@@ -323,10 +332,13 @@ float st_scan_cm(uint32_t i)
         default: return -1.0f;
     }
 }
+#endif /* HOST_TEST */
 
+#ifdef HOST_TEST   /* host tests only: not used by the firmware */
 char st_scan_side(void)
 {
     uint32_t s = BP_GET(g_status.obs_a, ST_SH_SCAN_SIDE, ST_W_SCAN_SIDE);
 
     return (s == 1u) ? 'L' : ((s == 2u) ? 'R' : '\0');
 }
+#endif /* HOST_TEST */

@@ -3,6 +3,7 @@
  * @brief   Pitch, hump profiler and motion-event classifier (see imu_logic.h).
  */
 #include <math.h>
+#include "test_visible.h"
 #include "imu_logic.h"
 #include "robot_config.h"
 
@@ -213,7 +214,7 @@ float imu_tilt_deg(const float p_g[3], const float p_g0[3])
     return acosf(c) * RAD_TO_DEG;
 }
 
-float imu_lift_mm(float lever_mm, float tilt_deg)
+TEST_VISIBLE float imu_lift_mm(float lever_mm, float tilt_deg)
 {
     return lever_mm * sinf(fabsf(tilt_deg) * DEG_TO_RAD);
 }
@@ -339,10 +340,12 @@ void lift_reset(lift_ctx_t *p_l)
     p_l->cause   = (uint8_t)LIFT_NONE;
 }
 
+#ifdef HOST_TEST   /* host tests only: not used by the firmware */
 float lift_tilt_deg(const lift_ctx_t *p_l)
 {
     return (p_l->n_blank == 0xFFu) ? imu_tilt_deg(p_l->lp, p_l->ref) : 0.0f;
 }
+#endif /* HOST_TEST */
 
 static uint8_t sat_inc(uint8_t n)
 {

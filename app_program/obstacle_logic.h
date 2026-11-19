@@ -68,7 +68,9 @@ bool  obstacle_side_room(const obstacle_profile_t *p_prof, char side, float robo
 /* Sideways shift (mm) the car centre needs to pass on 'side' ('L' / 'R'):
    L = half + margin - 10 x_l, R = half + margin + 10 x_r. Any other side
    gives 0. shift_r - shift_l = 20 x offset_cm. */
+#ifdef HOST_TEST   /* TEST_VISIBLE in the .c */
 float obstacle_shift_mm(const obstacle_profile_t *p_prof, char side, float robot_half_mm, float margin_mm);
+#endif
 
 /* The side to pass on, among the sides that have room and are not excluded
    by 'flags' (OBST_BLOCKED_*): the one needing the smaller sideways shift
@@ -223,11 +225,9 @@ typedef struct
 } obst_dyn_plan_t;
 
 /* d(theta, y) = y sin(theta) - e cos(theta): leg-1 clearance to the corner */
-float obstacle_turn_clearance_mm(float theta_deg, float y_mm, float e_mm);
 
 /* S(theta): forward reach gained by the front corner (-w, A) during a pivot
    of theta; peaks at sqrt(w^2 + A^2) - A beyond phi* = atan2(w, A) */
-float obstacle_swing_reach_mm(float theta_deg, float half_mm, float us_ahead_mm);
 
 /* Plans theta and the total reverse for 'side'. False: invalid profile,
    side not 'L'/'R', scale outside [0, 1], min_deg > 45 or max_deg < 45. */

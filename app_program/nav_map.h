@@ -29,14 +29,13 @@ typedef enum
     ACT_RIGHT
 } nav_action_t;
 
-/* The packed map (nav_map.c): extern for the host tests; firmware code uses
+/* The packed map g_map_w[MAP_WORDS] is private to nav_map.c (TEST_VISIBLE:
+   the host tests reach it through the shared library); firmware code uses
    the functions below. */
-extern volatile uint32_t g_map_w[3];
 
 void         nav_map_clear(void);
 nav_action_t nav_map_get(char letter);              /* 'A'..'Z' (lower case accepted) */
 float        nav_action_deg(nav_action_t act);      /* + = clockwise, 0 = straight */
-const char  *nav_action_name(nav_action_t act);
 
 #ifdef HOST_TEST
 /* Host-test helper only (test_nav_map.py): the firmware receives the map in
@@ -58,6 +57,8 @@ uint32_t     nav_map_actions(uint8_t p_act[NAV_MAP_LETTERS]);
 uint32_t     nav_map_set_slots(const uint8_t p_present[NAV_MAP_SLOTS], const uint8_t p_letter[NAV_MAP_SLOTS]);
 
 /* Writes "F=FWD,K=LEFT,..." into p_buf. Returns the number of mapped letters. */
+#ifdef HOST_TEST   /* host tests only */
 uint32_t     nav_map_describe(char *p_buf, uint32_t size);
+#endif
 
 #endif /* NAV_MAP_H */

@@ -25,7 +25,6 @@ void     jb_char(jbuf_t *p_jb, char c);
 void     jb_int(jbuf_t *p_jb, int32_t value);
 void     jb_uint(jbuf_t *p_jb, uint32_t value);
 void     jb_fixed(jbuf_t *p_jb, float value, uint32_t decimals); /* e.g. 12.3 */
-void     jb_str(jbuf_t *p_jb, const char *p_text);         /* "quoted", escaped */
 uint32_t jb_len(const jbuf_t *p_jb);
 
 /* "key": helpers (no leading comma) */

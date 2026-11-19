@@ -39,6 +39,8 @@ void msg_motion_unpack(const motion_msg_t *p_m, motion_cmd_t *p_c);
 void msg_nav_pack(const nav_event_t *p_e, nav_msg_t *p_m);
 void msg_nav_unpack(const nav_msg_t *p_m, nav_event_t *p_e);
 void msg_obst_pack(const obstacle_profile_t *p_o, obst_msg_t *p_m);
+#ifdef HOST_TEST   /* host tests only */
 void msg_obst_unpack(const obst_msg_t *p_m, obstacle_profile_t *p_o);
+#endif
 
 #endif /* MSG_CODEC_H */

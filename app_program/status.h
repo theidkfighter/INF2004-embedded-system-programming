@@ -94,24 +94,36 @@ void st_run_reset(void);                         /* start of a run: counters, ma
 sys_state_t    st_state(void);
 uint32_t       st_faults(void);
 uint32_t       st_stop(void);
+#ifdef HOST_TEST   /* host tests only */
 motion_event_t st_motion_event(void);
+#endif
 float          st_dist_mm(void);
 bool           st_line_l(void);
 bool           st_line_r(void);
 uint32_t       st_ir_adc(void);
 uint32_t       st_bc_thr_black(void);
 uint32_t       st_bc_thr_white(void);
+#ifdef HOST_TEST   /* host tests only */
 bool           st_bc_enabled(void);
+#endif
+#ifdef HOST_TEST   /* host tests only */
 char           st_barcode(void);
+#endif
 uint32_t       st_barcodes_read(void);
 float          st_pitch_deg(void);
 float          st_hump_max_mm(void);
 uint32_t       st_humps(void);
 float          st_obst_cm(void);                 /* -1 = no echo */
+#ifdef HOST_TEST   /* host tests only */
 float          st_scan_cm(uint32_t i);           /* -1 = no echo */
+#endif
+#ifdef HOST_TEST   /* host tests only */
 char           st_scan_side(void);
+#endif
 uint32_t       st_obstacles(void);
+#ifdef HOST_TEST   /* host tests only */
 uint32_t       st_vbat(void);
+#endif
 
 /* ---- field layout (also used by the telemetry frame fill) ---------------------- */
 /* sys */

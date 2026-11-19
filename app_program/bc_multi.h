@@ -94,6 +94,5 @@ bc_result_t bcm_sample(bcm_t *p_m, const bc_params_t *p_par, uint32_t pos_um, ui
 /* Drop every open window without a result (e.g. during a turn). */
 void        bcm_cancel(bcm_t *p_m);
 
-bool        bcm_open(const bcm_t *p_m);
 
 #endif /* BC_MULTI_H */

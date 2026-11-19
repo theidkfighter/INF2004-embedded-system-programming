@@ -5,6 +5,7 @@
  * The units are not static: the host tests watch them (Property 18). Tasks
  * reach them only through shared.h.
  */
+#include "test_visible.h"
 #include "shared.h"
 #include "bitpack.h"
 #include "crit.h"
@@ -19,12 +20,14 @@
 _Static_assert(BUZZ_WARN <= BP_MASK(3u), "g_buzz.pattern too narrow");
 _Static_assert((uint32_t)MOTION_TIMEOUT <= BP_MASK(DONE_W_RESULT), "g_done.done_result too narrow");
 
-volatile uint8_t  g_buzz;
-volatile uint8_t  g_net_flags;
-volatile uint32_t g_estop_rx_us;
-volatile uint16_t g_estop_pwm_off_us;
-volatile uint32_t g_done;
-volatile uint8_t  g_lift;
+/* TEST_VISIBLE: private to this file in the firmware (the tasks use the
+   accessors in shared.h); visible to the Property 18 host tests. */
+TEST_VISIBLE volatile uint8_t  g_buzz;
+TEST_VISIBLE volatile uint8_t  g_net_flags;
+TEST_VISIBLE volatile uint32_t g_estop_rx_us;
+TEST_VISIBLE volatile uint16_t g_estop_pwm_off_us;
+TEST_VISIBLE volatile uint32_t g_done;
+TEST_VISIBLE volatile uint8_t  g_lift;
 
 /* ---- buzzer --------------------------------------------------------------- */
 
@@ -172,7 +175,7 @@ static const bp_qspec_t Q_ODO_V    = { 100,   -100000,    100000,    0 };
 static const bp_qspec_t Q_ODO_A    = { 10000, -40000,     40000,     0 };
 static const bp_qspec_t Q_ODO_TURN = { 100,   -72000,     72000,     0 };
 
-uint32_t g_odo_rec[ODO_WORDS];        /* shared: copied whole inside one section */
+TEST_VISIBLE uint32_t g_odo_rec[ODO_WORDS];   /* shared: copied whole inside one section */
 
 void odometry_get(odometry_t *p_out)
 {

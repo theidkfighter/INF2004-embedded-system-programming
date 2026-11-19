@@ -132,8 +132,12 @@ static inline int32_t prm_int(uint32_t d)        /* any encoding as its whole va
 /* Bits of Parameter_ID id in its Parameter_Store representation (32 = F32),
    and that code (GET:PARAMS acks). */
 uint32_t params_store_width(uint32_t id);
+#ifdef HOST_TEST   /* host tests only */
 float    params_min(uint32_t id);               /* PARAMS[] limits (0 for an unknown ID) */
+#endif
+#ifdef HOST_TEST   /* host tests only */
 float    params_max(uint32_t id);
+#endif
 uint32_t params_store_code(uint32_t id);
 
 void  params_init(void);
@@ -148,8 +152,12 @@ uint32_t params_count(void);
    params_set_id: 0 ok, -1 unknown ID, -2 not a finite number, -3 out of range
    (or not a whole number for a packed parameter, D15). */
 int32_t     params_set_id(uint32_t id, float value);
+#ifdef HOST_TEST   /* host tests only */
 bool        params_get_id(uint32_t id, float *p_value);
+#endif
+#ifdef HOST_TEST   /* host tests only */
 const char *params_name(uint32_t id);            /* NULL for an unknown ID */
+#endif
 uint16_t    params_table_crc(void);              /* D15 table version: CRC-16/CCITT-FALSE of the NAMEs (heartbeat) */
 
 /* Derived values (0 if the calibration is missing) */

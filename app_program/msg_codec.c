@@ -32,10 +32,12 @@ static uint32_t us13(float cm)
     return (bp_is_nan(cm) || (cm < 0.0f)) ? 8191u : (uint32_t)bp_quant(cm, &Q_US13, (bool *)0);
 }
 
+#ifdef HOST_TEST   /* used only by host-test-only decoders */
 static float us13_val(uint32_t c)
 {
     return (c == 8191u) ? -1.0f : bp_dequant((int32_t)c, 10);
 }
+#endif /* HOST_TEST */
 
 /* ---- motion ------------------------------------------------------------------ */
 
@@ -155,6 +157,7 @@ void msg_obst_pack(const obstacle_profile_t *p_o, obst_msg_t *p_m)
     }
 }
 
+#ifdef HOST_TEST   /* host tests only: not used by the firmware */
 void msg_obst_unpack(const obst_msg_t *p_m, obstacle_profile_t *p_o)
 {
     const uint32_t *w = p_m->w;
@@ -178,3 +181,4 @@ void msg_obst_unpack(const obst_msg_t *p_m, obstacle_profile_t *p_o)
         p_o->scan_cm[i] = us13_val(bp_wget(w, pos, 13u));                pos += 13u;
     }
 }
+#endif /* HOST_TEST */

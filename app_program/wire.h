@@ -95,11 +95,18 @@ typedef struct
 
 void     bw_init(bw_t *p_w, uint8_t *p_buf, uint32_t cap_bytes);   /* zero-fills */
 void     bw_put(bw_t *p_w, uint32_t value, uint32_t width);        /* low width bits */
+#ifdef HOST_TEST   /* TEST_VISIBLE in the .c */
 void     bw_copy(bw_t *p_w, const uint8_t *p_src, uint32_t n_bits);    /* MSB-first bits */
+#endif
+#ifdef HOST_TEST   /* TEST_VISIBLE in the .c */
 uint32_t bw_bytes(const bw_t *p_w);                                  /* bytes used */
+#endif
+#ifdef HOST_TEST   /* TEST_VISIBLE in the .c */
 void     br_init(br_t *p_r, const uint8_t *p_buf, uint32_t len_bytes);
+#endif
+#ifdef HOST_TEST   /* TEST_VISIBLE in the .c */
 uint32_t br_get(br_t *p_r, uint32_t width);
-int32_t  br_get_s(br_t *p_r, uint32_t width);                        /* sign-extended */
+#endif
 
 /* ---- frame contents (decoded form) --------------------------------------- */
 typedef struct
@@ -213,30 +220,44 @@ typedef struct
 /* Encoders return the payload length in bytes, or 0 when a field is out of
    range or the buffer is too small. Decoders return a wire_status_t. */
 uint32_t wire_enc_telemetry(const wire_tlm_t *p_t, uint8_t *p_out);          /* WIRE_TLM_LEN */
+#ifdef HOST_TEST   /* host tests only */
 int32_t      wire_dec_telemetry(const uint8_t *p, uint32_t len, wire_tlm_t *p_t);
+#endif
 uint32_t wire_enc_heartbeat(const wire_hb_t *p_h, uint8_t *p_out);           /* WIRE_HB_LEN */
+#ifdef HOST_TEST   /* host tests only */
 int32_t      wire_dec_heartbeat(const uint8_t *p, uint32_t len, wire_hb_t *p_h);
+#endif
 
 /* Argument bit count of an event from its arguments (variable events read
    their count field). avail = argument bits present. */
 int32_t      wire_evt_arg_bits(uint32_t code, const uint8_t *p_args, uint32_t avail, uint32_t *p_bits);
 uint32_t wire_enc_event(uint32_t t_ms, const wire_evt_t *p_e, uint8_t *p_out, uint32_t cap);
+#ifdef HOST_TEST   /* host tests only */
 int32_t      wire_dec_event(const uint8_t *p, uint32_t len, uint32_t *p_t_ms, wire_evt_t *p_e);
+#endif
 
 /* p_pbits(param_id) gives a GET:PARAMS value width (NULL or 0 = 32 bits). */
 typedef uint32_t (*wire_pbits_fn)(uint32_t param_id);
 uint32_t wire_enc_ack(const wire_ack_t *p_a, uint8_t *p_out, uint32_t cap);
+#ifdef HOST_TEST   /* host tests only */
 int32_t      wire_dec_ack(const uint8_t *p, uint32_t len, wire_pbits_fn p_pbits, wire_ack_t *p_a);
+#endif
 
 int32_t      wire_dec_cmd(const uint8_t *p, uint32_t len, wire_cmd_t *p_c);
+#ifdef HOST_TEST   /* host tests only */
 uint32_t wire_enc_cmd(const wire_cmd_t *p_c, uint8_t *p_out, uint32_t cap);
+#endif
 int32_t      wire_dec_map(const uint8_t *p, uint32_t len, wire_cmd_t *p_c);       /* is02/map */
 
 /* Config_Frame: calls p_apply(param_id, value_bits) for each pair in order. */
 typedef void (*wire_cfg_fn)(uint32_t param_id, uint32_t value_bits, void *p_ctx);
 int32_t      wire_dec_config(const uint8_t *p, uint32_t len, wire_cfg_fn p_apply, void *p_ctx);
 /* Inverse encoders (host tests and tools): Map_Frame, Config_Frame. */
+#ifdef HOST_TEST   /* host tests only */
 uint32_t wire_enc_map(const wire_cmd_t *p_c, uint8_t *p_out, uint32_t cap);
+#endif
+#ifdef HOST_TEST   /* host tests only */
 uint32_t wire_enc_config(uint32_t n, const uint8_t *p_ids, const uint32_t *p_bits, uint8_t *p_out, uint32_t cap);
+#endif
 
 #endif /* WIRE_H */

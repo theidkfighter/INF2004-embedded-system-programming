@@ -110,7 +110,7 @@ static char char_bars_spaces(const uint16_t *p_w9)
     return '\0';
 }
 
-char code39_char(const uint16_t *p_w9)
+static char code39_char(const uint16_t *p_w9)
 {
     {
         char c = char_bars_spaces(p_w9);
@@ -190,10 +190,12 @@ uint32_t c39_to_index(char c)
     return C39_NONE;
 }
 
+#ifdef HOST_TEST   /* host tests only: not used by the firmware */
 char c39_from_index(uint32_t idx)
 {
     return (idx < C39_COUNT) ? C39_CHARS[idx] : (char)0;
 }
+#endif /* HOST_TEST */
 
 static bool decode_one_way(const uint16_t *p_w, bool b_first_bar, uint32_t n,
                            char *p_out, uint32_t out_len)

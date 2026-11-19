@@ -84,9 +84,7 @@ typedef enum
 
 bool     hal_imu_init(void);                     /* finds the chip; +-4 g, 100 Hz (DLHC: INT1 = 2 g high-pass, latched) */
 bool     hal_imu_accel_g(float *p_x, float *p_y, float *p_z);  /* false = I2C timeout (2 ms) */
-bool     hal_imu_int1_src(uint8_t *p_src);       /* reads INT1_SRC_A, clears the latch (LSM303D: 0) */
 bool     hal_imu_int1_level(void);               /* false when INT1 is not used */
-bool     hal_imu_int1_used(void);                /* only with the LSM303DLHC */
 hal_imu_chip_t hal_imu_chip(void);
 uint32_t       hal_imu_addr(void);               /* 7-bit I2C address of the accelerometer */
 const char    *hal_imu_chip_name(void);          /* "LSM303DLHC at 0x19", "LSM303D at 0x1E", "none" */

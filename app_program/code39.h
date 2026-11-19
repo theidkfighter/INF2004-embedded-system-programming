@@ -16,7 +16,6 @@
 #include <stdint.h>
 
 /* Returns the character for a 9-element window (bar first), or 0 if invalid. */
-char code39_char(const uint16_t *p_w9);
 
 /* Finds "*...*" in the segment list (widths in um, U16). Elements alternate
    bar / space; b_first_bar says whether element 0 is a bar (Change
@@ -40,6 +39,8 @@ uint32_t c39_to_index(char c);
 /* Character for index idx (0..42). Returns 0 for C39_NONE and also for the
    never-stored codes 43..62 and anything larger, so a corrupt index reads
    back as "none". */
+#ifdef HOST_TEST   /* host tests only */
 char c39_from_index(uint32_t idx);
+#endif
 
 #endif /* CODE39_H */

@@ -154,15 +154,19 @@ static int32_t param_store(uint32_t i, float v)
     return prm_put(PARAMS[i].desc, v) ? 0 : -3;
 }
 
+#ifdef HOST_TEST   /* host tests only: not used by the firmware */
 float params_min(uint32_t id)
 {
     return (id < PARAM_COUNT) ? PARAMS[id].min : 0.0f;
 }
+#endif /* HOST_TEST */
 
+#ifdef HOST_TEST   /* host tests only: not used by the firmware */
 float params_max(uint32_t id)
 {
     return (id < PARAM_COUNT) ? PARAMS[id].max : 0.0f;
 }
+#endif /* HOST_TEST */
 
 uint32_t params_store_width(uint32_t id)
 {
@@ -270,6 +274,7 @@ int32_t params_set_id(uint32_t id, float value)
     return param_store(id, value);
 }
 
+#ifdef HOST_TEST   /* host tests only: not used by the firmware */
 bool params_get_id(uint32_t id, float *p_value)
 {
     if (id >= PARAM_COUNT)
@@ -279,11 +284,14 @@ bool params_get_id(uint32_t id, float *p_value)
     *p_value = param_value(id);
     return true;
 }
+#endif /* HOST_TEST */
 
+#ifdef HOST_TEST   /* host tests only: not used by the firmware */
 const char *params_name(uint32_t id)
 {
     return (id < PARAM_COUNT) ? PARAMS[id].p_name : (const char *)0;
 }
+#endif /* HOST_TEST */
 
 /* Parameter table version (design D15): CRC-16/CCITT-FALSE (poly 0x1021,
    init 0xFFFF, no reflection, no final XOR) over every NAME in ID order, each

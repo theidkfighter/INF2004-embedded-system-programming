@@ -2,6 +2,7 @@
  * @file    nav_map.c
  * @brief   Barcode letter -> movement mapping (see nav_map.h).
  */
+#include "test_visible.h"
 #include "nav_map.h"
 
 #include "bitpack.h"
@@ -28,7 +29,7 @@ BP_STATIC_ASSERT((uint32_t)ACT_RIGHT <= BP_MASK(MAP_ACT_W), "g_map_w: nav_action
    three words are stored in one dispatch-disabled section, and the whole-map
    readers copy the three words in one too, so a half-updated map is never
    seen (Requirement 9.7). */
-volatile uint32_t g_map_w[MAP_WORDS];
+TEST_VISIBLE volatile uint32_t g_map_w[MAP_WORDS];   /* the packed map; host tests read it */
 
 static uint32_t map_word_get(uint32_t word, uint32_t i)
 {
@@ -178,7 +179,8 @@ float nav_action_deg(nav_action_t act)
     }
 }
 
-const char *nav_action_name(nav_action_t act)
+#ifdef HOST_TEST   /* used only by host-test-only decoders */
+static const char *nav_action_name(nav_action_t act)
 {
     switch (act)
     {
@@ -189,6 +191,7 @@ const char *nav_action_name(nav_action_t act)
         default:          return "NONE";
     }
 }
+#endif /* HOST_TEST */
 
 #ifdef HOST_TEST
 /* Host-test helper only, see nav_map.h. */
@@ -326,6 +329,7 @@ uint32_t nav_map_set_slots(const uint8_t p_present[NAV_MAP_SLOTS], const uint8_t
     return map_count(tmp);
 }
 
+#ifdef HOST_TEST   /* host tests only: not used by the firmware */
 uint32_t nav_map_describe(char *p_buf, uint32_t size)
 {
     uint32_t w[MAP_WORDS];
@@ -364,3 +368,4 @@ uint32_t nav_map_describe(char *p_buf, uint32_t size)
     p_buf[len] = '\0';
     return n;
 }
+#endif /* HOST_TEST */

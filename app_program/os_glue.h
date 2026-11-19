@@ -77,7 +77,9 @@ bool       os_create_objects(void);
 bool       os_start_tasks(void);
 bool       os_start_interrupts(void);            /* tk_def_int + EnableInt + 10 ms cyclic tick */
 
+#ifdef HOST_TEST   /* TEST_VISIBLE in the .c */
 app_msg_t *msg_alloc(void);                      /* from the pool, no wait; NULL if empty */
+#endif
 void       msg_free(app_msg_t *p_msg);
 app_msg_t *msg_recv(ID mbxid, TMO tmo);          /* NULL on timeout */
 

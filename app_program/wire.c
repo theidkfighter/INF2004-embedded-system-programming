@@ -4,6 +4,7 @@
  */
 #include <string.h>
 
+#include "test_visible.h"
 #include "wire.h"
 
 /* ------------------------------------------------------------------------ */
@@ -43,7 +44,7 @@ void bw_put(bw_t *p_w, uint32_t value, uint32_t width)
     }
 }
 
-void bw_copy(bw_t *p_w, const uint8_t *p_src, uint32_t n_bits)
+TEST_VISIBLE void bw_copy(bw_t *p_w, const uint8_t *p_src, uint32_t n_bits)
 {
     for (uint32_t i = 0u; i < n_bits; i++)
     {
@@ -51,12 +52,12 @@ void bw_copy(bw_t *p_w, const uint8_t *p_src, uint32_t n_bits)
     }
 }
 
-uint32_t bw_bytes(const bw_t *p_w)
+TEST_VISIBLE uint32_t bw_bytes(const bw_t *p_w)
 {
     return (p_w->pos + 7u) / 8u;
 }
 
-void br_init(br_t *p_r, const uint8_t *p_buf, uint32_t len_bytes)
+TEST_VISIBLE void br_init(br_t *p_r, const uint8_t *p_buf, uint32_t len_bytes)
 {
     p_r->p        = p_buf;
     p_r->len_bits = len_bytes * 8u;
@@ -64,7 +65,7 @@ void br_init(br_t *p_r, const uint8_t *p_buf, uint32_t len_bytes)
     p_r->b_short  = false;
 }
 
-uint32_t br_get(br_t *p_r, uint32_t width)
+TEST_VISIBLE uint32_t br_get(br_t *p_r, uint32_t width)
 {
     uint32_t v = 0u;
 
@@ -85,7 +86,8 @@ uint32_t br_get(br_t *p_r, uint32_t width)
     return v;
 }
 
-int32_t br_get_s(br_t *p_r, uint32_t width)
+#ifdef HOST_TEST   /* used only by host-test-only decoders */
+static int32_t br_get_s(br_t *p_r, uint32_t width)
 {
     uint32_t v = br_get(p_r, width);
 
@@ -95,6 +97,7 @@ int32_t br_get_s(br_t *p_r, uint32_t width)
     }
     return (int32_t)v;
 }
+#endif /* HOST_TEST */
 
 /* Signed value as a width-bit two's complement code. */
 static uint32_t tc(int32_t v, uint32_t width)
@@ -193,6 +196,7 @@ uint32_t wire_enc_telemetry(const wire_tlm_t *p_t, uint8_t *p_out)
     return (w.b_overflow || (w.pos != WIRE_TLM_BITS)) ? 0u : bw_bytes(&w);
 }
 
+#ifdef HOST_TEST   /* host tests only: not used by the firmware */
 int32_t wire_dec_telemetry(const uint8_t *p, uint32_t len, wire_tlm_t *p_t)
 {
     br_t r;
@@ -250,6 +254,7 @@ int32_t wire_dec_telemetry(const uint8_t *p, uint32_t len, wire_tlm_t *p_t)
     }
     return r.b_short ? WIRE_BAD_LENGTH : WIRE_OK;
 }
+#endif /* HOST_TEST */
 
 /* ------------------------------------------------------------------------ */
 /* Heartbeat_Frame                                                           */
@@ -277,6 +282,7 @@ uint32_t wire_enc_heartbeat(const wire_hb_t *p_h, uint8_t *p_out)
     return (w.b_overflow || (w.pos != WIRE_HB_BITS)) ? 0u : bw_bytes(&w);
 }
 
+#ifdef HOST_TEST   /* host tests only: not used by the firmware */
 int32_t wire_dec_heartbeat(const uint8_t *p, uint32_t len, wire_hb_t *p_h)
 {
     br_t r;
@@ -311,6 +317,7 @@ int32_t wire_dec_heartbeat(const uint8_t *p, uint32_t len, wire_hb_t *p_h)
     }
     return rest_zero(&r) ? WIRE_OK : WIRE_BAD_VALUE;
 }
+#endif /* HOST_TEST */
 
 /* ------------------------------------------------------------------------ */
 /* Event_Frame                                                               */
@@ -431,6 +438,7 @@ uint32_t wire_enc_event(uint32_t t_ms, const wire_evt_t *p_e, uint8_t *p_out, ui
     return w.b_overflow ? 0u : bw_bytes(&w);
 }
 
+#ifdef HOST_TEST   /* host tests only: not used by the firmware */
 int32_t wire_dec_event(const uint8_t *p, uint32_t len, uint32_t *p_t_ms, wire_evt_t *p_e)
 {
     br_t     r;
@@ -497,6 +505,7 @@ int32_t wire_dec_event(const uint8_t *p, uint32_t len, uint32_t *p_t_ms, wire_ev
     r.pos += need;
     return rest_zero(&r) ? WIRE_OK : WIRE_BAD_VALUE;
 }
+#endif /* HOST_TEST */
 
 /* ------------------------------------------------------------------------ */
 /* Ack_Frame                                                                 */
@@ -586,6 +595,7 @@ uint32_t wire_enc_ack(const wire_ack_t *p_a, uint8_t *p_out, uint32_t cap)
     return w.b_overflow ? 0u : bw_bytes(&w);
 }
 
+#ifdef HOST_TEST   /* host tests only: not used by the firmware */
 int32_t wire_dec_ack(const uint8_t *p, uint32_t len, wire_pbits_fn p_pbits, wire_ack_t *p_a)
 {
     br_t r;
@@ -693,6 +703,7 @@ int32_t wire_dec_ack(const uint8_t *p, uint32_t len, wire_pbits_fn p_pbits, wire
     }
     return rest_zero(&r) ? WIRE_OK : WIRE_BAD_VALUE;
 }
+#endif /* HOST_TEST */
 
 /* ------------------------------------------------------------------------ */
 /* Command_Frame, Map_Frame, Config_Frame (laptop -> robot)                  */
@@ -780,6 +791,7 @@ int32_t wire_dec_cmd(const uint8_t *p, uint32_t len, wire_cmd_t *p_c)
     return rest_zero(&r) ? WIRE_OK : WIRE_BAD_VALUE;
 }
 
+#ifdef HOST_TEST   /* host tests only: not used by the firmware */
 uint32_t wire_enc_cmd(const wire_cmd_t *p_c, uint8_t *p_out, uint32_t cap)
 {
     bw_t     w;
@@ -816,6 +828,7 @@ uint32_t wire_enc_cmd(const wire_cmd_t *p_c, uint8_t *p_out, uint32_t cap)
     }
     return w.b_overflow ? 0u : len;
 }
+#endif /* HOST_TEST */
 
 int32_t wire_dec_map(const uint8_t *p, uint32_t len, wire_cmd_t *p_c)
 {
@@ -877,6 +890,7 @@ int32_t wire_dec_config(const uint8_t *p, uint32_t len, wire_cfg_fn p_apply, voi
 }
 
 /* Inverse encoders for the host tests and tools (spec task 3.10). */
+#ifdef HOST_TEST   /* host tests only: not used by the firmware */
 uint32_t wire_enc_map(const wire_cmd_t *p_c, uint8_t *p_out, uint32_t cap)
 {
     bw_t w;
@@ -894,7 +908,9 @@ uint32_t wire_enc_map(const wire_cmd_t *p_c, uint8_t *p_out, uint32_t cap)
     }
     return w.b_overflow ? 0u : WIRE_MAP_LEN;
 }
+#endif /* HOST_TEST */
 
+#ifdef HOST_TEST   /* host tests only: not used by the firmware */
 uint32_t wire_enc_config(uint32_t n, const uint8_t *p_ids, const uint32_t *p_bits, uint8_t *p_out, uint32_t cap)
 {
     bw_t     w;
@@ -914,3 +930,4 @@ uint32_t wire_enc_config(uint32_t n, const uint8_t *p_ids, const uint32_t *p_bit
     }
     return w.b_overflow ? 0u : len;
 }
+#endif /* HOST_TEST */

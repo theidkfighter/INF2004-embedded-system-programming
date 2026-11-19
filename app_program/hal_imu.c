@@ -31,6 +31,9 @@
 #include "hal.h"
 #include "pins.h"
 
+static bool hal_imu_int1_src(uint8_t *p_src);
+static bool hal_imu_int1_used(void);
+
 #define I2C_CLEAR_PULSES (9u)   /* SCL pulses that free a slave holding SDA (8 bits + ACK) */
 
 #define IMU_I2C          (i2c1)
@@ -207,7 +210,7 @@ const char *hal_imu_chip_name(void)
 BP_STATIC_ASSERT(((uint32_t)HAL_IMU_NONE == 0u) && ((uint32_t)HAL_IMU_LSM303DLHC == 1u) &&
                  ((uint32_t)HAL_IMU_LSM303D == 2u), "g_imu_cfg: chip codes used by hal_imu_int1_used");
 
-bool hal_imu_int1_used(void)
+static bool hal_imu_int1_used(void)
 {
     return (g_imu_cfg & ((uint32_t)HAL_IMU_LSM303DLHC << IMU_CHIP_SH)) != 0u;
 }
@@ -235,7 +238,7 @@ bool hal_imu_accel_g(float *p_x, float *p_y, float *p_z)
     return true;
 }
 
-bool hal_imu_int1_src(uint8_t *p_src)
+static bool hal_imu_int1_src(uint8_t *p_src)
 {
     if (cfg_chip(g_imu_cfg) == HAL_IMU_LSM303D)
     {

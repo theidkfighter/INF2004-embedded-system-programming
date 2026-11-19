@@ -122,7 +122,7 @@ void jb_fixed(jbuf_t *p_jb, float value, uint32_t decimals)
     }
 }
 
-void jb_str(jbuf_t *p_jb, const char *p_text)
+static void jb_str(jbuf_t *p_jb, const char *p_text)
 {
     jb_char(p_jb, '"');
     while (*p_text != '\0')

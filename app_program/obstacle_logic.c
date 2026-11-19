@@ -5,6 +5,7 @@
  */
 #include <math.h>
 #include <stddef.h>
+#include "test_visible.h"
 #include "obstacle_logic.h"
 
 #define DEG_TO_RAD      (0.01745329f)
@@ -230,7 +231,7 @@ bool obstacle_side_room(const obstacle_profile_t *p_prof, char side, float robot
     return false;
 }
 
-float obstacle_shift_mm(const obstacle_profile_t *p_prof, char side, float robot_half_mm, float margin_mm)
+TEST_VISIBLE float obstacle_shift_mm(const obstacle_profile_t *p_prof, char side, float robot_half_mm, float margin_mm)
 {
     if (side == 'L')
     {
@@ -490,14 +491,14 @@ float obstacle_side_trail90_mm(float gap_mm, float us_ahead_mm, float robot_half
 }
 
 /* ---- OBST_DYNAMIC_TURN (ultrasonic-reverse-turn-refinement): begin ---- */
-float obstacle_turn_clearance_mm(float theta_deg, float y_mm, float e_mm)
+static float obstacle_turn_clearance_mm(float theta_deg, float y_mm, float e_mm)
 {
     float t = theta_deg * DEG_TO_RAD;
 
     return (y_mm * sinf(t)) - (e_mm * cosf(t));
 }
 
-float obstacle_swing_reach_mm(float theta_deg, float half_mm, float us_ahead_mm)
+static float obstacle_swing_reach_mm(float theta_deg, float half_mm, float us_ahead_mm)
 {
     float w = half_mm;
     float a = us_ahead_mm;

@@ -6,6 +6,7 @@
 #include <tk/tkernel.h>
 #include <tm/tmonitor.h>
 
+#include "test_visible.h"
 #include "os_glue.h"
 #include "crit.h"
 #include "evt.h"
@@ -178,7 +179,7 @@ bool os_start_interrupts(void)
 /* Messages                                                                  */
 /* ------------------------------------------------------------------------ */
 
-app_msg_t *msg_alloc(void)
+TEST_VISIBLE app_msg_t *msg_alloc(void)
 {
     void *p_blk = NULL;
 

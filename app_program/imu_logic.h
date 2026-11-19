@@ -225,7 +225,9 @@ float          ema(float y, float x, float alpha);
  * or the pitch climb alone reached min_height_mm (full-width hump): rocking
  * from the front, e.g. the barcode sensor catching the mat, does not count. */
 float imu_tilt_deg(const float p_g[3], const float p_g0[3]);   /* 0 until g0 is learnt */
+#ifdef HOST_TEST   /* TEST_VISIBLE in the .c */
 float imu_lift_mm(float lever_mm, float tilt_deg);             /* lever_mm x sin(|tilt|) */
+#endif
 
 /* Packed state (Change Requirement 1: minimum bits), one byte:
    on F1 @0, peak_sent F1 @1, n_tilt U3 @2 (saturates at 7), n_level U3 @5. */
@@ -304,7 +306,9 @@ typedef struct
 
 void         lift_reset(lift_ctx_t *p_l);
 lift_cause_t lift_step(lift_ctx_t *p_l, const lift_params_t *p_par, float ax, float ay, float az);
+#ifdef HOST_TEST   /* host tests only */
 float        lift_tilt_deg(const lift_ctx_t *p_l);   /* current tilt from the reference (0 while blanking) */
+#endif
 
 static inline bool lift_latched(const lift_ctx_t *p_l)
 {
