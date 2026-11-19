@@ -435,7 +435,10 @@ fld(CAT_MSG, "nav_msg_t `letter`", "`nav_msg_t.b`", "0 .. 25 (A .. Z)", "1", "`c
     note="shift 3 from `msg_nav_pack`")
 op = pack_body("msg_obst_pack")
 sizes_obst = [int(x) for x in re.findall(r"bp_wput\(w, pos, (\d+)u,", op)]
-n_scan = int(re.findall(r"i < (\d+)u; i\+\+", op)[-1])
+_lim = re.findall(r"i < (\w+); i\+\+", op)[-1]      # SCAN_CM_N since Barr-C C4 (was a literal)
+if not _lim[0].isdigit():
+    _lim = re.search(r"#define\s+%s\s+\((\d+)u\)" % _lim, (APP / "app_types.h").read_text()).group(1)
+n_scan = int(_lim.rstrip("u"))
 sizes_obst = sizes_obst[:-1] + [sizes_obst[-1]] * n_scan     # the last call sits in the scan loop
 OBST = [("valid", "0, 1", "1", "`bool` (8)", dict(n=2)),
         ("side", "0 none, 1 L, 2 R", "1", "`char` (8)", dict(n=3)),
@@ -743,17 +746,31 @@ PRIVATE = [
     ("`g_tone_left_ms`, `g_t_estop`", "TSK_SAFETY_MON", "`uint32_t`", "timers private to the task"),
     ("`g_raw_full_r/l`, `g_raw_ref_r/l`, `g_raw_gap`, `g_alarm_target`, `g_adc_*` reader state", "TSK_LINE_BARCODE / timer ISR", "`int32_t`, `uint32_t`, `bool`",
      "rebuilt full counts and the next alarm time; private to the reader or the ISR"),
-    ("`app_net.c`: `g_led`, `g_led_applied`, `g_connecting`, `g_ever_connected`, `g_join_pending`, `g_broker_set`, `g_rssi`, `g_dropped`, `g_reconnects`, `g_published`, `g_pub_errors`, `g_last_status`, timers and back-offs", "radio-owner task", "`bool`, `uint32_t`, `int32_t`",
-     "link bookkeeping; the `bool`s are not packed (R2). `g_dropped`, `g_reconnects`, `g_rssi` are shown in telemetry as U16 / U8 fields"),
-    ("`g_f_head`, `g_f_tail`, `g_m_head`, `g_m_tail`, `g_cmd_head`, `g_cmd_tail`, `g_config_len`", "ring producers and consumers", "`uint32_t`",
-     "free-running ring indices; the frame and message producers mask interrupts (`save_and_disable_interrupts`); see the scope section for the unmasked `g_m_tail++` in `flush()`"),
+    ("`app_net.c`: `g_led`, `g_led_applied`, `g_connecting`, `g_ever_connected`, `g_join_pending`, `g_broker_set`, `g_rssi`, `g_dropped`, `g_reconnects`, `g_published`, `g_pub_errors`, `g_last_status`, timers and back-offs", "radio-owner task", "`bool`, `int8_t` (`g_rssi`, dBm clamped to -128..0), `int16_t` (`g_last_status`, -1..257), `uint32_t`",
+     "link bookkeeping; the `bool`s are not packed (R2). The diagnostic counters stay 32-bit (their wrap period matters). `g_dropped`, `g_reconnects`, `g_rssi` are shown in telemetry as U16 / U8 fields"),
+    ("`g_f_head`, `g_f_tail`, `g_m_head`, `g_m_tail`", "ring producers and consumers", "`volatile uint32_t`",
+     "free-running ring indices; producers and the consumer change them only inside `crit_irq_enter()`/`crit_irq_exit()`, and the consumer advances the tail only if it still names the slot it published (Barr-C A2-1, C1-1)"),
+    ("`g_cmd_head`, `g_cmd_tail`, `g_config_len`", "radio task -> TSK_TELEMETRY", "`volatile uint8_t`, `volatile uint16_t`",
+     "8-bit modular command indices (256 is a multiple of the 8 slots, compile-time checked); `g_config_len` <= `sizeof(g_config)`, compile-time checked (Barr-C C1-3)"),
     ("`g_frames[64]` slots, `g_msgs[8]` slots, `g_cmds[8]` slots", "TSK_TELEMETRY, radio-owner task", "`uint8_t[]` byte payloads",
      "the slots already hold packed binary payloads (Frame_Ring 64 x 55 bytes, message slot 66 bytes, command slot 24 bytes)"),
 ]
 
 
+LEDGER_COMMIT = "a6acd75^"   # docs/cr1/ was removed in a6acd75 (2 Nov clean-up)
+
+
+def ledger_text(rel):
+    """The CR1 ledger file, from the tree if present, else from git history."""
+    f = ROOT / rel
+    if f.exists():
+        return f.read_text(encoding="utf-8")
+    return subprocess.run(["git", "-C", str(ROOT), "show", "%s:%s" % (LEDGER_COMMIT, rel)],
+                          check=True, capture_output=True, text=True).stdout
+
+
 def read_ledger():
-    txt = (ROOT / "docs/cr1/PROGRESS_FW.md").read_text(encoding="utf-8")
+    txt = ledger_text("docs/cr1/PROGRESS_FW.md")
     skipped = []
     for line in txt.splitlines():
         if line.startswith("|") and "skipped (minimum scope)" in line:
@@ -765,7 +782,7 @@ def read_ledger():
 
 
 def read_flags():
-    txt = (ROOT / "docs/cr1/REVIEW_FLAGS.md").read_text(encoding="utf-8")
+    txt = ledger_text("docs/cr1/REVIEW_FLAGS.md")
     flags = []
     for m in re.finditer(r"^## (R\d+)\. (.*?)\n(.*?)(?=^## R\d+\.|\Z)", txt, re.S | re.M):
         dec = re.search(r"\*\*Decision:\*\*\s*(.*)", m.group(3))
@@ -854,9 +871,13 @@ def build_data_repr():
     o.append("Differences found while writing this document (not in the ledger list above):\n")
     o.append("- `bc_ctx_t` uses C bit-fields (`n:7`, `last_n:7`, `fails:2`, `b_open:1`, `b_black:1`) for the in-task context, not the masks and shifts of `bitpack.h`. It is private to TSK_LINE_BARCODE, so the layout does not cross a boundary.")
     o.append("- `det_t`, `adt_t` and `bcm_t` (barcode decoder contexts) still hold `bool` members; ledger 18.8 packed only `bc_ctx_t` (R2).")
-    o.append("- The message-slot consumer in `flush()` (`app_net.c`) does `g_m_tail++` outside a masked section while `net_post()` may also increment `g_m_tail` on overflow in a masked section. This is the Baseline_Build code and CR1 did not change it.")
+    o.append("- Fixed after CR1 (Barr-C A2-1): the message-slot consumer in `flush()` (`app_net.c`) used to do `g_m_tail++` outside a masked section while `net_post()` could also advance `g_m_tail` on overflow. `flush()` now copies the slot under the mask, publishes the copy, and advances the tail under the mask only if it still names that slot; the frame ring does the same.")
+    o.append("- Fixed after CR1 (Barr-C C1-2): the Telemetry_Frame is filled from a copy of `g_status` taken under `crit_dsp`, so one frame never mixes two control cycles.")
     o.append("- The Telemetry_Frame is built by `wire.c` from the Status_Snapshot; `line_l` and `line_r` are S2 on the wire (-1, 0, 1) and U1 in the Status_Snapshot.")
     o.append("- The `json` blocks of the design D-table (one per category, for a document test) are not generated: task 20.7 is skipped, and the table is checked by hand against the headers.")
+    o.append("")
+    o.append("### Scope of CR1\n")
+    o.append("CR1 applies to data shared between tasks or interrupts, inter-task messages and MQTT payloads. Task-private working variables (geometry `float`s, single flags such as `g_legacy`/`g_dyn`, counters such as `g_prox_n`, the contexts in `line_logic.h`, `primitive_t` in `tsk_motion.c`) stay full width; section 12 lists them.")
     o.append("")
     o.append("### Review flags R1 to R8 (`docs/cr1/REVIEW_FLAGS.md`)\n")
     o.append("| Flag | Subject | Decision in REVIEW_FLAGS.md | What the code does |\n|---|---|---|---|")
