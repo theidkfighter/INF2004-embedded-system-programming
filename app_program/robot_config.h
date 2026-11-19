@@ -138,7 +138,7 @@
 
 /* ---- Motion primitives ---- */
 #define TURN_MM_S                 (90)          /* [P] wheel speed for pivot turns */
-#define TURN_SNAP                 (1)           /* [P] 1 = finish junction turns on the line sensors, sweeping back if the
+#define TURN_SNAP                 (0)           /* [P] 19 Nov: 0 (encoder-only turns), SET:TURN_SNAP=1 to re-enable. 1 = finish junction turns on the line sensors, sweeping back if the
                                                    line was missed (patch/junction_check, 5 Nov); 0 = encoder angle only */
 #define TURN_SNAP_CENTRE          (1)           /* 19 Nov: after the snap, centre the line between the sensors (pivot to the far
                                                    edge, back half): fixes U-turns ending ~15 deg off the line. 0 = as before */

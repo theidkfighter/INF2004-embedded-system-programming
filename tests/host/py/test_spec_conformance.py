@@ -212,9 +212,9 @@ def test_defaults_equal_baseline(ps, base):
     ps.params_init()
     # The Baseline_Build has 55; the JUNCTION_* parameters are new. Defaults
     # changed on purpose since: TRACK_WIDTH_MM (measured 3 Nov, 110 from track
-    # tuning 19 Nov), TURN_SNAP (on, 5 Nov), SPEED_KI (0.005
+    # tuning 19 Nov), SPEED_KI (0.005
     # from track tuning, 19 Nov).
-    changed = {"TRACK_WIDTH_MM", "TURN_SNAP", "SPEED_KI"}
+    changed = {"TRACK_WIDTH_MM", "SPEED_KI"}
     for i in range(55):
         if wire_spec.param_names()[i] in changed:
             continue
