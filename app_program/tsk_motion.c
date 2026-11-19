@@ -17,6 +17,7 @@
  */
 #include <tk/tkernel.h>
 
+#include "crit.h"
 #include "app_tasks.h"
 
 #include "os_glue.h"
@@ -66,13 +67,10 @@ LOCAL uint16_t new_id(void)
 {
     uint16_t id;
 
-    PERF_BEGIN(t_cs);
-
-    (void)tk_dis_dsp();
+    crit_dsp_enter();                         /* same section, timed as PERF_CS_DSP by crit.h */
     id = g_next_id;
     g_next_id = (uint16_t)((g_next_id == 0xFFFFu) ? 1u : (g_next_id + 1u));
-    PERF_END(PERF_CS_DSP, t_cs, PERF_LIMIT_CS_US);
-    (void)tk_ena_dsp();
+    crit_dsp_exit();
     return id;
 }
 
