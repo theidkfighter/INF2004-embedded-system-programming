@@ -140,6 +140,8 @@
 #define TURN_MM_S                 (90)          /* [P] wheel speed for pivot turns */
 #define TURN_SNAP                 (1)           /* [P] 1 = finish junction turns on the line sensors, sweeping back if the
                                                    line was missed (patch/junction_check, 5 Nov); 0 = encoder angle only */
+#define TURN_SNAP_CENTRE          (1)           /* 19 Nov: after the snap, centre the line between the sensors (pivot to the far
+                                                   edge, back half): fixes U-turns ending ~15 deg off the line. 0 = as before */
 #define BYPASS_MM_S               (60)          /* [P] speed for bypass legs (28 Oct: was 100; the leg watch sweeps the
                                                    sensor, one 0 / 30 / 0 / 60 deg cycle takes ~0.65 s = 4 cm at 60 mm/s) */
 #define SPEED_MAX_MM_S            (250)         /* NFR18 speed cap */

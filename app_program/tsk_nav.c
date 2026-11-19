@@ -154,6 +154,8 @@ LOCAL bool ir_black(bool b_level)
 #define SNAP_MAX_DEG     (45.0f)
 #define SNAP_BACK_DEG    (25.0f)
 #define SNAP_MM_S        (50.0f)
+#define SNAP_CENTRE_MAX_DEG (30.0f)  /* centring: furthest pivot to find the far edge */
+#define SNAP_HALF        (0.5f)
 
 typedef enum
 {
@@ -198,6 +200,61 @@ LOCAL sweep_t snap_sweep(float dir, float max_deg)
     }
 }
 
+LOCAL void settle(void);
+
+#if TURN_SNAP_CENTRE
+/* 19 Nov: the snap stops once the line is between the two sensors, which
+   still leaves the car up to ~15 deg off the line (sensor spacing / reach),
+   and with both sensors white line following then drives on at that angle.
+   Centre it: keep pivoting the same way until the trailing sensor reaches
+   the line, then pivot back half of that angle. No far edge within
+   SNAP_CENTRE_MAX_DEG: back to where the snap stopped. */
+LOCAL motion_result_t snap_centre(float dir)
+{
+    odometry_t      o;
+    float           h0;
+    float           turned;
+    uint16_t        id;
+    uint32_t        t0 = hal_time_ms();
+    motion_result_t r2 = MOTION_OK;
+    bool            b_edge = false;
+
+    odometry_get(&o);
+    h0 = o.heading_deg;
+    id = motion_start_turn(dir * SNAP_CENTRE_MAX_DEG, SNAP_MM_S, SRC_NAV);
+    for (;;)
+    {
+        uint32_t other;
+        bool     b_trail = ir_black((dir > 0.0f) ? hal_ir_left_level() : hal_ir_right_level());
+
+        if (b_trail)
+        {
+            motion_stop(SRC_NAV);              /* the line is at the trailing sensor */
+            b_edge = true;
+            break;
+        }
+        if (motion_wait(id, 0u, SWEEP_POLL_MS, &r2, &other))
+        {
+            break;                             /* SNAP_CENTRE_MAX_DEG without the far edge */
+        }
+        if ((sys_state() != SYS_MANEUVER) || ((hal_time_ms() - t0) > SWEEP_TIMEOUT_MS))
+        {
+            motion_stop(SRC_NAV);
+            return MOTION_STOPPED;
+        }
+    }
+    if ((r2 == MOTION_STOPPED) && !b_edge)
+    {
+        return MOTION_STOPPED;
+    }
+    settle();
+    odometry_get(&o);
+    turned = dir * (o.heading_deg - h0);
+    /* edge found: back half the way (line centred); none: back all the way */
+    return motion_turn(-dir * (b_edge ? (turned * SNAP_HALF) : turned), SNAP_MM_S);
+}
+#endif
+
 LOCAL motion_result_t turn_on_line(float deg)
 {
     float           dir = (deg < 0.0f) ? -1.0f : 1.0f;
@@ -226,6 +283,13 @@ LOCAL motion_result_t turn_on_line(float deg)
     {
         return MOTION_STOPPED;
     }
+#if TURN_SNAP_CENTRE
+    res = snap_centre(dir);
+    if (res != MOTION_OK)
+    {
+        return res;
+    }
+#endif
     (void)evt_post1(EVC_TURN_SNAP, 0u, 1u);   /* not_seen 0: "stopped on the line" */
     return MOTION_OK;
 }
