@@ -28,7 +28,7 @@
 #define ENC_DIRECTION_CONFIRMED   (1)   /* PLACEHOLDER: assumed */   /* 1 once E1 and E4 pass on both wheels */
 #define ENC_A_EDGES_PER_REV       (1260)   /* PLACEHOLDER: 21 Oct E1 hand turn (right); run E2 */   /* test_encoders E2 (A edges per wheel turn) */
 #define WHEEL_DIAMETER_MM         (65)     /* PLACEHOLDER: measure (E5) */   /* test_encoders E5 (ruler) */
-#define TRACK_WIDTH_MM            (115)    /* measured 3 Nov (ruler, tyre centre to tyre centre; was 130 placeholder): right turns exact, left 3-5 deg over */
+#define TRACK_WIDTH_MM            (110)    /* 19 Nov: 110 from track turn tuning (3 Nov ruler measurement was 115: right turns exact, left 3-5 deg over) */
 
 /* ---- From full_tests: ft_speed_pid P1 ---- */
 #define SPEED_FF_DEADBAND_PCT     (6)      /* PLACEHOLDER until ft_speed_pid P1. Was 20; the 26 Oct telemetry shows
@@ -36,7 +36,7 @@
                                               9-10 %, i.e. start-up ~6 %, ~11 mm/s per % */
 #define SPEED_FF_MM_S_PER_PCT_X10 (110)    /* PLACEHOLDER until ft_speed_pid P1 (was 40 = 4.0 mm/s per %, which
                                               asked 50 % duty for 120 mm/s and ran slow inner wheels far too fast) */
-#define SPEED_KP                  (0.0020f)     /* [P] duty per mm/s of error */
+#define SPEED_KP                  (0.0050f)     /* [P] duty per mm/s of error (19 Nov: 0.005 from track tuning, was 0.002) */
 #define SPEED_KI                  (0.0100f)     /* [P] duty per mm of error   */
 
 /* ---- From part_tests: test_ir ---- */
