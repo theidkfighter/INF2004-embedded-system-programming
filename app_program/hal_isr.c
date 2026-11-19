@@ -16,6 +16,7 @@
 #include "hardware/adc.h"
 #include "hardware/structs/iobank0.h"
 #include "hardware/structs/timer.h"
+#include "hardware/sync.h"
 
 #include "bitpack.h"
 #include "crit.h"
@@ -72,9 +73,6 @@ static const int8_t QUAD[16] =
 static volatile uint32_t g_echo_rise_us;
 static volatile uint32_t g_echo;
 
-/* ---- IMU INT1 ---- */
-static void (*volatile gp_int1_cb)(void) = NULL;
-
 /* ---- barcode sampling ---- */
 static volatile uint16_t g_adc_last;           /* 12-bit ADC: U12 in a halfword */
 /* range since hal_ir_adc_range(): min U12 @0, max U12 @12, have F1 @24.
@@ -113,7 +111,7 @@ static int32_t           g_raw_full_r;             /* reader side: rebuilt count
 static int32_t           g_raw_full_l;
 static uint32_t          g_raw_ref_r;              /* reader side: low bits of the last sample */
 static uint32_t          g_raw_ref_l;
-static bool              g_raw_gap;                /* ISR side: a sample was dropped */
+static volatile bool     g_raw_gap;                /* ISR side: a sample was dropped (also reset by a task) */
 static volatile uint16_t g_raw_head;               /* M9, written by the ISR */
 static volatile uint16_t g_raw_tail;               /* M9, written by the reader */
 static volatile uint16_t g_vbat_mv;               /* U13 mV in a halfword */
@@ -158,11 +156,6 @@ static void enc_update(uint32_t wheel, uint32_t pin_a, uint32_t pin_b)
         /* bounce back to the same state */
     }
     g_enc_prev[wheel] = now;
-}
-
-void hal_set_int1_callback(void (*p_cb)(void))
-{
-    gp_int1_cb = p_cb;
 }
 
 void hal_irq_enable_sources(void)
@@ -235,13 +228,8 @@ void hal_gpio_isr(uint32_t intno)
             /* stray falling edge */
         }
     }
-    if ((pin_events(ints, PIN_IMU_INT1) & GPIO_IRQ_EDGE_RISE) != 0u)
-    {
-        if ((gp_int1_cb != NULL) && hal_imu_int1_used())   /* LSM303D: INT1 not configured */
-        {
-            gp_int1_cb();
-        }
-    }
+    /* NOTE: IMU INT1 edges are acknowledged above and otherwise ignored: the
+       IMU collision detection was removed (16 Nov requirement change). */
     PERF_END(PERF_ISR_GPIO, t_perf, PERF_NO_LIMIT);
 }
 
@@ -367,6 +355,7 @@ void hal_timer_isr(uint32_t intno)
 
             g_raw[head & RAW_SLOT_MASK] = raw_slot_pack(v, er, el, g_raw_gap);
             g_raw_gap = false;
+            __compiler_memory_barrier();      /* slot stored before the head moves */
             g_raw_head = (uint16_t)((head + 1u) & RAW_IDX_MASK);
         }
         else
@@ -397,6 +386,7 @@ void hal_timer_isr(uint32_t intno)
             if (ring_used(head, g_bc_tail, BC_IDX_MASK) < BC_RING)
             {
                 g_bc_ring[head & BC_SLOT_MASK] = bc_edge_pack(g_odo, b_black);
+                __compiler_memory_barrier();  /* slot stored before the head moves */
                 g_bc_head = (uint8_t)((head + 1u) & BC_IDX_MASK);
             }
             else
@@ -432,10 +422,12 @@ bool hal_barcode_pop(hal_bc_edge_t *p_edge)
     {
         return false;
     }
+    __compiler_memory_barrier();              /* head checked before the slot is read */
     {
         uint32_t slot = g_bc_ring[tail & BC_SLOT_MASK];
         uint32_t now  = g_odo;
 
+        __compiler_memory_barrier();          /* slot read before the tail frees it */
         g_bc_tail       = (uint8_t)((tail + 1u) & BC_IDX_MASK);
         p_edge->odo     = bc_edge_odo(slot, now);
         p_edge->b_black = bc_edge_black(slot);
@@ -472,9 +464,11 @@ bool hal_barcode_pop_sample(int32_t *p_enc_r, int32_t *p_enc_l, uint32_t *p_adc)
     {
         return false;
     }
+    __compiler_memory_barrier();              /* head checked before the slot is read */
     {
         uint32_t slot = g_raw[tail & RAW_SLOT_MASK];
 
+        __compiler_memory_barrier();          /* slot read before the tail frees it */
         g_raw_tail    = (uint16_t)((tail + 1u) & RAW_IDX_MASK);
         uint32_t lo_r = (slot >> RAW_ER_SHIFT) & RAW_CNT_MASK;
         uint32_t lo_l = (slot >> RAW_EL_SHIFT) & RAW_CNT_MASK;

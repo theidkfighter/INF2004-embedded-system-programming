@@ -97,7 +97,6 @@ void tsk_imu(INT stacd, void *exinf)
     uint32_t      off_n = 0u;
     uint32_t      fails = 0u;
     uint32_t      recoveries = 0u;
-    bool          b_dead = ((st_faults() & FAULT_IMU_DEAD) != 0u);
     uint32_t      retry_n = 0u;
 #if LIFT_DETECT
     lift_params_t lp;
@@ -163,7 +162,7 @@ void tsk_imu(INT stacd, void *exinf)
         ds       = (float)(odo.odo_um - odo_prev) / 1000.0f;
         odo_prev = odo.odo_um;
 
-        if (b_dead)
+        if (fault_has(FAULT_IMU_DEAD))       /* the one record of the IMU state (CR1) */
         {
             retry_n++;
             if (retry_n >= 100u)                /* every 2 s */
@@ -171,7 +170,6 @@ void tsk_imu(INT stacd, void *exinf)
                 retry_n = 0u;
                 if (imu_recover())
                 {
-                    b_dead     = false;
                     recoveries = 0u;
                     fault_clear(FAULT_IMU_DEAD | FAULT_IMU_I2C);
                     {
@@ -208,7 +206,6 @@ void tsk_imu(INT stacd, void *exinf)
                     recoveries++;
                     if (recoveries >= MAX_RECOVERIES)
                     {
-                        b_dead = true;
                         fault_set(FAULT_IMU_DEAD);
                         (void)evt_post0(EVC_FAULT_IMU);       /* "3 failed recoveries: driving without the IMU" */
                         log_line("[imu] GY-511 lost: driving without hump/lift detection");

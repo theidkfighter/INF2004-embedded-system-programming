@@ -55,7 +55,6 @@ LOCAL uint32_t      g_t_estop;
 #define ALARM_MS     (3000u)          /* E-stop alarm sounds for 3 s, then the LED stays red */
 
 
-volatile bool     g_estop_reported;
 
 LOCAL void tone_start(const tone_t *p_t)
 {
@@ -127,7 +126,6 @@ LOCAL void enter_estop(stop_reason_t reason)
     if (estop_rx_take(&rx_us))
     {
         estop_pwm_off_put(t_kill - rx_us);    /* modulo 2^32 */
-        g_estop_reported = false;
     }
     st_set_stop((uint32_t)reason);
     (void)sys_set_state(SYS_ESTOP, true);

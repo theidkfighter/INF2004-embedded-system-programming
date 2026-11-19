@@ -46,7 +46,6 @@
 #define CONSOLE_MS      (2000u)
 #define CMD_SLOTS       (8u)
 
-IMPORT volatile bool     g_estop_reported;   /* tsk_safety.c */
 
 /* Command queue: Command_Frames decoded in the radio task, handled here.
    Each slot is a wire_cmd_t (16 bytes) plus its decode status. */

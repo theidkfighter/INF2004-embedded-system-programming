@@ -435,8 +435,9 @@ perf_stat_t g_perf[PERF_COUNT];
 /* Release timestamps of one periodic task: a single-producer single-consumer
    ring. cyc_tick pushes one per release, the task pops the oldest at the end
    of each cycle, so a cycle that overruns into the next release is still
-   measured from its own release. A wake-up without a release (INT1 wakes
-   the safety monitor) finds the ring empty and records nothing. */
+   measured from its own release. A wake-up without a release (TSK_TERRAIN_IMU
+   wakes the safety monitor on an overturn) finds the ring empty and records
+   nothing. */
 typedef struct
 {
     uint32_t          t_us[PERF_REL_SLOTS];

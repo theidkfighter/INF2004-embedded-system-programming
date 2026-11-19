@@ -42,12 +42,15 @@ typedef struct
     uint8_t data[NET_MSG_MAX];
 } msg_slot_t;
 
-static frame_slot_t   g_frames[NET_FRAME_SLOTS];
-static uint32_t       g_f_head;          /* producers */
-static uint32_t       g_f_tail;          /* radio task */
-static msg_slot_t     g_msgs[NET_MSG_SLOTS];
-static uint32_t       g_m_head;
-static uint32_t       g_m_tail;
+/* NOTE: producers (any task) and the radio task both move the tails (a
+   full ring drops its oldest entry), so every index and slot access is
+   inside the interrupt mask; the indices are volatile (Barr 1.8.c). */
+static frame_slot_t      g_frames[NET_FRAME_SLOTS];
+static volatile uint32_t g_f_head;       /* producers */
+static volatile uint32_t g_f_tail;       /* radio task; producers when full */
+static msg_slot_t        g_msgs[NET_MSG_SLOTS];
+static volatile uint32_t g_m_head;       /* producers */
+static volatile uint32_t g_m_tail;       /* radio task; producers when full */
 
 /* Wi-Fi / MQTT link state lives in the Fault_Mask (design D1): bits
    FAULT_WIFI_LOSS / FAULT_MQTT_LOSS, written only when they change. */
@@ -98,6 +101,7 @@ static char              g_broker_str[16];
 static uint32_t          g_connect_fails;
 static struct udp_pcb   *gp_beacon;
 static uint8_t           g_tx_frame[NET_FRAME_MAX];
+static uint8_t           g_tx_msg[NET_MSG_MAX];     /* radio task: the event/ack being published */
 
 /* ------------------------------------------------------------------------ */
 /* Producers                                                                 */
@@ -442,14 +446,31 @@ static void flush(void)
     /* events and acks first (small, time-critical), then telemetry frames */
     while ((sent < PUBLISH_PER_POLL) && (g_m_tail != g_m_head))
     {
-        msg_slot_t *p = &g_msgs[g_m_tail % NET_MSG_SLOTS];
+        PERF_BEGIN(t_cs);
+        uint32_t     irq  = save_and_disable_interrupts();
+        uint32_t     tail = g_m_tail;
+        msg_slot_t * p    = &g_msgs[tail % NET_MSG_SLOTS];
+        uint8_t      len  = p->len;
+        uint8_t      topic = p->topic;
 
-        if (mqtt_publish(gp_client, topic_name(p->topic), p->data, p->len, 0u, 0u,
+        /* copy out under the lock: a producer may overwrite the oldest slot */
+        memcpy(g_tx_msg, p->data, len);
+        PERF_END(PERF_CS_IRQ, t_cs, PERF_LIMIT_CS_US);
+        restore_interrupts(irq);
+
+        if (mqtt_publish(gp_client, topic_name(topic), g_tx_msg, len, 0u, 0u,
                          on_pub_done, NULL) != ERR_OK)
         {
             return;                           /* output buffer full: next poll */
         }
-        g_m_tail++;
+        PERF_BEGIN(t_cs2);
+        irq = save_and_disable_interrupts();
+        if (g_m_tail == tail)                 /* not already dropped by a producer */
+        {
+            g_m_tail++;
+        }
+        PERF_END(PERF_CS_IRQ, t_cs2, PERF_LIMIT_CS_US);
+        restore_interrupts(irq);
         sent++;
     }
     while ((sent < PUBLISH_PER_POLL) && (g_f_tail != g_f_head))
@@ -457,10 +478,11 @@ static void flush(void)
         frame_slot_t *p;
         PERF_BEGIN(t_cs);
         uint32_t      irq = save_and_disable_interrupts();
+        uint32_t      tail = g_f_tail;
         uint8_t       len;
 
         /* copy out under the lock: a producer may overwrite the oldest slot */
-        p   = &g_frames[g_f_tail % NET_FRAME_SLOTS];
+        p   = &g_frames[tail % NET_FRAME_SLOTS];
         len = p->len;
         memcpy(g_tx_frame, p->data, len);
         PERF_END(PERF_CS_IRQ, t_cs, PERF_LIMIT_CS_US);
@@ -473,7 +495,7 @@ static void flush(void)
         }
         PERF_BEGIN(t_cs2);
         irq = save_and_disable_interrupts();
-        if ((g_f_head - g_f_tail) > 0u)
+        if (g_f_tail == tail)                 /* not already dropped by a producer */
         {
             g_f_tail++;
         }
