@@ -36,7 +36,7 @@
                                               9-10 %, i.e. start-up ~6 %, ~11 mm/s per % */
 #define SPEED_FF_MM_S_PER_PCT_X10 (110)    /* PLACEHOLDER until ft_speed_pid P1 (was 40 = 4.0 mm/s per %, which
                                               asked 50 % duty for 120 mm/s and ran slow inner wheels far too fast) */
-#define SPEED_KP                  (0.0050f)     /* [P] duty per mm/s of error (19 Nov: 0.005 from track tuning, was 0.002) */
+#define SPEED_KP                  (0.0020f)     /* [P] duty per mm/s of error */
 #define SPEED_KI                  (0.0050f)     /* [P] duty per mm of error (19 Nov: 0.005 from track tuning, was 0.01) */
 
 /* ---- From part_tests: test_ir ---- */
