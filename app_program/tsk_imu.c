@@ -119,6 +119,9 @@ void tsk_imu_task(INT stacd, void *exinf)
     float         gf[3] = { 0.0f, 0.0f, 0.0f };    /* low-passed gravity vector */
     bool          b_gf = false;
     uint32_t      drive_ms = 0u;                   /* time since driving started */
+    float         turn_f = 0.0f;                   /* low-passed turn rate, deg/s (hump gate) */
+    float         straight_mm = 0.0f;              /* straight line following so far (hump gate) */
+    sys_state_t   st_prev = SYS_IDLE;
 #endif
 
     (void)stacd;
@@ -336,6 +339,44 @@ void tsk_imu_task(INT stacd, void *exinf)
                 }
                 t = b_turning ? ((pitch < 0.0f) ? -pitch : pitch) : imu_tilt_deg(gf, gb);
             }
+            /* 19 Nov: only straight line following may start a hump; turning or
+               pivoting on the foam mat tilts the car like a hump does (17:25-17:31
+               runs: 15 "humps" on a track with one) */
+            {
+                float a_turn;
+
+                turn_f = ema(turn_f, odo.turn_dps, HUMP_TURN_ALPHA);
+                a_turn = (turn_f < 0.0f) ? -turn_f : turn_f;
+                if ((st == SYS_LINE_FOLLOWING) && (st_prev == SYS_IDLE))
+                {
+                    straight_mm = HUMP_STRAIGHT_RUNIN_MM;   /* a run starts straight on the line */
+                    turn_f      = 0.0f;
+                }
+                else if ((st == SYS_LINE_FOLLOWING) && (a_turn <= HUMP_STRAIGHT_DPS) && (ds > 0.0f))
+                {
+                    straight_mm += ds;
+                }
+                else
+                {
+                    straight_mm = 0.0f;
+                }
+                if (tilt_hump_on(&th) && (st != SYS_LINE_FOLLOWING))
+                {
+                    tilt_hump_reset(&th);             /* not a hump: dropped, not counted */
+                    flag_set(EVF_HUMP_END);           /* lifts the hump speed limit */
+                    hump_event(EVC_HUMP_END, false, 0.0f);
+                    straight_mm = 0.0f;
+                }
+                else if (!tilt_hump_on(&th) && (straight_mm < HUMP_STRAIGHT_RUNIN_MM))
+                {
+                    t = 0.0f;                         /* not armed: cannot start */
+                }
+                else
+                {
+                    /* armed, or a hump in progress while still straight enough */
+                }
+            }
+            st_prev = st;
             ho = tilt_hump_step(&th, &tp, pitch, t, HUMP_TILT_LEVER_MM, ds);
             if (ho.b_start)
             {
@@ -370,6 +411,10 @@ void tsk_imu_task(INT stacd, void *exinf)
         else
         {
             drive_ms = 0u;                          /* flat and not driving */
+        }
+        if ((st != SYS_LINE_FOLLOWING) && (st != SYS_OBSTACLE_AVOIDANCE) && (st != SYS_MANEUVER))
+        {
+            st_prev = st;                           /* IDLE before a run: the hump gate starts armed */
         }
 #else
         /* Region A: humps, only while driving */

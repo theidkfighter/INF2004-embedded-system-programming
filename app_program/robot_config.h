@@ -254,6 +254,15 @@
                                                    (filtering the angle itself keeps vibration as a
                                                    positive bias: the hump never ended, 3 Nov runs) */
 #define HUMP_TILT_BASE_ALPHA      (0.01f)       /* driving-posture baseline, ~2 s time constant; frozen in a hump */
+#define HUMP_STRAIGHT_DPS         (8.0f)        /* 19 Nov: a hump may start only while line following straight: filtered
+                                                   turn rate at most this (real 1 cm humps: 1-3 deg/s; the false ones came
+                                                   with one wheel much slower, 15-40 deg/s, turning or pivoting on the mat) */
+#define HUMP_STRAIGHT_RUNIN_MM    (80.0f)       /* ... after at least this much straight driving following a junction turn,
+                                                   a bypass, a line search or any turning. A run started from IDLE counts as
+                                                   straight at once (the course hump is about 40 mm after the start). A hump
+                                                   in progress is dropped (not counted) only if LINE_FOLLOWING ends; a short
+                                                   steering correction on the hump itself (seen: 20 deg/s) does not drop it */
+#define HUMP_TURN_ALPHA           (0.3f)        /* low-pass on the encoder turn rate (20 ms samples) */
 #define HUMP_TILT_BLANK_MS        (400u)       /* no hump detection this long after driving starts
                                                    (the course hump starts about 1 s in, so keep this short) */
 #define HUMP_TILT_LEVER_MM        (100.0f)      /* raised wheel to tipping line; calibrated 3 Nov:
