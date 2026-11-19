@@ -254,7 +254,7 @@
                                                    (filtering the angle itself keeps vibration as a
                                                    positive bias: the hump never ended, 3 Nov runs) */
 #define HUMP_TILT_BASE_ALPHA      (0.01f)       /* driving-posture baseline, ~2 s time constant; frozen in a hump */
-#define HUMP_STRAIGHT_DPS         (8.0f)        /* 19 Nov: a hump may start only while line following straight: filtered
+#define HUMP_STRAIGHT_DPS         (12.0f)       /* 19 Nov: a hump may start only while line following straight: filtered
                                                    turn rate at most this (real 1 cm humps: 1-3 deg/s; the false ones came
                                                    with one wheel much slower, 15-40 deg/s, turning or pivoting on the mat) */
 #define HUMP_STRAIGHT_RUNIN_MM    (80.0f)       /* ... after at least this much straight driving following a junction turn,
