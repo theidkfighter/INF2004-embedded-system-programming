@@ -28,7 +28,8 @@
 #define ENC_DIRECTION_CONFIRMED   (1)   /* PLACEHOLDER: assumed */   /* 1 once E1 and E4 pass on both wheels */
 #define ENC_A_EDGES_PER_REV       (1260)   /* PLACEHOLDER: 21 Oct E1 hand turn (right); run E2 */   /* test_encoders E2 (A edges per wheel turn) */
 #define WHEEL_DIAMETER_MM         (65)     /* PLACEHOLDER: measure (E5) */   /* test_encoders E5 (ruler) */
-#define TRACK_WIDTH_MM            (110)    /* 19 Nov: 110 from track turn tuning (3 Nov ruler measurement was 115: right turns exact, left 3-5 deg over) */
+#define TRACK_WIDTH_MM            (115)    /* measured 3 Nov (ruler, tyre centre to tyre centre); MQTT barcode U-turn correct at 115.
+                                                   19 Nov: 110 was tried, but it compensated the junction U-turn ending 20 deg short */
 
 /* ---- From full_tests: ft_speed_pid P1 ---- */
 #define SPEED_FF_DEADBAND_PCT     (6)      /* PLACEHOLDER until ft_speed_pid P1. Was 20; the 26 Oct telemetry shows
