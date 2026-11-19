@@ -193,6 +193,9 @@ void  obstacle_apply_min_width(obstacle_profile_t *p_prof, float min_width_mm, f
    of two headings (deg, + = clockwise). */
 void  obstacle_pose_advance(float *p_x, float *p_y, float h_prev_deg, float h_deg, float ds_mm);
 float obstacle_sin_deg(float deg);
+/* Heading (deg, 0 = +y, positive towards +x) of the vector (dx, dy), in the
+   obstacle_pose_advance() convention; atan2 for the kernel-side files. */
+float obstacle_dir_deg(float dx_mm, float dy_mm);
 
 /* ---- OBST_DYNAMIC_TURN (ultrasonic-reverse-turn-refinement): begin ---- */
 /* Scaled standoff reverse + the smallest whole-degree first-turn angle in

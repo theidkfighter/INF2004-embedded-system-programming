@@ -148,8 +148,9 @@
 #error "keep LINE_BASE_SAFE_MIN_MM_S <= LINE_BASE_MM_S <= LINE_BASE_SAFE_MAX_MM_S <= 60 % of SPEED_MAX_MM_S"
 #endif
 #define HUMP_SPEED_PCT            (80)          /* DR A2: speed limit on a hump (3 Nov: 80, was 60; at 60 % the motors could not climb the course hump) */
-#define HUMP_DRIVE_STRAIGHT       (1)           /* 19 Nov: while the hump speed limit is on, line following drives both wheels
-                                                   at the same speed (no steering, no braked inner wheel). 0 = steer as before */
+#define HUMP_DRIVE_STRAIGHT       (0)           /* 19 Nov: 1 = while the hump speed limit is on, line following drives both wheels
+                                                   at the same speed (no steering). Off: the ramp problem was mechanical, and a
+                                                   false HUMP_START right after a bypass stopped the car steering onto the line */
 #define ENC_LOSS_DUTY             (0.30f)       /* DR 5: duty above this ... */
 #define ENC_LOSS_MS               (200)         /* ... with no ticks for this long = encoder loss */
 
@@ -206,6 +207,11 @@
                                                    20; a side closer than 40 mm to the body now blocks the leg) */
 #define OBST_BACKOFF_MAX_MM       (250)         /* longest reverse to get the 45 deg standoff (see obstacle_standoff_mm) */
 #define OBST_RESCAN_REVERSE_MM    (100)         /* reverse before a rescan */
+#define OBST_PATH_FIT_MM          (150.0f)      /* 19 Nov: the "original path" of a bypass runs along the chord of the last
+                                                   this many mm of line following, not along the car's heading when it stopped
+                                                   (stopped just after a bend, the car was 10-15 deg off the line). 0 = off */
+#define OBST_PATH_FIT_MIN_MM      (60.0f)       /* less line followed than this (just started, just after a bypass): car heading */
+#define OBST_PATH_FIT_MAX_DEG     (25.0f)       /* car further off the fitted direction than this (mid-curve): car heading */
 #define OBST_RETURN_DEG           (60.0f)       /* 19 Nov: return angle to the original path after the side (was 45).
                                                    Steeper = the car rejoins closer behind the obstacle (60: about 90 mm
                                                    sooner for a book) but must drive further past the back corner first;

@@ -66,3 +66,30 @@ def test_steeper_needs_longer_trail(trails):
     t45 = trails[0](140.0, A_MM, HALF_MM, MARGIN_MM, 45.0)
     t60 = trails[0](140.0, A_MM, HALF_MM, MARGIN_MM, 60.0)
     assert t60 > t45
+
+
+# ---- 19 Nov: path direction from the line followed (obstacle_dir_deg) ------
+
+@pytest.mark.parametrize("dx,dy,deg", [(0.0, 1.0, 0.0), (1.0, 0.0, 90.0), (-1.0, 0.0, -90.0),
+                                       (1.0, 1.0, 45.0), (-1.0, 1.0, -45.0)])
+def test_dir_deg_convention(lib, dx, dy, deg):
+    """Same convention as obstacle_pose_advance: x += ds sin(h), y += ds cos(h)."""
+    f = lib.obstacle_dir_deg
+    f.argtypes = [F, F]
+    f.restype = F
+    assert f(dx, dy) == pytest.approx(deg, abs=1e-3)
+
+
+def test_dir_deg_recovers_pose_heading(lib):
+    """A straight track driven at heading h through obstacle_pose_advance gives h back."""
+    adv = lib.obstacle_pose_advance
+    adv.argtypes = [ctypes.POINTER(F), ctypes.POINTER(F), F, F, F]
+    adv.restype = None
+    f = lib.obstacle_dir_deg
+    f.argtypes = [F, F]
+    f.restype = F
+    for h in (-25.0, -12.5, 0.0, 7.0, 15.0, 25.0):
+        x, y = F(0.0), F(0.0)
+        for _ in range(15):
+            adv(ctypes.byref(x), ctypes.byref(y), h, h, 10.0)
+        assert f(x.value, y.value) == pytest.approx(h, abs=1e-3)

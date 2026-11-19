@@ -440,16 +440,180 @@ LOCAL void side_look_event(float d90, float d60, bool b_gone)
     (void)evt_post(&b);
 }
 
+/* ---- 19 Nov: the original path from the line the car followed -------------
+   While following the line the task keeps the car's dead-reckoned track (one
+   point per TRACK_STEP_MM, odometry frame). When an obstacle stops the car,
+   path_freeze() takes the chord of the last OBST_PATH_FIT_MM of that track as
+   the direction of the original path, through the point where the car
+   stopped. pose_reset() then sets the bypass frame on that line instead of on
+   the car's heading, so x = 0 is the line even when the car stopped at an
+   angle to it (just after a bend). Not usable (too little track, or the car
+   more than OBST_PATH_FIT_MAX_DEG off it): the car's heading, as before. */
+#define TRACK_N        (32u)              /* 32 x 10 mm covers OBST_PATH_FIT_MM */
+#define TRACK_STEP_MM  (10.0f)
+#define DEG_HALF_TURN  (180.0f)
+#define DEG_FULL_TURN  (360.0f)
+#define DEG_RIGHT      (90.0f)
+
+typedef struct
+{
+    float x_mm;
+    float y_mm;
+    float d_mm;                           /* odometry distance at this point */
+} track_pt_t;
+
+LOCAL track_pt_t g_trk[TRACK_N];          /* task-private (CR1 scope: full width) */
+LOCAL uint32_t   g_trk_head;              /* next slot */
+LOCAL uint32_t   g_trk_n;                 /* points held, <= TRACK_N */
+LOCAL bool       g_b_trk_on;
+LOCAL float      g_trk_x;                 /* car position and odometry at the last update */
+LOCAL float      g_trk_y;
+LOCAL float      g_trk_h;
+LOCAL float      g_trk_d;
+LOCAL bool       g_b_path_ok;             /* the g_path_* values hold for this avoidance */
+LOCAL float      g_path_deg;              /* path direction, odometry frame */
+LOCAL float      g_path_d;                /* odometry distance at the stop */
+
+LOCAL float wrap_deg(float a)
+{
+    float w = a;
+
+    while (w > DEG_HALF_TURN)
+    {
+        w -= DEG_FULL_TURN;
+    }
+    while (w < -DEG_HALF_TURN)
+    {
+        w += DEG_FULL_TURN;
+    }
+    return w;
+}
+
+LOCAL void track_reset(void)
+{
+    g_b_trk_on = false;
+    g_trk_n    = 0u;
+    g_trk_head = 0u;
+}
+
+LOCAL void track_push(void)
+{
+    g_trk[g_trk_head].x_mm = g_trk_x;
+    g_trk[g_trk_head].y_mm = g_trk_y;
+    g_trk[g_trk_head].d_mm = g_trk_d;
+    g_trk_head = (g_trk_head + 1u) % TRACK_N;
+    if (g_trk_n < TRACK_N)
+    {
+        g_trk_n++;
+    }
+    else
+    {
+        /* full: the oldest point was overwritten */
+    }
+}
+
+LOCAL void track_step(const odometry_t *p_o)
+{
+    if (!g_b_trk_on)
+    {
+        g_trk_x    = 0.0f;
+        g_trk_y    = 0.0f;
+        g_trk_h    = p_o->heading_deg;
+        g_trk_d    = p_o->dist_mm;
+        g_b_trk_on = true;
+        track_push();
+        return;
+    }
+    obstacle_pose_advance(&g_trk_x, &g_trk_y, g_trk_h, p_o->heading_deg, p_o->dist_mm - g_trk_d);
+    g_trk_h = p_o->heading_deg;
+    g_trk_d = p_o->dist_mm;
+    if ((g_trk_d - g_trk[(g_trk_head + TRACK_N - 1u) % TRACK_N].d_mm) >= TRACK_STEP_MM)
+    {
+        track_push();
+    }
+}
+
+/* At the stop: fit the path direction to the last OBST_PATH_FIT_MM of track. */
+LOCAL void path_freeze(void)
+{
+    odometry_t o;
+    uint32_t   k;
+    float      span = 0.0f;
+    float      dx   = 0.0f;
+    float      dy   = 0.0f;
+    char       text[96];
+    jbuf_t     jb;
+
+    g_b_path_ok = false;
+    odometry_get(&o);
+    track_step(&o);
+    if ((OBST_PATH_FIT_MM <= 0.0f) || (g_trk_n < 2u))
+    {
+        return;
+    }
+    /* walk back from the newest point until the span covers the window */
+    for (k = 1u; k < g_trk_n; k++)
+    {
+        const track_pt_t *p_p = &g_trk[(g_trk_head + TRACK_N - 1u - k) % TRACK_N];
+
+        span = g_trk_d - p_p->d_mm;
+        dx   = g_trk_x - p_p->x_mm;
+        dy   = g_trk_y - p_p->y_mm;
+        if (span >= OBST_PATH_FIT_MM)
+        {
+            break;
+        }
+    }
+    if (span < OBST_PATH_FIT_MIN_MM)
+    {
+        log_line("[obstacle] path: too little line followed, using the car heading");
+        return;
+    }
+    g_path_deg = obstacle_dir_deg(dx, dy);
+    g_path_d   = g_trk_d;
+    {
+        float off = wrap_deg(g_trk_h - g_path_deg);
+
+        jb_init(&jb, text, sizeof(text));
+        jb_raw(&jb, "[obstacle] path: car ");
+        jb_fixed(&jb, off, 1u);
+        jb_raw(&jb, " deg off the line followed over ");
+        jb_uint(&jb, (uint32_t)span);
+        jb_raw(&jb, (((off < 0.0f) ? -off : off) <= OBST_PATH_FIT_MAX_DEG) ? " mm: path = line" : " mm: too far off, car heading");
+        log_line(text);
+        g_b_path_ok = (((off < 0.0f) ? -off : off) <= OBST_PATH_FIT_MAX_DEG);
+    }
+}
+
 LOCAL void pose_reset(void)
 {
     odometry_t o;
 
     odometry_get(&o);
-    g_pose.x_mm   = 0.0f;
-    g_pose.y_mm   = 0.0f;
-    g_pose.h_deg  = 0.0f;
-    g_pose.h0_deg = o.heading_deg;
     g_pose.d_prev = o.dist_mm;
+    if (g_b_path_ok)
+    {
+        /* the car moved straight (backing off) since the stop, at about its
+           present heading; express that in the path's frame (x across it,
+           y along it) */
+        float ds = o.dist_mm - g_path_d;
+        float dx = ds * obstacle_sin_deg(o.heading_deg);
+        float dy = ds * obstacle_sin_deg(DEG_RIGHT - o.heading_deg);
+        float sp = obstacle_sin_deg(g_path_deg);
+        float cp = obstacle_sin_deg(DEG_RIGHT - g_path_deg);
+
+        g_pose.x_mm   = (dx * cp) - (dy * sp);
+        g_pose.y_mm   = (dx * sp) + (dy * cp);
+        g_pose.h0_deg = g_path_deg;
+        g_pose.h_deg  = wrap_deg(o.heading_deg - g_path_deg);
+    }
+    else
+    {
+        g_pose.x_mm   = 0.0f;
+        g_pose.y_mm   = 0.0f;
+        g_pose.h_deg  = 0.0f;
+        g_pose.h0_deg = o.heading_deg;
+    }
 }
 
 LOCAL void pose_update(void)
@@ -460,7 +624,7 @@ LOCAL void pose_update(void)
 
     odometry_get(&o);
     d = o.dist_mm;
-    h = o.heading_deg - g_pose.h0_deg;
+    h = wrap_deg(o.heading_deg - g_pose.h0_deg);
     obstacle_pose_advance(&g_pose.x_mm, &g_pose.y_mm, g_pose.h_deg, h, d - g_pose.d_prev);
     g_pose.h_deg  = h;
     g_pose.d_prev = d;
@@ -1599,6 +1763,7 @@ void tsk_obstacle_task(INT stacd, void *exinf)
                people at the edge of the board): those echoes must not stop
                the car. ping() still checks the 8 cm proximity E-stop. */
             odometry_get(&o);
+            track_step(&o);                   /* 19 Nov: the line followed, for path_freeze() */
             rate = (o.turn_dps < 0.0f) ? -o.turn_dps : o.turn_dps;
             if ((g_params.obst_max_turn_dps > 0.0f) && (rate > g_params.obst_max_turn_dps))
             {
@@ -1620,6 +1785,7 @@ void tsk_obstacle_task(INT stacd, void *exinf)
                 evt_cm13(&b, f);
                 evt_u(&b, (uint32_t)(hal_time_us() - t0), 16u);
                 (void)evt_post(&b);
+                path_freeze();                    /* 19 Nov: after the STOP and its latency event (NFR1) */
             }
             (void)tk_dly_tsk(PING_GAP_MS - ECHO_WAIT_MS);
         }
@@ -1627,6 +1793,8 @@ void tsk_obstacle_task(INT stacd, void *exinf)
         {
             avoid();
             servo_move(0.0f, 0.0f);
+            track_reset();                        /* the next path fit uses only line followed after this */
+            g_b_path_ok = false;
             /* wait for the planner to leave OBSTACLE AVOIDANCE */
             while (sys_state() == SYS_OBSTACLE_AVOIDANCE)
             {
@@ -1638,6 +1806,7 @@ void tsk_obstacle_task(INT stacd, void *exinf)
         {
             usf_reset(&g_filt);
             g_prox_n = 0u;
+            track_reset();
             (void)tk_dly_tsk(IDLE_POLL_MS);
         }
     }

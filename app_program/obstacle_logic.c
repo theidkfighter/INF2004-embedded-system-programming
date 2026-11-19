@@ -447,6 +447,12 @@ void obstacle_pose_advance(float *p_x, float *p_y, float h_prev_deg, float h_deg
     *p_y += ds_mm * cosf(hm);
 }
 
+float obstacle_dir_deg(float dx_mm, float dy_mm)
+{
+    /* the pose convention: x += ds sin(h), y += ds cos(h) */
+    return atan2f(dx_mm, dy_mm) / DEG_TO_RAD;
+}
+
 float obstacle_sin_deg(float deg)
 {
     return sinf(deg * DEG_TO_RAD);
