@@ -450,8 +450,27 @@ void tsk_motion_task(INT stacd, void *exinf)
             }
             else if ((g_line_t != 0u) && ((now - g_line_t) <= LINE_STALE_MS))
             {
-                g_w[1].target = clamp_speed(g_line_l * g_scale);
-                g_w[0].target = clamp_speed(g_line_r * g_scale);
+                float v_l = g_line_l;
+                float v_r = g_line_r;
+
+#if HUMP_DRIVE_STRAIGHT
+                /* 19 Nov: on the hump the line sensor reads off-line, the line
+                   follower steers hard and its curve rule stops the inner
+                   wheel (the loaded one on the ramp) while the other spins
+                   with no grip. The speed limit is set only by a hump
+                   (tsk_nav, DR A2), so while it is on: both wheels at the
+                   same speed, at least the line base speed. */
+                if (g_scale < 1.0f)
+                {
+                    float v = (v_l > v_r) ? v_l : v_r;
+
+                    v   = (v < g_params.line_base_mm_s) ? g_params.line_base_mm_s : v;
+                    v_l = v;
+                    v_r = v;
+                }
+#endif
+                g_w[1].target = clamp_speed(v_l * g_scale);
+                g_w[0].target = clamp_speed(v_r * g_scale);
             }
             else
             {
