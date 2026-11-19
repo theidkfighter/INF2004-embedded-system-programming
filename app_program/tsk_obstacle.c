@@ -810,6 +810,24 @@ LOCAL leg_res_t look_before_turn(float ws, float gap_mm, float margin_mm)
     }
 }
 
+/* Turn by turn_deg, drive d_mm, then turn back parallel to the path
+   (heading 0). Stops at the first leg that does not end LEG_OK and returns
+   its result, as the short-circuit chain it replaces did. */
+LOCAL leg_res_t step_out(float turn_deg, float d_mm, float ws, uint32_t *p_hit)
+{
+    leg_res_t r = leg_turn(turn_deg);
+
+    if (r == LEG_OK)
+    {
+        r = leg_move(d_mm, ws, 0u, p_hit);
+    }
+    if (r == LEG_OK)
+    {
+        r = leg_turn(-g_pose.h_deg);            /* heading read after the move */
+    }
+    return r;
+}
+
 /* STAGE4 + STAGE5 for one side. The turns back use the measured heading
    (pose), and the return is aimed at the ORIGINAL PATH, not a fixed 300 mm:
    it drives until it is OBST_RETURN_PAST_MM past the path, stopping as soon
@@ -829,9 +847,8 @@ LOCAL leg_res_t run_bypass(const bypass_plan_t *p_plan, float gap_mm, float marg
     g_n_legs = 0u;
     g_why    = ABR_LEG_FAILED;
     pose_reset();
-    if (((r = leg_turn(p_plan->turn1_deg)) != LEG_OK) ||
-        ((r = leg_move(p_plan->d1_mm, ws, 0u, &hit)) != LEG_OK) ||
-        ((r = leg_turn(-g_pose.h_deg)) != LEG_OK))                    /* parallel to the path */
+    r = step_out(p_plan->turn1_deg, p_plan->d1_mm, ws, &hit);        /* ends parallel to the path */
+    if (r != LEG_OK)
     {
         return r;
     }
@@ -855,10 +872,11 @@ LOCAL leg_res_t run_bypass(const bypass_plan_t *p_plan, float gap_mm, float marg
             {
                 return LEG_FAILED;
             }
-            if (((r = leg_turn(p_plan->turn1_deg)) != LEG_OK) ||
-                ((r = leg_move(g_dyn ? obstacle_leg_for_shift(out, (float)p_plan->side * p_plan->turn1_deg)   /* OBST_DYNAMIC_TURN */
-                                     : (out / 0.7071068f), ws, 0u, &hit)) != LEG_OK) ||
-                ((r = leg_turn(-g_pose.h_deg)) != LEG_OK))
+            r = step_out(p_plan->turn1_deg,
+                         g_dyn ? obstacle_leg_for_shift(out, (float)p_plan->side * p_plan->turn1_deg)   /* OBST_DYNAMIC_TURN */
+                               : (out / 0.7071068f),
+                         ws, &hit);
+            if (r != LEG_OK)
             {
                 return r;
             }
@@ -872,10 +890,13 @@ LOCAL leg_res_t run_bypass(const bypass_plan_t *p_plan, float gap_mm, float marg
         break;
     }
     /* side seen and seen to end: the trail already clears the rear corner */
-    if ((g_legacy || !b_ended) &&
-        ((r = look_before_turn(ws, gap_mm, margin_mm)) != LEG_OK))
+    if (g_legacy || !b_ended)
     {
-        return r;
+        r = look_before_turn(ws, gap_mm, margin_mm);
+        if (r != LEG_OK)
+        {
+            return r;
+        }
     }
 
     /* STAGE5: 45 deg back towards the original path (x = 0). 31 Oct: blocked
@@ -886,7 +907,8 @@ LOCAL leg_res_t run_bypass(const bypass_plan_t *p_plan, float gap_mm, float marg
         uint32_t n0 = g_n_legs;
 
         toward = (g_pose.x_mm < 0.0f) ? 1.0f : -1.0f;  /* left of it: turn right */
-        if ((r = leg_turn((toward * 45.0f) - g_pose.h_deg)) != LEG_OK)
+        r = leg_turn((toward * 45.0f) - g_pose.h_deg);
+        if (r != LEG_OK)
         {
             return r;
         }
@@ -926,7 +948,8 @@ LOCAL leg_res_t run_bypass(const bypass_plan_t *p_plan, float gap_mm, float marg
             {
                 return LEG_FAILED;
             }
-            if ((r = leg_move((float)OBST_SIDE_STEP_MM, ws, 0u, &hit)) != LEG_OK)
+            r = leg_move((float)OBST_SIDE_STEP_MM, ws, 0u, &hit);
+            if (r != LEG_OK)
             {
                 return r;
             }
