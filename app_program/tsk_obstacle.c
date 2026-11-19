@@ -77,6 +77,35 @@
 #define SCAN_LIMIT_DEG    (60.0f)
 #define FINE_EXT_CLUSTER_CM (15.0f)   /* = CLUSTER_CM in obstacle_logic.c */
 
+/* Barr-C: named constants (values unchanged) */
+#define MM_PER_CM              (10.0f)
+#define MM_PER_CM_BOTH_EDGES   (5.0f)     /* 2 edges * pad_mm / 10: width grows by both pads */
+#define COS30                  (0.8660254f)
+#define MM_PER_CM_COS30        (8.660254f) /* 10 mm/cm * cos 30 deg */
+#define SIN45                  (0.7071068f)
+#define NO_ECHO_FAR_CM         (1000.0f)  /* no echo counts as "far" in the median */
+#define NO_ECHO_TEST_CM        (999.0f)   /* median at or above this: no echo at all */
+#define SIDE_NOT_ENDED_DEG     (999.0f)   /* g_block_deg marker: the side did not end */
+#define SIDE_NOT_ENDED_TEST_DEG (500.0f)  /* g_block_deg above this: the marker, not an angle */
+#define STOP_SETTLE_MS         (200)      /* after a stop, before the pose is read */
+#define BLOCK_SETTLE_MS        (300)      /* blocked: come to rest before the distance is read */
+#define LINE_REARM_MS          (30)       /* lets TSK_LINE pick up a fresh g_reacq_seq */
+#define EXIT_POLL_MS           (20)       /* waiting for the planner to leave OBSTACLE AVOIDANCE */
+#define IDLE_POLL_MS           (50)       /* no obstacle: proximity poll period */
+#define LEG_TIMEOUT_MS         (30000u)
+#define SIDE_LEG_TIMEOUT_MS    (40000u)
+#define SIDE_LOG_LIM_EXTRA_MM  (150.0f)   /* SIDE_FOLLOW event: limit shown = gap + this */
+#define UNSEEN_TRAIL_FRAC      (0.3094f)  /* side never seen: extra trail as a fraction of the gap */
+#define SIDE_WATCH_DEG         (60.0f)    /* side look / watch angle */
+#define SIDE_DIAG_DEG          (30.0f)    /* second side look angle */
+#define SIDE_LOOK_SLACK_MM     (40.0f)
+#define SIDE_LOOK_REACH_MM     (100.0f)
+#define RETURN_DEG             (45.0f)    /* STAGE5 return angle to the path */
+#define RETURN_MIN_SIN         (0.3f)     /* floor on sin(heading): bounds the return leg */
+#define FIRST_TURN_DEG         (45.0f)    /* default first-turn angle */
+#define MIN_LEG_MM             (5.0f)     /* shorter moves are not worth making */
+#define UNDO_MIN_MM            (2.0f)     /* undo_legs(): shorter straight legs are skipped */
+
 LOCAL us_filter_t        g_filt;
 LOCAL scan_t             g_fine;
 LOCAL obstacle_profile_t g_prof;
@@ -135,11 +164,11 @@ LOCAL float ping_median3(void)
     (void)tk_dly_tsk(PING_GAP_MS - ECHO_WAIT_MS);
     c = ping();
     /* no echo counts as "far" */
-    a = (a < 0.0f) ? 1000.0f : a;
-    b = (b < 0.0f) ? 1000.0f : b;
-    c = (c < 0.0f) ? 1000.0f : c;
+    a = (a < 0.0f) ? NO_ECHO_FAR_CM : a;
+    b = (b < 0.0f) ? NO_ECHO_FAR_CM : b;
+    c = (c < 0.0f) ? NO_ECHO_FAR_CM : c;
     a = median3(a, b, c);
-    return (a >= 999.0f) ? -1.0f : a;
+    return (a >= NO_ECHO_TEST_CM) ? -1.0f : a;
 }
 
 LOCAL void servo_move(float robot_deg, float from_deg)
@@ -325,7 +354,7 @@ LOCAL float       g_block_deg;          /* ... and the sensor angle */
 
 /* leg watch: sensor angles (x the side the obstacle is on), one ping each */
 #define WATCH_N           (4u)
-LOCAL const float WATCH_DEG[WATCH_N] = { 0.0f, 30.0f, 0.0f, 60.0f };
+LOCAL const float WATCH_DEG[WATCH_N] = { 0.0f, SIDE_DIAG_DEG, 0.0f, SIDE_WATCH_DEG };
 LOCAL float       g_backed_mm;          /* standoff + rescan reversed so far in this avoidance (capped) */
 LOCAL float       g_rev_total_mm;       /* every straight reverse of this avoidance (odometry) */
 LOCAL float       g_rev_cap;            /* OBST_REVERSE_MAX_MM, read at the start of avoid() */
@@ -348,7 +377,7 @@ LOCAL float left_half_mm(void)
    needs E more room. */
 LOCAL void side_view(obstacle_profile_t *p_q)
 {
-    float e_cm = (left_half_mm() - g_params.robot_half_width_mm) / 10.0f;
+    float e_cm = (left_half_mm() - g_params.robot_half_width_mm) / MM_PER_CM;
 
     *p_q = g_prof;
     if (g_legacy)
@@ -389,7 +418,7 @@ LOCAL void side_follow_event(uint32_t n60, uint32_t n_seen, float near_cm, float
        held below the 8191 code), leg U11 (mm), x U11 (mm); each saturates */
     evt_b_t b;
     float   x = (g_pose.x_mm < 0.0f) ? -g_pose.x_mm : g_pose.x_mm;
-    float   lim = ((gap_mm + 150.0f) / 8.660254f) * 10.0f;
+    float   lim = ((gap_mm + SIDE_LOG_LIM_EXTRA_MM) / MM_PER_CM_COS30) * MM_PER_CM;
 
     evt_begin(&b, EVC_SIDE_FOLLOW);
     evt_u(&b, n60, 8u);
@@ -482,7 +511,7 @@ LOCAL leg_res_t step(uint16_t id, bool b_watch_ahead, float watch_sign, uint32_t
         {
             *p_stop_hit = other & stop_bits;
             motion_stop(SRC_OBSTACLE);
-            (void)tk_dly_tsk(200);
+            (void)tk_dly_tsk(STOP_SETTLE_MS);
             pose_update();
             return LEG_OK;
         }
@@ -508,7 +537,7 @@ LOCAL leg_res_t step(uint16_t id, bool b_watch_ahead, float watch_sign, uint32_t
                     motion_stop(SRC_OBSTACLE);
                     g_block_cm  = cm;
                     g_block_deg = a;
-                    (void)tk_dly_tsk(300);    /* come to rest before the distance is read */
+                    (void)tk_dly_tsk(BLOCK_SETTLE_MS);    /* come to rest before the distance is read */
                     pose_update();
                     return LEG_BLOCKED;
                 }
@@ -522,7 +551,7 @@ LOCAL leg_res_t step(uint16_t id, bool b_watch_ahead, float watch_sign, uint32_t
         {
             /* turns, reversing: no pings */
         }
-        if ((hal_time_ms() - t0) > 30000u)
+        if ((hal_time_ms() - t0) > LEG_TIMEOUT_MS)
         {
             motion_stop(SRC_OBSTACLE);
             return LEG_FAILED;
@@ -606,7 +635,7 @@ LOCAL bool undo_legs(uint32_t keep)
         {
             r = step(motion_start_turn(-p_l->amount, g_params.turn_mm_s, SRC_OBSTACLE), false, 0.0f, 0u, &hit);
         }
-        else if ((p_l->amount > 2.0f) || (p_l->amount < -2.0f))
+        else if ((p_l->amount > UNDO_MIN_MM) || (p_l->amount < -UNDO_MIN_MM))
         {
             float s0 = odo_fwd_mm();
 
@@ -667,20 +696,20 @@ LOCAL leg_res_t leg_side_follow(float min_mm, float gap_mm, float trail_mm, floa
             {
                 return LEG_FAILED;
             }
-            g_block_cm  = (float)OBST_SIDE_MAX_MM / 10.0f;
-            g_block_deg = 999.0f;               /* marker: the side did not end */
+            g_block_cm  = (float)OBST_SIDE_MAX_MM / MM_PER_CM;
+            g_block_deg = SIDE_NOT_ENDED_DEG;               /* marker: the side did not end */
             r = LEG_BLOCKED;
             break;
         }
         pose_update();
         if (((other & (EVF_ESTOP | EVF_PROXIMITY)) != 0u) || (sys_state() != SYS_OBSTACLE_AVOIDANCE) ||
-            ((hal_time_ms() - t0) > 40000u))
+            ((hal_time_ms() - t0) > SIDE_LEG_TIMEOUT_MS))
         {
             motion_stop(SRC_OBSTACLE);
             return LEG_FAILED;
         }
 
-        a = ((k % 2u) == 0u) ? 0.0f : (ws * 60.0f);
+        a = ((k % 2u) == 0u) ? 0.0f : (ws * SIDE_WATCH_DEG);
         k++;
         servo_move(a, g_servo_now);
         cm = ping();
@@ -694,7 +723,7 @@ LOCAL leg_res_t leg_side_follow(float min_mm, float gap_mm, float trail_mm, floa
                 motion_stop(SRC_OBSTACLE);
                 g_block_cm  = cm;
                 g_block_deg = a;
-                (void)tk_dly_tsk(300);
+                (void)tk_dly_tsk(BLOCK_SETTLE_MS);
                 pose_update();
                 r = LEG_BLOCKED;
                 break;
@@ -713,12 +742,12 @@ LOCAL leg_res_t leg_side_follow(float min_mm, float gap_mm, float trail_mm, floa
                 seen_at = done;
                 n_seen++;
                 /* 31 Oct: the side is closer than planned: stop, run_bypass sidesteps */
-                if (!g_legacy && ((cm * 8.660254f) < (gap_mm - (float)OBST_SIDE_CLOSE_MM)))
+                if (!g_legacy && ((cm * MM_PER_CM_COS30) < (gap_mm - (float)OBST_SIDE_CLOSE_MM)))
                 {
                     motion_stop(SRC_OBSTACLE);
                     g_block_cm  = cm;
                     g_block_deg = a;
-                    (void)tk_dly_tsk(300);
+                    (void)tk_dly_tsk(BLOCK_SETTLE_MS);
                     pose_update();
                     r = LEG_BLOCKED;
                     break;
@@ -739,11 +768,11 @@ LOCAL leg_res_t leg_side_follow(float min_mm, float gap_mm, float trail_mm, floa
         /* OBST_TRUST_MISS: two misses in a row end the leg trail_mm after the first
            one, seen before or not; otherwise the planned leg (min_mm) unless a
            sighting was followed by two misses */
-        if (b_trust ? ((clear_n >= 2u) && (miss_at >= 0.0f) && (done >= (miss_at + trail_mm + ((seen_at >= 0.0f) ? 0.0f : (gap_mm * 0.3094f)))))
+        if (b_trust ? ((clear_n >= 2u) && (miss_at >= 0.0f) && (done >= (miss_at + trail_mm + ((seen_at >= 0.0f) ? 0.0f : (gap_mm * UNSEEN_TRAIL_FRAC)))))
                     : ((done >= min_mm) && ((seen_at < 0.0f) || ((clear_n >= 2u) && (done >= (ref + trail_mm))))))
         {
             motion_stop(SRC_OBSTACLE);
-            (void)tk_dly_tsk(200);
+            (void)tk_dly_tsk(STOP_SETTLE_MS);
             pose_update();
             r = LEG_OK;
             break;
@@ -778,9 +807,9 @@ LOCAL leg_res_t look_before_turn(float ws, float gap_mm, float margin_mm)
         {
             return LEG_FAILED;
         }
-        servo_move(ws * 60.0f, g_servo_now);
+        servo_move(ws * SIDE_WATCH_DEG, g_servo_now);
         d90 = ping_median3();
-        servo_move(ws * 30.0f, g_servo_now);
+        servo_move(ws * SIDE_DIAG_DEG, g_servo_now);
         d60 = ping_median3();
         servo_move(0.0f, g_servo_now);
         if ((step(motion_start_turn(-ws * piv, g_params.turn_mm_s, SRC_OBSTACLE), false, 0.0f, 0u, &hit) != LEG_OK) || aborted())
@@ -788,7 +817,7 @@ LOCAL leg_res_t look_before_turn(float ws, float gap_mm, float margin_mm)
             return LEG_FAILED;
         }
         b_gone = !obstacle_side_beside(d90, gap_mm + g_seen_extra_mm) &&
-                 !((d60 >= 0.0f) && ((d60 * 10.0f * 0.8660254f) <= ((gap_mm + g_seen_extra_mm - 40.0f) + 100.0f)));
+                 !((d60 >= 0.0f) && ((d60 * MM_PER_CM * COS30) <= ((gap_mm + g_seen_extra_mm - SIDE_LOOK_SLACK_MM) + SIDE_LOOK_REACH_MM)));
         side_look_event(d90, d60, b_gone);
         if (b_gone)
         {
@@ -797,8 +826,8 @@ LOCAL leg_res_t look_before_turn(float ws, float gap_mm, float margin_mm)
         }
         if (n >= (uint32_t)OBST_TURN_LOOK_STEPS)
         {
-            g_block_cm  = (float)OBST_SIDE_MAX_MM / 10.0f;
-            g_block_deg = 999.0f;                   /* the side did not end */
+            g_block_cm  = (float)OBST_SIDE_MAX_MM / MM_PER_CM;
+            g_block_deg = SIDE_NOT_ENDED_DEG;                   /* the side did not end */
             return LEG_BLOCKED;
         }
         bypass_extend_event(0u, (d90 >= 0.0f) ? d90 : d60);   /* "obstacle still beside the car (X cm): 100 mm further" */
@@ -860,10 +889,10 @@ LOCAL leg_res_t run_bypass(const bypass_plan_t *p_plan, float gap_mm, float marg
         r = leg_side_follow(p_plan->d2_mm, gap_mm,
                             obstacle_side_trail_mm(gap_mm, (float)OBST_US_AHEAD_MM, g_half_obs, margin_mm),
                             ws, &b_ended);
-        if ((r == LEG_BLOCKED) && !g_legacy && (n_side < OBST_SIDESTEP_MAX) && (g_block_deg < 500.0f) && (g_n_legs > 0u))
+        if ((r == LEG_BLOCKED) && !g_legacy && (n_side < OBST_SIDESTEP_MAX) && (g_block_deg < SIDE_NOT_ENDED_TEST_DEG) && (g_n_legs > 0u))
         {
             float deg = (g_block_deg < 0.0f) ? -g_block_deg : g_block_deg;
-            float lat = g_block_cm * 10.0f * obstacle_sin_deg(deg);
+            float lat = g_block_cm * MM_PER_CM * obstacle_sin_deg(deg);
             float out = (deg < 1.0f) ? (float)OBST_RETRY_WIDER_MM : ((gap_mm - lat) + (float)OBST_SIDESTEP_EXTRA_MM);
 
             out = (out < (float)OBST_SIDESTEP_MIN_MM) ? (float)OBST_SIDESTEP_MIN_MM : out;
@@ -874,7 +903,7 @@ LOCAL leg_res_t run_bypass(const bypass_plan_t *p_plan, float gap_mm, float marg
             }
             r = step_out(p_plan->turn1_deg,
                          g_dyn ? obstacle_leg_for_shift(out, (float)p_plan->side * p_plan->turn1_deg)   /* OBST_DYNAMIC_TURN */
-                               : (out / 0.7071068f),
+                               : (out / SIN45),
                          ws, &hit);
             if (r != LEG_OK)
             {
@@ -907,13 +936,13 @@ LOCAL leg_res_t run_bypass(const bypass_plan_t *p_plan, float gap_mm, float marg
         uint32_t n0 = g_n_legs;
 
         toward = (g_pose.x_mm < 0.0f) ? 1.0f : -1.0f;  /* left of it: turn right */
-        r = leg_turn((toward * 45.0f) - g_pose.h_deg);
+        r = leg_turn((toward * RETURN_DEG) - g_pose.h_deg);
         if (r != LEG_OK)
         {
             return r;
         }
         s    = obstacle_sin_deg((g_pose.h_deg < 0.0f) ? -g_pose.h_deg : g_pose.h_deg);
-        s    = (s < 0.3f) ? 0.3f : s;
+        s    = (s < RETURN_MIN_SIN) ? RETURN_MIN_SIN : s;
         dist = (((g_pose.x_mm < 0.0f) ? -g_pose.x_mm : g_pose.x_mm) + (float)OBST_RETURN_PAST_MM) / s;
         r    = LEG_OK;
         if (g_dyn)                                      /* OBST_DYNAMIC_TURN: return gate */
@@ -937,7 +966,7 @@ LOCAL leg_res_t run_bypass(const bypass_plan_t *p_plan, float gap_mm, float marg
         if (r == LEG_OK)
         {
             g_reacq_seq++;                              /* TSK_LINE: fresh line watch */
-            (void)tk_dly_tsk(30);
+            (void)tk_dly_tsk(LINE_REARM_MS);
             flag_clear(EVF_LINE_FOUND);
             r = leg_move(dist, ws, EVF_LINE_FOUND, &hit);
         }
@@ -972,7 +1001,7 @@ LOCAL leg_res_t run_bypass(const bypass_plan_t *p_plan, float gap_mm, float marg
         }
         if (g_dyn && (OBST_REACQ_SWEEP_DEG > 0.0f))   /* OBST_DYNAMIC_TURN: confirm the line */
         {
-            (void)tk_dly_tsk(30);
+            (void)tk_dly_tsk(LINE_REARM_MS);
             /* 4 Nov logs: on this car the left sensor reports 1 when it is NOT
                on the line (0 while it rides the line edge), so search on 1 */
             if (st_line_l())
@@ -997,7 +1026,7 @@ LOCAL leg_res_t run_bypass(const bypass_plan_t *p_plan, float gap_mm, float marg
                         log_line("[obstacle] reacquire: first sweep missed the line, wider backup sweep");
                     }
                     g_reacq_seq++;                  /* TSK_LINE: fresh line watch */
-                    (void)tk_dly_tsk(30);
+                    (void)tk_dly_tsk(LINE_REARM_MS);
                     flag_clear(EVF_LINE_FOUND);
                     if (step(motion_start_turn(SWEEP[k] * toward, g_params.turn_mm_s, SRC_OBSTACLE),
                              false, 0.0f, EVF_LINE_FOUND, &hit) != LEG_OK)
@@ -1024,7 +1053,7 @@ LOCAL leg_res_t run_bypass(const bypass_plan_t *p_plan, float gap_mm, float marg
 
         (void)evt_post0(EVC_BYPASS_RETURN);   /* "line not seen crossing the original path: back to it, then search" */
         flag_clear(EVF_LINE_FOUND);
-        if (past > 5.0f)
+        if (past > MIN_LEG_MM)
         {
             float     s0 = odo_fwd_mm();
             leg_res_t rr = step(motion_start_move(-past / s, g_params.bypass_mm_s, SRC_OBSTACLE), false, 0.0f, EVF_LINE_FOUND, &hit);
@@ -1130,10 +1159,10 @@ LOCAL void rev_cap_event(uint32_t kind, float x)
 LOCAL standoff_res_t standoff(char side, float margin_mm)
 {
     float need = obstacle_standoff_mm(&g_prof, side, g_half_obs, margin_mm) -
-                 (g_prof.r_min_cm * 10.0f);
+                 (g_prof.r_min_cm * MM_PER_CM);
     float allowed;
 
-    if (need < 5.0f)
+    if (need < MIN_LEG_MM)
     {
         return STANDOFF_OK;
     }
@@ -1160,7 +1189,7 @@ LOCAL standoff_res_t standoff(char side, float margin_mm)
     {
         return STANDOFF_FAILED;
     }
-    g_prof.r_min_cm += need / 10.0f;
+    g_prof.r_min_cm += need / MM_PER_CM;
     return STANDOFF_OK;
 }
 
@@ -1184,7 +1213,7 @@ LOCAL standoff_res_t standoff_dyn(char side, float margin_mm, float base_margin_
     cfg.swing_margin_mm = base_margin_mm;
     if (!obstacle_dyn_standoff(&g_prof, side, g_half_obs, margin_mm, &cfg, &dp))
     {
-        *p_theta = 45.0f;
+        *p_theta = FIRST_TURN_DEG;
         return standoff(side, margin_mm);
     }
     t = dp.reverse_mm;
@@ -1192,7 +1221,7 @@ LOCAL standoff_res_t standoff_dyn(char side, float margin_mm, float base_margin_
     {
         if (obstacle_reverse_budget(t, g_backed_mm, g_rev_cap, false, &allowed) == OBST_REV_REFUSED)
         {
-            if (t >= 5.0f)
+            if (t >= MIN_LEG_MM)
             {
                 rev_cap_event(0u, t);
                 return STANDOFF_CAPPED;
@@ -1213,7 +1242,7 @@ LOCAL standoff_res_t standoff_dyn(char side, float margin_mm, float base_margin_
         {
             return STANDOFF_FAILED;
         }
-        g_prof.r_min_cm += t / 10.0f;
+        g_prof.r_min_cm += t / MM_PER_CM;
     }
     *p_theta = dp.theta_deg;
     return STANDOFF_OK;
@@ -1272,13 +1301,13 @@ LOCAL char tie_look(char side)
     {
         return side;
     }
-    servo_move(-60.0f, g_servo_now);
+    servo_move(-SIDE_WATCH_DEG, g_servo_now);
     d_l = ping_median3();
     if ((step(motion_start_turn(2.0f * piv, g_params.turn_mm_s, SRC_OBSTACLE), false, 0.0f, 0u, &hit) != LEG_OK))
     {
         return side;
     }
-    servo_move(60.0f, g_servo_now);
+    servo_move(SIDE_WATCH_DEG, g_servo_now);
     d_r = ping_median3();
     (void)step(motion_start_turn(-piv, g_params.turn_mm_s, SRC_OBSTACLE), false, 0.0f, 0u, &hit);
     servo_move(0.0f, g_servo_now);
@@ -1329,7 +1358,7 @@ LOCAL void avoid(void)
     float         half = g_params.robot_half_width_mm;
     float         margin = g_params.obst_margin_mm;
     char          side = '\0';
-    float         theta = 45.0f;              /* OBST_DYNAMIC_TURN: first-turn angle of this attempt */
+    float         theta = FIRST_TURN_DEG;              /* OBST_DYNAMIC_TURN: first-turn angle of this attempt */
 
     /* a SET during an avoidance takes effect at the next obstacle */
     g_legacy       = prm_flag(PRM_OBST_LEGACY);
@@ -1353,7 +1382,7 @@ LOCAL void avoid(void)
             {
                 return;
             }
-            if (coarse_all_clear(coarse, (float)OBSTACLE_CLEAR_CM + (g_backed_mm / 10.0f)))
+            if (coarse_all_clear(coarse, (float)OBSTACLE_CLEAR_CM + (g_backed_mm / MM_PER_CM)))
             {
                 (void)evt_post0(EVC_OBSTACLE_CLEARED);   /* "coarse sweep clear: resume line following" */
                 flag_set(EVF_BYPASS_COMPLETE);
@@ -1380,9 +1409,9 @@ LOCAL void avoid(void)
                 obstacle_apply_min_width(&g_prof, g_params.obst_min_width_mm, &g_ext_mm[0], &g_ext_mm[1]);
                 if (g_params.obst_edge_pad_mm > 0.0f)      /* OBST_EDGE_PAD_MM: flat-face ends */
                 {
-                    g_prof.x_l_cm   -= g_params.obst_edge_pad_mm / 10.0f;
-                    g_prof.x_r_cm   += g_params.obst_edge_pad_mm / 10.0f;
-                    g_prof.width_cm += g_params.obst_edge_pad_mm / 5.0f;
+                    g_prof.x_l_cm   -= g_params.obst_edge_pad_mm / MM_PER_CM;
+                    g_prof.x_r_cm   += g_params.obst_edge_pad_mm / MM_PER_CM;
+                    g_prof.width_cm += g_params.obst_edge_pad_mm / MM_PER_CM_BOTH_EDGES;
                     g_ext_mm[0]     += g_params.obst_edge_pad_mm;
                     g_ext_mm[1]     += g_params.obst_edge_pad_mm;
                 }
@@ -1429,7 +1458,7 @@ LOCAL void avoid(void)
         {
             extra[si] = (float)OBST_RETRY_WIDER_MM;    /* after a rescan: a blocked side only goes wider */
         }
-        theta = 45.0f;                             /* OBST_DYNAMIC_TURN */
+        theta = FIRST_TURN_DEG;                             /* OBST_DYNAMIC_TURN */
         {
             standoff_res_t so;
 
@@ -1480,7 +1509,7 @@ LOCAL void avoid(void)
                distance CM9, angle S8 (deg): "right side: something at X cm,
                A deg; backing out" */
             evt_b_t b;
-            bool    b_long = (g_block_deg > 500.0f);
+            bool    b_long = (g_block_deg > SIDE_NOT_ENDED_TEST_DEG);
 
             evt_begin(&b, EVC_BYPASS_BLOCKED);
             evt_u(&b, (side == 'R') ? 1u : 0u, 1u);
@@ -1603,7 +1632,7 @@ void tsk_obstacle_task(INT stacd, void *exinf)
             /* wait for the planner to leave OBSTACLE AVOIDANCE */
             while (sys_state() == SYS_OBSTACLE_AVOIDANCE)
             {
-                (void)tk_dly_tsk(20);
+                (void)tk_dly_tsk(EXIT_POLL_MS);
             }
             usf_reset(&g_filt);
         }
@@ -1611,7 +1640,7 @@ void tsk_obstacle_task(INT stacd, void *exinf)
         {
             usf_reset(&g_filt);
             g_prox_n = 0u;
-            (void)tk_dly_tsk(50);
+            (void)tk_dly_tsk(IDLE_POLL_MS);
         }
     }
 }
