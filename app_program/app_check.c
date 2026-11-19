@@ -21,24 +21,93 @@ static void need(jbuf_t *p_jb, bool b_ok, const char *p_name, uint32_t *p_missin
     }
 }
 
+/* The 13 calibration checks, in bit order (the RECOVERY_REFUSED and
+   telemetry bit numbers). One list for both functions below (Barr 6.1.i). */
+#define CHECK_COUNT  (13u)
+
+static const char * const CHECK_NAMES[CHECK_COUNT] =
+{
+    "MOTOR_MAPPING_CONFIRMED", "ENC_DIRECTION_CONFIRMED", "ENC_A_EDGES_PER_REV",
+    "WHEEL_DIAMETER_MM", "TRACK_WIDTH_MM", "SPEED_FF_DEADBAND_PCT",
+    "SPEED_FF_MM_S_PER_PCT", "LINE_DO_BLACK_HIGH", "IR_WHITE_ADC", "IR_BLACK_ADC",
+    "SERVO_CALIBRATED", "IMU_FORWARD_AXIS", "IMU_FORWARD_SIGN"
+};
+
+/* Returns true when calibration item k (0 .. CHECK_COUNT - 1) is set. */
+static bool check_ok(uint32_t k)
+{
+    bool b_ok = false;
+
+    switch (k)
+    {
+        case 0u:
+            b_ok = (prm_tri(PRM_MOTOR_MAPPING_CONFIRMED) > 0);
+        break;
+
+        case 1u:
+            b_ok = (prm_tri(PRM_ENC_DIRECTION_CONFIRMED) > 0);
+        break;
+
+        case 2u:
+            b_ok = (g_params.enc_a_edges_per_rev > 0.0f);
+        break;
+
+        case 3u:
+            b_ok = (g_params.wheel_diameter_mm > 0.0f);
+        break;
+
+        case 4u:
+            b_ok = (g_params.track_width_mm > 0.0f);
+        break;
+
+        case 5u:
+            b_ok = (g_params.ff_deadband_pct >= 0.0f);
+        break;
+
+        case 6u:
+            b_ok = (g_params.ff_mm_s_per_pct > 0.0f);
+        break;
+
+        case 7u:
+            b_ok = (prm_tri(PRM_LINE_DO_BLACK_HIGH) >= 0);
+        break;
+
+        case 8u:
+            b_ok = (g_params.ir_white_adc >= 0.0f);
+        break;
+
+        case 9u:
+            b_ok = (g_params.ir_black_adc >= 0.0f);
+        break;
+
+        case 10u:
+            b_ok = (prm_tri(PRM_SERVO_CALIBRATED) > 0);
+        break;
+
+        case 11u:
+            b_ok = (prm_int(PRM_IMU_FORWARD_AXIS) > 0);
+        break;
+
+        case 12u:
+            b_ok = (prm_tri(PRM_IMU_FORWARD_SIGN) != 0);
+        break;
+
+        default:
+            b_ok = false;
+        break;
+    }
+    return b_ok;
+}
+
 uint32_t config_missing_bits(void)
 {
-    uint32_t b = 0u;
+    uint32_t bits = 0u;
 
-    b |= (prm_tri(PRM_MOTOR_MAPPING_CONFIRMED) > 0) ? 0u : (1u << 0);
-    b |= (prm_tri(PRM_ENC_DIRECTION_CONFIRMED) > 0) ? 0u : (1u << 1);
-    b |= (g_params.enc_a_edges_per_rev > 0.0f) ? 0u : (1u << 2);
-    b |= (g_params.wheel_diameter_mm > 0.0f) ? 0u : (1u << 3);
-    b |= (g_params.track_width_mm > 0.0f) ? 0u : (1u << 4);
-    b |= (g_params.ff_deadband_pct >= 0.0f) ? 0u : (1u << 5);
-    b |= (g_params.ff_mm_s_per_pct > 0.0f) ? 0u : (1u << 6);
-    b |= (prm_tri(PRM_LINE_DO_BLACK_HIGH) >= 0) ? 0u : (1u << 7);
-    b |= (g_params.ir_white_adc >= 0.0f) ? 0u : (1u << 8);
-    b |= (g_params.ir_black_adc >= 0.0f) ? 0u : (1u << 9);
-    b |= (prm_tri(PRM_SERVO_CALIBRATED) > 0) ? 0u : (1u << 10);
-    b |= (prm_int(PRM_IMU_FORWARD_AXIS) > 0) ? 0u : (1u << 11);
-    b |= (prm_tri(PRM_IMU_FORWARD_SIGN) != 0) ? 0u : (1u << 12);
-    return b;
+    for (uint32_t k = 0u; k < CHECK_COUNT; k++)
+    {
+        bits |= check_ok(k) ? 0u : (1u << k);
+    }
+    return bits;
 }
 
 bool config_check(char *p_text, uint32_t size)
@@ -47,18 +116,9 @@ bool config_check(char *p_text, uint32_t size)
     uint32_t missing = 0u;
 
     jb_init(&jb, p_text, size);
-    need(&jb, prm_tri(PRM_MOTOR_MAPPING_CONFIRMED) > 0, "MOTOR_MAPPING_CONFIRMED", &missing);
-    need(&jb, prm_tri(PRM_ENC_DIRECTION_CONFIRMED) > 0, "ENC_DIRECTION_CONFIRMED", &missing);
-    need(&jb, g_params.enc_a_edges_per_rev > 0.0f, "ENC_A_EDGES_PER_REV", &missing);
-    need(&jb, g_params.wheel_diameter_mm > 0.0f, "WHEEL_DIAMETER_MM", &missing);
-    need(&jb, g_params.track_width_mm > 0.0f, "TRACK_WIDTH_MM", &missing);
-    need(&jb, g_params.ff_deadband_pct >= 0.0f, "SPEED_FF_DEADBAND_PCT", &missing);
-    need(&jb, g_params.ff_mm_s_per_pct > 0.0f, "SPEED_FF_MM_S_PER_PCT", &missing);
-    need(&jb, prm_tri(PRM_LINE_DO_BLACK_HIGH) >= 0, "LINE_DO_BLACK_HIGH", &missing);
-    need(&jb, g_params.ir_white_adc >= 0.0f, "IR_WHITE_ADC", &missing);
-    need(&jb, g_params.ir_black_adc >= 0.0f, "IR_BLACK_ADC", &missing);
-    need(&jb, prm_tri(PRM_SERVO_CALIBRATED) > 0, "SERVO_CALIBRATED", &missing);
-    need(&jb, (prm_int(PRM_IMU_FORWARD_AXIS) > 0), "IMU_FORWARD_AXIS", &missing);
-    need(&jb, prm_tri(PRM_IMU_FORWARD_SIGN) != 0, "IMU_FORWARD_SIGN", &missing);
+    for (uint32_t k = 0u; k < CHECK_COUNT; k++)
+    {
+        need(&jb, check_ok(k), CHECK_NAMES[k], &missing);
+    }
     return missing == 0u;
 }

@@ -61,7 +61,9 @@ typedef struct
     uint32_t over;          /* samples with us > limit */
 } perf_stat_t;
 
-/* PERF_BEGIN declares the start timestamp v; PERF_END records the time since v. */
+/* PERF_BEGIN declares the start timestamp v; PERF_END records the time since v.
+   NOTE: macros, not functions (Barr 6.3 deviation): PERF_BEGIN declares a
+   variable, and with APP_PERF = 0 the probes must cost nothing. */
 #define PERF_BEGIN(v)            uint32_t v = hal_time_us32()
 #define PERF_END(id, v, lim)     perf_add((uint32_t)(id), hal_time_us32() - (v), (lim))
 /* Periodic tasks: time from the cyclic handler's release (perf_release) to
@@ -78,8 +80,8 @@ void perf_report(void);                                      /* TSK_TELEMETRY co
 #else /* !APP_PERF */
 
 #define PERF_BEGIN(v)
-#define PERF_END(id, v, lim)
-#define PERF_CYCLE_END(id, lim)
+#define PERF_END(id, v, lim)     ((void)0)
+#define PERF_CYCLE_END(id, lim)  ((void)0)
 
 static inline void perf_add(uint32_t id, uint32_t us, uint32_t limit_us)
 {

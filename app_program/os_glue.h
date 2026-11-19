@@ -99,7 +99,9 @@ bool       sys_set_state(sys_state_t state, bool b_safety);
 sys_state_t sys_state(void);
 void       fault_set(uint32_t fault_bits);       /* NFR19: reported in telemetry */
 void       fault_clear(uint32_t fault_bits);
-/* why the last E-stop / ERROR happened: st_stop() (status.h), stop_reason_t */
+/* Why the last E-stop / ERROR happened: st_stop() (status.h), stop_reason_t. */
+
+/* Line re-acquisition after a bypass: written by TSK_OBSTACLE, read by TSK_LINE. */
 extern volatile uint8_t g_reacq_seq;             /* modular, bumped by the bypass: TSK_LINE re-arms its line watch */
 
 /* Pushes driver-held parameters (encoder directions, servo range) after a change */

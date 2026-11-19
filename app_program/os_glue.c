@@ -424,7 +424,8 @@ void log_line(const char *p_text)
 
 #if APP_PERF
 
-#define PERF_BARRIER()   __asm__ volatile ("" ::: "memory")   /* compiler barrier */
+/* NOTE: a macro (Barr 6.3 deviation): inline assembly, a compiler barrier. */
+#define PERF_BARRIER()   __asm__ volatile ("" ::: "memory")
 #define PERF_REL_FIRST   ((uint32_t)PERF_TSK_SAFETY)          /* the four task ids are consecutive */
 #define PERF_REL_TASKS   (4u)
 #define PERF_REL_SLOTS   (4u)                                 /* power of 2 */

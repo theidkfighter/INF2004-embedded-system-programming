@@ -66,6 +66,7 @@
 #define IMU_CHIP_W        (2u)
 #define IMU_ADDR_SH       (2u)
 #define IMU_ADDR_W        (7u)
+/* NOTE: a macro (Barr 6.3 deviation): used in the static initialiser below. */
 #define IMU_CFG(chip, addr) ((uint16_t)(((uint32_t)(chip) << IMU_CHIP_SH) | ((uint32_t)(addr) << IMU_ADDR_SH)))
 static volatile uint16_t g_imu_cfg = IMU_CFG(HAL_IMU_NONE, IMU_ACCEL_ADDR);
 

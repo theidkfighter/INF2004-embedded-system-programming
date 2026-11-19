@@ -56,6 +56,7 @@ static volatile uint8_t  g_motor_flags;
 #define SERVO_US_W        (12u)
 #define SERVO_MIN_SH      (0u)
 #define SERVO_MAX_SH      (12u)
+/* NOTE: a macro (Barr 6.3 deviation): used in the static initialiser below. */
 #define SERVO_RNG(mn, mx) (((uint32_t)(mn) << SERVO_MIN_SH) | ((uint32_t)(mx) << SERVO_MAX_SH))
 BP_STATIC_ASSERT((SERVO_MIN_US <= 4095) && (SERVO_MAX_US <= 4095), "g_servo_rng: limits fit in U12");
 static volatile uint32_t g_servo_rng = SERVO_RNG(SERVO_MIN_US, SERVO_MAX_US);

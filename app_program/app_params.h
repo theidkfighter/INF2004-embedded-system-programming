@@ -4,12 +4,12 @@
  *          NFR15: PID gains through a configuration interface).
  *
  * Start-up values come from robot_config.h. Every value can be changed over
- * MQTT without recompiling:
- *   SET:LINE_STEER=0.35      -> ack {"cmd":"SET:...","result":"ok", ...}
- *   GET:PARAMS               -> ack with every parameter
- *   is02/config (retained)   -> "NAME=VALUE" lines, applied at every connect,
- *                               so the laptop's broker keeps the robot's
- *                               calibration (laptop_tools/robot_params.py)
+ * MQTT without recompiling, by parameter ID in binary frames (wire.c):
+ *   SET Command_Frame         -> one value, answered by an Ack_Frame
+ *   GET:PARAMS                -> Ack_Frames with every parameter
+ *   is02/config (retained)    -> Config_Frame, applied at every connect, so
+ *                                the laptop's broker keeps the robot's
+ *                                calibration (MQTT/robot_params.py)
  * Nothing is written to the Pico's flash: flash writes are outside the
  * template's qualified boundary.
  */
@@ -28,6 +28,7 @@
 #define PE_TRI      (2u)    /* S2 -1..1 (CAL_UNSET = -1) */
 #define PE_AXIS     (3u)    /* B2+(-1): -1..2 */
 #define PE_LEVELS   (4u)    /* B3+1: 1..6 */
+/* NOTE: a macro (Barr 6.3 deviation): it builds the PRM_* constants below. */
 #define PRM_DESC(sh, w, e)  ((uint32_t)(sh) | ((uint32_t)(w) << 5) | ((uint32_t)(e) << 8))
 #define PRM_ENC_R_REVERSED             PRM_DESC( 0u, 1u, PE_FLAG)
 #define PRM_ENC_L_REVERSED             PRM_DESC( 1u, 1u, PE_FLAG)
@@ -136,15 +137,6 @@ float    params_max(uint32_t id);
 uint32_t params_store_code(uint32_t id);
 
 void  params_init(void);
-
-/* "NAME=VALUE" (a leading "SET:" is accepted). Returns 0 = ok, -1 = unknown
-   name, -2 = bad number, -3 = out of range. */
-int32_t params_set(const char *p_text);
-
-/* Several "NAME=VALUE" separated by new lines, ';' or ','. Counts the good
-   and bad ones; the names of bad ones are listed in p_bad. */
-void    params_set_many(const char *p_text, uint32_t *p_ok, uint32_t *p_bad,
-                        char *p_bad_names, uint32_t size);
 
 /* Writes {"NAME":value,...} for parameters first..first+count-1 into p_buf.
    Returns the length. params_count() = how many there are. */

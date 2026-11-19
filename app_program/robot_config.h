@@ -8,7 +8,8 @@
  * start-up and the robot stays in ERROR until it is set.
  *
  * Values marked [P] are also run-time parameters: they can be changed over
- * MQTT without recompiling ("SET:NAME=VALUE", see README_ROBOT.md, NFR14/15).
+ * MQTT without recompiling (binary SET / Config_Frame by parameter ID, see
+ * MQTT/robot_params.py and README.md, NFR14/15).
  * The value here is the start-up default.
  *
  * 21 Oct: values marked PLACEHOLDER are reasonable guesses so the robot can

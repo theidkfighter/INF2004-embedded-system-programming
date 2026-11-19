@@ -11,9 +11,14 @@
 #define MAP_WORDS     (3u)
 #define MAP_PER_WORD  (10u)
 #define MAP_ACT_W     (3u)                /* nav_action_t 0..4 (E3) */
-#define MAP_SH(i)     (MAP_ACT_W * ((i) % MAP_PER_WORD))
 
 BP_STATIC_ASSERT((MAP_PER_WORD * MAP_ACT_W) <= 32u, "g_map_w: ten actions fit in one word");
+
+/* Bit shift of letter index i inside its map word. */
+static inline uint32_t map_sh(uint32_t i)
+{
+    return MAP_ACT_W * (i % MAP_PER_WORD);
+}
 BP_STATIC_ASSERT((MAP_WORDS * MAP_PER_WORD) >= MAP_LETTERS, "g_map_w: every letter has a slot");
 BP_STATIC_ASSERT((uint32_t)ACT_RIGHT <= BP_MASK(MAP_ACT_W), "g_map_w: nav_action_t fits in E3");
 
@@ -27,13 +32,13 @@ volatile uint32_t g_map_w[MAP_WORDS];
 
 static uint32_t map_word_get(uint32_t word, uint32_t i)
 {
-    return BP_GET(word, MAP_SH(i), MAP_ACT_W);
+    return BP_GET(word, map_sh(i), MAP_ACT_W);
 }
 
 /* Replaces letter i: a letter given twice keeps its last action. */
 static void map_put(uint32_t p_w[MAP_WORDS], uint32_t i, nav_action_t act)
 {
-    p_w[i / MAP_PER_WORD] = BP_PUT(p_w[i / MAP_PER_WORD], MAP_SH(i), MAP_ACT_W, (uint32_t)act);
+    p_w[i / MAP_PER_WORD] = BP_PUT(p_w[i / MAP_PER_WORD], map_sh(i), MAP_ACT_W, (uint32_t)act);
 }
 
 static uint32_t map_at(const uint32_t p_w[MAP_WORDS], uint32_t i)
@@ -75,6 +80,8 @@ static char up(char c)
     return ((c >= 'a') && (c <= 'z')) ? (char)(c - 'a' + 'A') : c;
 }
 
+#ifdef HOST_TEST
+/* Text-parser helpers: host-test only (nav_map_parse()). */
 static bool is_sep(char c)
 {
     return (c == ',') || (c == ';') || (c == ' ') || (c == '\t') || (c == '\n') || (c == '\r');
@@ -138,6 +145,7 @@ static void set_err(char *p_err, uint32_t size, const char *p_msg)
     }
     p_err[i] = '\0';
 }
+#endif /* HOST_TEST */
 
 void nav_map_clear(void)
 {
@@ -182,6 +190,8 @@ const char *nav_action_name(nav_action_t act)
     }
 }
 
+#ifdef HOST_TEST
+/* Host-test helper only, see nav_map.h. */
 int32_t nav_map_parse(const char *p_text, char *p_err, uint32_t err_size)
 {
     static const nav_action_t POSITIONAL[4] = { ACT_FORWARD, ACT_UTURN, ACT_LEFT, ACT_RIGHT };
@@ -286,6 +296,7 @@ int32_t nav_map_parse(const char *p_text, char *p_err, uint32_t err_size)
     map_store(tmp);
     return count;
 }
+#endif /* HOST_TEST */
 
 uint32_t nav_map_actions(uint8_t p_act[26])
 {

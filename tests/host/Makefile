@@ -26,7 +26,7 @@ WARN     := -Wall -Wextra -Wshadow -Wdouble-promotion -Wno-unused-parameter -Wer
 
 HOST_CFLAGS := -std=gnu11 -fPIC -O2 -g $(WARN) \
                -DAPP_PERF=$(APP_PERF) -DAPP_SELFTEST=$(APP_SELFTEST) \
-               -I$(APP) -Istubs
+               -DHOST_TEST=1 -I$(APP) -Istubs
 HOST_LDFLAGS := -shared
 HOST_LIBS    := -lm
 

@@ -31,11 +31,4 @@ uint32_t jb_len(const jbuf_t *p_jb);
 /* "key": helpers (no leading comma) */
 void     jb_key(jbuf_t *p_jb, const char *p_key);
 
-/* Parses "[-]digits[.digits]" (no exponent). Returns false on bad input. */
-bool     jf_parse_float(const char *p_text, float *p_value);
-
-uint32_t jf_strlen(const char *p_text);
-bool     jf_starts_with(const char *p_text, const char *p_prefix);
-void     jf_copy(char *p_dst, const char *p_src, uint32_t size);   /* always terminated */
-
 #endif /* JFMT_H */

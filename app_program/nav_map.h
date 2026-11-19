@@ -4,14 +4,10 @@
  *
  * The demo brief: the instructor names four letters for FORWARD, U-TURN,
  * LEFT and RIGHT just before the run and sends them from the PC over MQTT,
- * so nothing here is hard-coded. Accepted forms (is02/cmd or retained is02/map):
+ * so nothing here is hard-coded. The map arrives as a binary Map_Frame
+ * (retained is02/map) or the MAP / MAP:CLEAR commands on is02/cmd (wire.c,
+ * design D13): one letter for each of FORWARD, LEFT, RIGHT and U-TURN.
  *
- *   MAP:F=FWD,K=LEFT,R=RIGHT,U=UTURN     any order, any subset, ',' ';' or ' '
- *   MAP:F,U,K,R                          positional: FORWARD,UTURN,LEFT,RIGHT
- *   MAP:CLEAR                            forget everything
- *
- * Movement words (case-insensitive): FWD / FORWARD / STRAIGHT / F,
- * LEFT / L, RIGHT / R, UTURN / U-TURN / U / BACK.
  * A letter not in the map is reported and the car carries straight on.
  *
  * Pure logic, no hardware or kernel calls: unit-testable on the PC. The map is
@@ -42,11 +38,13 @@ nav_action_t nav_map_get(char letter);              /* 'A'..'Z' (lower case acce
 float        nav_action_deg(nav_action_t act);      /* + = clockwise, 0 = straight */
 const char  *nav_action_name(nav_action_t act);
 
-/* Parses the text after "MAP:" (or the whole retained is02/map payload).
-   On success replaces the map and returns the number of letters mapped.
-   On error leaves the old map untouched and returns -1; p_err (may be NULL)
-   gets a short reason. */
+#ifdef HOST_TEST
+/* Host-test helper only (test_nav_map.py): the firmware receives the map in
+   binary (wire.c). Parses the text after "MAP:". On success replaces the map
+   and returns the number of letters mapped. On error leaves the old map
+   untouched and returns -1; p_err (may be NULL) gets a short reason. */
 int32_t      nav_map_parse(const char *p_text, char *p_err, uint32_t err_size);
+#endif
 
 /* The whole map: p_act[i] = nav_action_t of letter 'A' + i. Returns the count. */
 uint32_t     nav_map_actions(uint8_t p_act[26]);

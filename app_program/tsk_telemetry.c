@@ -4,24 +4,24 @@
  *          telemetry frames, heartbeat, events, command dispatch, status LEDs,
  *          battery monitoring, console status line.
  *
- * Frames keep the format the laptop monitor (laptop_tools/telemetry_monitor.py)
- * already checks, plus robot-only fields:
- *   {"seq","t","state","spd":[l,r],"duty":[l,r],"enc":[l,r],"dist",
- *    "line":{"l","r","ir","irmn","irmx","thr"},"bc","hump":{"pitch","h","peak","max"},
- *    "obst":{"cm","scan":[5],"side"},"imu":{"ev","tr"},"faults","vbat",
- *    "rssi","buf"}
+ * All MQTT payloads are binary (wire.c, Format_Version 1): the
+ * Telemetry_Frame layout is design D8, the Heartbeat_Frame D9; the laptop
+ * tools decode them with MQTT/is02_codec.py and is02_codec.js. The USB
+ * console keeps a text status line.
  *
- * Commands on is02/cmd (CMD_DISPATCH): ESTOP goes straight to the safety
- * monitor from the network context (fast path); the rest are queued here:
+ * Command_Frames on is02/cmd (codes in wire_ids.h WIRE_CMD_TABLE): ESTOP goes
+ * straight to the safety monitor from the network context (fast path); the
+ * rest are queued here:
  *   RESUME            refused: recovery needs BTN1 on the robot (DR 5)
- *   BARCODE:A..D      FR19 override -> MBX_NAV_EVENT
+ *   BARCODE           FR19 override -> MBX_NAV_EVENT
  *   START / STOP      same as BTN1 in IDLE / while driving
- *   PING:<n>          round-trip check
- *   SET:NAME=VALUE    run-time parameter (NFR14, NFR15)
- *   GET:PARAMS        all parameters (several acks, "part":1..n)
- * is02/config (retained, re-sent by the broker at every connect): the
- * calibration as "NAME=VALUE" lines, acked as cmd "CONFIG".
- * Each command is answered on is02/ack; unknown ones get a NACK.
+ *   PING              round-trip check
+ *   SET               one run-time parameter by ID (NFR14, NFR15)
+ *   GET:PARAMS        all parameters (several Ack_Frames)
+ *   MAP, MAP:CLEAR, GET:MAP   the barcode letter map
+ * is02/config (retained, re-sent by the broker at every connect): a
+ * Config_Frame of parameter IDs and values, acked as cmd CONFIG.
+ * Each command is answered on is02/ack; a rejected frame gets a NACK.
  */
 #include <tk/tkernel.h>
 

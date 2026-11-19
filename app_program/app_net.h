@@ -4,17 +4,18 @@
  *
  * The MQTT client (lwIP apps/mqtt) runs inside the template's radio-owner
  * task (cyw43_utk.c calls app_net_poll() every poll), because lwIP is
- * NO_SYS and owned by that task. Other tasks only queue messages here:
+ * NO_SYS and owned by that task. Other tasks only queue messages here.
+ * Every payload is binary (wire.c, Format_Version 1, design D7 to D15):
  *
- *   is02/telemetry  JSON frame, 2 Hz, kept in a 64-frame (~32 s) ring while
- *                   offline; when the ring is full the oldest frame is
- *                   overwritten and counted as dropped (COMMS_DEGRADED)
- *   is02/status     heartbeat, 1 Hz
- *   is02/event      events (barcode, hump, obstacle, state changes, faults)
- *   is02/ack        replies to commands
- *   is02/cmd        commands to the robot (subscribed)
- *   is02/config     retained calibration / parameters, "NAME=VALUE" lines
- *                   (subscribed; the broker re-sends it at every connect)
+ *   is02/telemetry  Telemetry_Frame (54 B), 2 Hz, kept in a 64-frame (~32 s)
+ *                   ring while offline; when the ring is full the oldest
+ *                   frame is overwritten and counted as dropped
+ *   is02/status     Heartbeat_Frame (25 B), 1 Hz
+ *   is02/event      Event_Frame (barcode, hump, obstacle, state, faults)
+ *   is02/ack        Ack_Frame, the reply to each command
+ *   is02/cmd        Command_Frame to the robot (subscribed)
+ *   is02/config     Config_Frame, retained parameters (subscribed; the
+ *                   broker re-sends it at every connect)
  *
  * Broker discovery: MQTT_BROKER_IP is tried first. After 2 failed connects
  * the robot follows the UDP beacon ("IS02_BROKER") that the laptop monitor

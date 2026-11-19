@@ -284,6 +284,10 @@ typedef enum
 
 /* ---- lookups (NULL for a code no table lists) ---------------------------- */
 
+/* NOTE: X-macros (Barr 6.3 deviation): each table above is written once and
+   expands into its enum, its switch cases and its compile-time checks, so the
+   codes, names and lengths cannot drift apart. */
+
 #define WIRE_X_CASE_NAME(c, n, b, v)      case (c): return #n;
 #define WIRE_X_CASE_ABITS(c, n, b, v)     case (c): return (b);
 #define WIRE_X_CASE_TEXT(c, n, t)         case (c): return (t);

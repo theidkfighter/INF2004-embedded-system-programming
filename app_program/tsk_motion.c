@@ -148,9 +148,9 @@ bool motion_wait(uint16_t id, uint32_t other_bits, uint32_t timeout_ms,
         }
         flag_clear(EVF_MOTION_DONE);
         done = motion_done_get();             /* one load: id and result of one primitive */
-        if (DONE_ID(done) == id)
+        if (done_id(done) == id)
         {
-            *p_result = DONE_RESULT(done);
+            *p_result = done_result(done);
             return true;
         }
     }

@@ -61,8 +61,15 @@ bool     config_due(void);
 
 /* ---- motion done word (Requirement 4.5) ----
    One 32-bit unit, so an id is never paired with another primitive's result. */
-#define DONE_ID(w)       ((uint16_t)((w) & 0xFFFFu))
-#define DONE_RESULT(w)   ((motion_result_t)(((w) >> 16) & 3u))
+static inline uint16_t done_id(uint32_t w)
+{
+    return (uint16_t)(w & 0xFFFFu);                       /* low 16 bits: fits by the mask */
+}
+
+static inline motion_result_t done_result(uint32_t w)
+{
+    return (motion_result_t)((w >> 16) & 3u);              /* 2-bit field: 0..3, all enum values */
+}
 
 void     motion_done_put(uint16_t id, motion_result_t result);   /* one composed store */
 uint32_t motion_done_get(void);                                  /* one load */

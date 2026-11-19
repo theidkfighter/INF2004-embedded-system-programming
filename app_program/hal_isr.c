@@ -44,6 +44,7 @@ static volatile uint32_t g_enc_err;
 static uint8_t           g_enc_prev[2];
 /* direction flags (Requirement 4.7): bit = wheel number, one load by each
    reader, one composed store by hal_enc_set_reversed() only */
+/* NOTE: a macro (Barr 6.3 deviation): used in the static initialiser below. */
 #define ENC_REV_BIT(wheel)  (1u << (wheel))
 static volatile uint8_t  g_enc_rev = (uint8_t)(((ENC_R_REVERSED != 0) ? ENC_REV_BIT(HAL_WHEEL_RIGHT) : 0u)
                                              | ((ENC_L_REVERSED != 0) ? ENC_REV_BIT(HAL_WHEEL_LEFT) : 0u));
@@ -82,8 +83,13 @@ static volatile uint16_t g_adc_last;           /* 12-bit ADC: U12 in a halfword 
 #define ADC_MIN_SH       (0u)
 #define ADC_MAX_SH       (12u)
 #define ADC_HAVE         (1u << 24)
-#define ADC_RNG(mn, mx)  (ADC_HAVE | ((mx) << ADC_MAX_SH) | ((mn) << ADC_MIN_SH))
 static volatile uint32_t g_adc_rng;
+
+/* Packed min / max ADC word; mn, mx are 12-bit samples (0..4095). */
+static inline uint32_t adc_rng(uint32_t mn, uint32_t mx)
+{
+    return ADC_HAVE | (mx << ADC_MAX_SH) | (mn << ADC_MIN_SH);
+}
 /* sampling flags (Requirements 5.6, 5.7): the timer ISR changes black, tasks
    change the unit inside a masked section. The ISR takes one load per tick. */
 #define BC_F_ENABLED     (1u << 0)
@@ -96,6 +102,7 @@ static volatile uint8_t  g_bc_flags = (uint8_t)BC_F_BLACK_HIGH;
 #define BC_THR_W         (12u)
 #define BC_THR_BLACK_SH  (0u)
 #define BC_THR_WHITE_SH  (12u)
+/* NOTE: a macro (Barr 6.3 deviation): used in the static initialiser below. */
 #define BC_THR(blk, wht) (((uint32_t)(blk) << BC_THR_BLACK_SH) | ((uint32_t)(wht) << BC_THR_WHITE_SH))
 static volatile uint32_t g_bc_thr = BC_THR(3000u, 1000u);
 /* layout in isr_ring.h; the time of the edge was never read, so it is no
@@ -328,15 +335,15 @@ void hal_timer_isr(uint32_t intno)
     mx  = BP_GET(rng, ADC_MAX_SH, ADC_W);
     if (rng == 0u)
     {
-        g_adc_rng = ADC_RNG(v, v);
+        g_adc_rng = adc_rng(v, v);
     }
     else if (v < mn)
     {
-        g_adc_rng = ADC_RNG(v, mx);
+        g_adc_rng = adc_rng(v, mx);
     }
     else if (v > mx)
     {
-        g_adc_rng = ADC_RNG(mn, v);
+        g_adc_rng = adc_rng(mn, v);
     }
     else
     {

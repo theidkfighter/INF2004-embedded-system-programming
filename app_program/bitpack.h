@@ -30,6 +30,10 @@
 
 /* ---- mask / shift -------------------------------------------------------- */
 
+/* NOTE: macros, not functions (Barr 6.3 deviation): BP_MASK / BP_GET / BP_PUT
+   are used in static initialisers and _Static_assert, which need constant
+   expressions. BP_MASK uses w twice; every caller passes a constant. */
+
 /* Mask of the low w bits (w = 0 .. 32). */
 #define BP_MASK(w)              (((w) >= 32u) ? 0xFFFFFFFFu : ((1u << (w)) - 1u))
 /* Field of width w at shift sh in unit u. */
