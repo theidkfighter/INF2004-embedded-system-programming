@@ -1033,6 +1033,7 @@ LOCAL leg_res_t run_bypass(const bypass_plan_t *p_plan, float gap_mm, float marg
     float     toward;
     float     s;
     float     dist;
+    float     s_ret0 = 0.0f;                  /* odometry at the start of the return leg */
     bool      b_ended = false;
 
     g_n_legs = 0u;
@@ -1103,6 +1104,7 @@ LOCAL leg_res_t run_bypass(const bypass_plan_t *p_plan, float gap_mm, float marg
         {
             return r;
         }
+        s_ret0 = odo_fwd_mm();
         s    = obstacle_sin_deg((g_pose.h_deg < 0.0f) ? -g_pose.h_deg : g_pose.h_deg);
         s    = (s < RETURN_MIN_SIN) ? RETURN_MIN_SIN : s;
         dist = (((g_pose.x_mm < 0.0f) ? -g_pose.x_mm : g_pose.x_mm) + (float)OBST_RETURN_PAST_MM) / s;
@@ -1208,23 +1210,44 @@ LOCAL leg_res_t run_bypass(const bypass_plan_t *p_plan, float gap_mm, float marg
         return LEG_OK;
     }
 
-    /* past the original path and no line seen: back onto the path (watching
-       for the line again), parallel to it, and let line following search */
+    /* past the original path and no line seen: back (watching for the line
+       again), parallel to the path, and let line following search.
+       19 Nov: the dead-reckoned path can be off by more than the return gate
+       window; the real line was then crossed while the line watch was off
+       (blind part of the return) and the car only backed to its estimate of
+       the path, beyond the line. It now backs along the whole return leg if
+       need be, watching, and stops on the line. */
     {
         float past = toward * g_pose.x_mm;              /* > 0: beyond the path */
+        float back = odo_fwd_mm() - s_ret0;             /* the return leg driven so far */
 
+        back = (back < (past / s)) ? (past / s) : back;
         (void)evt_post0(EVC_BYPASS_RETURN);   /* "line not seen crossing the original path: back to it, then search" */
-        flag_clear(EVF_LINE_FOUND);
-        if (past > MIN_LEG_MM)
+        if (back > MIN_LEG_MM)
         {
             float     s0 = odo_fwd_mm();
-            leg_res_t rr = step(motion_start_move(-past / s, g_params.bypass_mm_s, SRC_OBSTACLE), false, 0.0f, EVF_LINE_FOUND, &hit);
+            leg_res_t rr;
 
+            g_reacq_seq++;                              /* TSK_LINE: fresh line watch */
+            (void)tk_dly_tsk(LINE_REARM_MS);
+            flag_clear(EVF_LINE_FOUND);
+            hit = 0u;
+            rr  = step(motion_start_move(-back, g_params.bypass_mm_s, SRC_OBSTACLE), false, 0.0f, EVF_LINE_FOUND, &hit);
             rev_count(s0);                              /* in full, not budgeted, but counted */
             if (rr != LEG_OK)
             {
                 g_why = ABR_REVERSE_PATH;
                 return LEG_FAILED;
+            }
+            if ((hit & EVF_LINE_FOUND) != 0u)
+            {
+                /* backing up, the sensor row reaches the line last: the axle
+                   is ir_to_axle past it; forward that much puts it on the line */
+                if (step(motion_start_move(g_params.ir_to_axle_mm, g_params.bypass_mm_s, SRC_OBSTACLE), false, 0.0f, 0u, &hit) != LEG_OK)
+                {
+                    g_why = ABR_REALIGN;
+                    return LEG_FAILED;
+                }
             }
         }
         if (step(motion_start_turn(-g_pose.h_deg, g_params.turn_mm_s, SRC_OBSTACLE), false, 0.0f, 0u, &hit) != LEG_OK)
