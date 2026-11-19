@@ -154,6 +154,7 @@ LOCAL bool ir_black(bool b_level)
 #define SNAP_MAX_DEG     (45.0f)
 #define SNAP_BACK_DEG    (25.0f)
 #define SNAP_MM_S        (50.0f)
+#define UTURN_MIN_DEG    (170.0f)  /* turns this big skip the snap (encoder angle only) */
 
 typedef enum
 {
@@ -278,8 +279,16 @@ LOCAL void execute(char code, bool b_at_junction, float cross_mm)
     if ((res == MOTION_OK) && (sys_state() == SYS_MANEUVER))
     {
         settle();                              /* stopped on the crossing point before the pivot */
-        res = (prm_flag(PRM_TURN_SNAP) && b_at_junction) ? turn_on_line(deg)
-                                                               : motion_turn(deg, g_params.turn_mm_s);
+        /* 19 Nov: the U-turn is a plain encoder turn, like the MQTT barcode
+           U-turn (correct). ir_black() uses the line-following sense
+           (LINE_DO_BLACK_HIGH 0) but the DO reads HIGH over black, so the
+           snap sweep sees white as black and stops at once: every snap turn
+           ends SNAP_EARLY_DEG short. Left / right were tuned on that (70 deg,
+           line following finishes the turn); a U-turn ended ~160 deg. */
+        float mag = (deg < 0.0f) ? -deg : deg;
+
+        res = (prm_flag(PRM_TURN_SNAP) && b_at_junction && (mag < UTURN_MIN_DEG)) ? turn_on_line(deg)
+                                                                                   : motion_turn(deg, g_params.turn_mm_s);
     }
     if ((res == MOTION_OK) && (sys_state() == SYS_MANEUVER))
     {

@@ -138,7 +138,7 @@
 
 /* ---- Motion primitives ---- */
 #define TURN_MM_S                 (90)          /* [P] wheel speed for pivot turns */
-#define TURN_SNAP                 (0)           /* [P] 19 Nov: 0 (encoder-only turns), SET:TURN_SNAP=1 to re-enable. 1 = finish junction turns on the line sensors, sweeping back if the
+#define TURN_SNAP                 (1)           /* [P] 1 = finish junction turns on the line sensors, sweeping back if the
                                                    line was missed (patch/junction_check, 5 Nov); 0 = encoder angle only */
 #define BYPASS_MM_S               (60)          /* [P] speed for bypass legs (28 Oct: was 100; the leg watch sweeps the
                                                    sensor, one 0 / 30 / 0 / 60 deg cycle takes ~0.65 s = 4 cm at 60 mm/s) */
