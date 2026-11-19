@@ -96,7 +96,8 @@ bool evt_post0(evt_code_t code);                        /* event with no argumen
 bool evt_post1(evt_code_t code, uint32_t v, uint32_t width);   /* one unsigned argument */
 
 /* MAP / MAP_WARNING arguments: 26 x E3 from nav_map_actions(). */
-void evt_map26(evt_b_t *p_b, const uint8_t p_act[26]);
+#define EVT_MAP_LETTERS  (26u)   /* A..Z */
+void evt_map26(evt_b_t *p_b, const uint8_t p_act[EVT_MAP_LETTERS]);
 
 /* Barcode character as C6: Code 39 index 0..42, 63 for none / not a Code 39 character. */
 uint32_t evt_char6(char c);

@@ -20,6 +20,8 @@
 #include "bitpack.h"
 #include "robot_config.h"
 
+#define IMU_AXES  (3u)   /* x, y, z */
+
 /* Pitch in degrees, nose up = positive.
    axis: 1 = X forward, 2 = Y forward; sign: +1/-1 (test_imu U5).
    a_fwd_g: forward acceleration from the encoders, removed so speed
@@ -291,8 +293,8 @@ typedef struct
 
 typedef struct
 {
-    float   ref[3];           /* sum during blanking, then the mean (reference) */
-    float   lp[3];            /* low-passed accel vector */
+    float   ref[IMU_AXES];           /* sum during blanking, then the mean (reference) */
+    float   lp[IMU_AXES];            /* low-passed accel vector */
     float   v_mm_s;           /* estimated upward speed */
     uint8_t n_blank;          /* samples averaged so far; 0xFF = reference ready */
     uint8_t n_tilt;

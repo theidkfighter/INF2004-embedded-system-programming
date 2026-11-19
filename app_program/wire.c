@@ -179,7 +179,7 @@ uint32_t wire_enc_telemetry(const wire_tlm_t *p_t, uint8_t *p_out)
     bw_put(&w, sat_u(p_t->hump_peak, 14u), 14u);
     bw_put(&w, sat_u(p_t->hump_max, 14u), 14u);
     bw_put(&w, sat_u(p_t->us, 13u), 13u);
-    for (uint32_t i = 0u; i < 5u; i++)
+    for (uint32_t i = 0u; i < WIRE_SCAN_N; i++)
     {
         bw_put(&w, sat_u(p_t->scan[i], 13u), 13u);
     }
@@ -233,7 +233,7 @@ int32_t wire_dec_telemetry(const uint8_t *p, uint32_t len, wire_tlm_t *p_t)
     p_t->hump_peak = (uint16_t)br_get(&r, 14u);
     p_t->hump_max  = (uint16_t)br_get(&r, 14u);
     p_t->us        = (uint16_t)br_get(&r, 13u);
-    for (uint32_t i = 0u; i < 5u; i++)
+    for (uint32_t i = 0u; i < WIRE_SCAN_N; i++)
     {
         p_t->scan[i] = (uint16_t)br_get(&r, 13u);
     }
@@ -305,7 +305,7 @@ int32_t wire_dec_heartbeat(const uint8_t *p, uint32_t len, wire_hb_t *p_h)
     p_h->faults     = (uint16_t)br_get(&r, 16u);
     p_h->n_params   = (uint8_t)br_get(&r, 6u);
     p_h->param_crc  = (uint16_t)br_get(&r, 16u);
-    for (uint32_t i = 0u; i < 4u; i++)
+    for (uint32_t i = 0u; i < WIRE_IP_BYTES; i++)
     {
         p_h->ip[i] = (uint8_t)br_get(&r, 8u);
     }
@@ -702,7 +702,7 @@ static int32_t get_map_body(br_t *p_r, wire_cmd_t *p_c)
 {
     uint32_t seen = 0u;
 
-    for (uint32_t i = 0u; i < 4u; i++)
+    for (uint32_t i = 0u; i < WIRE_MAP_SLOTS; i++)
     {
         p_c->map_present[i] = (uint8_t)br_get(p_r, 1u);
         p_c->map_letter[i]  = (uint8_t)br_get(p_r, 5u);
@@ -798,7 +798,7 @@ uint32_t wire_enc_cmd(const wire_cmd_t *p_c, uint8_t *p_out, uint32_t cap)
             bw_put(&w, p_c->letter, 5u);
             break;
         case WCMD_MAP:
-            for (uint32_t i = 0u; i < 4u; i++)
+            for (uint32_t i = 0u; i < WIRE_MAP_SLOTS; i++)
             {
                 bw_put(&w, (p_c->map_present[i] != 0u) ? 1u : 0u, 1u);
                 bw_put(&w, (p_c->map_present[i] != 0u) ? p_c->map_letter[i] : 0u, 5u);
@@ -887,7 +887,7 @@ uint32_t wire_enc_map(const wire_cmd_t *p_c, uint8_t *p_out, uint32_t cap)
     }
     bw_init(&w, p_out, WIRE_MAP_LEN);
     put_header(&w);
-    for (uint32_t i = 0u; i < 4u; i++)
+    for (uint32_t i = 0u; i < WIRE_MAP_SLOTS; i++)
     {
         bw_put(&w, (p_c->map_present[i] != 0u) ? 1u : 0u, 1u);
         bw_put(&w, (p_c->map_present[i] != 0u) ? p_c->map_letter[i] : 0u, 5u);

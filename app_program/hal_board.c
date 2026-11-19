@@ -25,6 +25,12 @@
 #include "pins.h"
 #include "robot_config.h"
 
+#define NEOPIXEL_HZ      (800000.0f)  /* WS2812 bit rate */
+#define NEOPIXEL_CYCLES_PER_BIT (10.0f) /* PIO program cycles per bit */
+#define PWM_DIV_1MHZ     (125.0f)     /* 125 MHz / 125 = 1 MHz PWM tick */
+#define BUZZER_WRAP_INIT (1000u)      /* 1 kHz until a tone sets the wrap */
+#define SERVO_MAX_DEG    (180.0f)
+#define US_PER_MS        (1000u)
 #define SYS_HZ            (125000000u)
 #define MOTOR_WRAP        ((SYS_HZ / MOTOR_PWM_FREQ_HZ) - 1u)     /* 6249 */
 #define SERVO_WRAP        (19999u)                                /* 1 MHz tick, 20 ms */
@@ -90,7 +96,7 @@ uint32_t hal_time_us32(void)
 
 uint32_t hal_time_ms(void)
 {
-    return (uint32_t)(hal_time_us() / 1000u);
+    return (uint32_t)(hal_time_us() / US_PER_MS);
 }
 
 /* ------------------------------------------------------------------------ */
@@ -187,7 +193,7 @@ static void neopixel_init(void)
     sm_config_set_sideset_pins(&c, PIN_NEOPIXEL);
     sm_config_set_out_shift(&c, false, true, 24u);
     sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX);
-    sm_config_set_clkdiv(&c, (float)SYS_HZ / (800000.0f * 10.0f));
+    sm_config_set_clkdiv(&c, (float)SYS_HZ / (NEOPIXEL_HZ * NEOPIXEL_CYCLES_PER_BIT));
     pio_sm_init(pio, (uint)sm, (uint)offset, &c);
     pio_sm_set_enabled(pio, (uint)sm, true);
     g_np_pio = pio;
@@ -245,11 +251,11 @@ void hal_init(void)
     input_pin(PIN_BTN2, true);
 
     /* servo 50 Hz: 125 MHz / 125 = 1 MHz tick */
-    pwm_pin(PIN_SERVO, SERVO_WRAP, 125.0f);
+    pwm_pin(PIN_SERVO, SERVO_WRAP, PWM_DIV_1MHZ);
     hal_servo_deg(90.0f);
 
     /* buzzer: 1 MHz tick, frequency set by the wrap */
-    pwm_pin(PIN_BUZZER, 1000u, 125.0f);
+    pwm_pin(PIN_BUZZER, BUZZER_WRAP_INIT, PWM_DIV_1MHZ);
 
     neopixel_init();
     hal_neopixel(0u, 0u, 8u);
@@ -363,11 +369,11 @@ void hal_servo_deg(float physical_deg)
     {
         physical_deg = 0.0f;
     }
-    if (physical_deg > 180.0f)
+    if (physical_deg > SERVO_MAX_DEG)
     {
-        physical_deg = 180.0f;
+        physical_deg = SERVO_MAX_DEG;
     }
-    us = min_us + ((max_us - min_us) * physical_deg / 180.0f);
+    us = min_us + ((max_us - min_us) * physical_deg / SERVO_MAX_DEG);
     pwm_set_gpio_level(PIN_SERVO, (uint16_t)us);
 }
 

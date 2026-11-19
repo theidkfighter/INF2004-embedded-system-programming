@@ -31,6 +31,8 @@
 #include "hal.h"
 #include "pins.h"
 
+#define I2C_CLEAR_PULSES (9u)   /* SCL pulses that free a slave holding SDA (8 bits + ACK) */
+
 #define IMU_I2C          (i2c1)
 #define I2C_TIMEOUT_US    (2000u)
 
@@ -257,7 +259,7 @@ void hal_i2c_recover(void)
     gpio_init(PIN_I2C_SDA);
     gpio_set_dir(PIN_I2C_SDA, GPIO_IN);
     gpio_pull_up(PIN_I2C_SDA);
-    for (uint32_t i = 0u; i < 9u; i++)
+    for (uint32_t i = 0u; i < I2C_CLEAR_PULSES; i++)
     {
         uint64_t t;
 

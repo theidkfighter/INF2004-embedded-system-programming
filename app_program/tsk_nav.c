@@ -31,6 +31,17 @@
 #include "robot_config.h"
 #include "nav_map.h"
 
+#define MAP_MIN_ACTIONS   (4u)      /* fewer mapped letters: no map yet */
+#define MM_PER_CM_F       (10.0f)
+#define TENTHS_PER_MM     (10.0f)
+#define ROUND_HALF        (0.5f)
+#define MS_PER_S          (1000u)
+#define SWEEP_POLL_MS     (10u)
+#define SWEEP_TIMEOUT_MS  (8000u)
+#define CROSS_MM_PER_CODE (2.0f)      /* junction code 'A' + n = a cross n x 2 mm wide (TSK_LINE) */
+#define NAV_RECV_TMO_MS   (20)
+#define PCT_FULL          (100.0f)
+
 LOCAL char     g_pending;              /* BARCODE_AT_JUNCTION mode */
 LOCAL uint32_t g_t_start;
 
@@ -66,9 +77,9 @@ LOCAL void start_run(void)
     g_pending             = 0;
     g_t_start             = hal_time_ms();
     {
-        uint8_t act[26];
+        uint8_t act[NAV_MAP_LETTERS];
 
-        if (nav_map_actions(act) < 4u)
+        if (nav_map_actions(act) < MAP_MIN_ACTIONS)
         {
             /* not a refusal: the map may legitimately arrive after START */
             evt_b_t b;
@@ -92,8 +103,8 @@ LOCAL void complete_run(void)
     char    text[96];
     jbuf_t  jb;
     evt_b_t b;
-    float   dist_cm = st_dist_mm() / 10.0f;      /* 0.01 m */
-    float   hmax    = (st_hump_max_mm() * 10.0f) + 0.5f;
+    float   dist_cm = st_dist_mm() / MM_PER_CM_F;      /* 0.01 m */
+    float   hmax    = (st_hump_max_mm() * TENTHS_PER_MM) + ROUND_HALF;
 
     motion_stop(SRC_NAV);
     (void)sys_set_state(SYS_MISSION_COMPLETE, false);
@@ -109,7 +120,7 @@ LOCAL void complete_run(void)
     (void)evt_post(&b);
     jb_init(&jb, text, sizeof(text));
     jb_raw(&jb, "t ");
-    jb_uint(&jb, (hal_time_ms() - g_t_start) / 1000u);
+    jb_uint(&jb, (hal_time_ms() - g_t_start) / MS_PER_S);
     jb_raw(&jb, "s dist ");
     jb_fixed(&jb, st_dist_mm() / 1000.0f, 2u);
     jb_raw(&jb, "m bc ");
@@ -175,11 +186,11 @@ LOCAL sweep_t snap_sweep(float dir, float max_deg)
             motion_stop(SRC_NAV);              /* line is between the sensors */
             return SWEEP_FOUND;
         }
-        if (motion_wait(id, 0u, 10u, &r2, &other))
+        if (motion_wait(id, 0u, SWEEP_POLL_MS, &r2, &other))
         {
             return (r2 == MOTION_STOPPED) ? SWEEP_STOPPED : SWEEP_MISSED;
         }
-        if ((sys_state() != SYS_MANEUVER) || ((hal_time_ms() - t0) > 8000u))
+        if ((sys_state() != SYS_MANEUVER) || ((hal_time_ms() - t0) > SWEEP_TIMEOUT_MS))
         {
             motion_stop(SRC_NAV);
             return SWEEP_STOPPED;
@@ -341,7 +352,7 @@ LOCAL void on_nav_event(const nav_event_t *p_ev)
             if ((st == SYS_LINE_FOLLOWING) && (g_pending != 0))
             {
                 char  code = g_pending;
-                float w_mm = ((p_ev->code >= 'A') && (p_ev->code <= 'Z')) ? (2.0f * (float)(p_ev->code - 'A')) : 0.0f;
+                float w_mm = ((p_ev->code >= 'A') && (p_ev->code <= 'Z')) ? (CROSS_MM_PER_CODE * (float)(p_ev->code - 'A')) : 0.0f;
 
                 g_pending = 0;
                 execute(code, true, w_mm);         /* w_mm: cross width measured by TSK_LINE */
@@ -364,7 +375,7 @@ void tsk_nav_task(INT stacd, void *exinf)
 
     for (;;)
     {
-        app_msg_t  *p_msg = msg_recv(g_mbx_nav, 20);
+        app_msg_t  *p_msg = msg_recv(g_mbx_nav, NAV_RECV_TMO_MS);
         uint32_t    got = 0u;
         sys_state_t st;
 
@@ -403,7 +414,7 @@ void tsk_nav_task(INT stacd, void *exinf)
         /* hump speed limit (DR A2) */
         if ((got & EVF_HUMP_START) != 0u)
         {
-            motion_speed_limit((float)HUMP_SPEED_PCT / 100.0f);
+            motion_speed_limit((float)HUMP_SPEED_PCT / PCT_FULL);
         }
         if ((got & EVF_HUMP_END) != 0u)
         {

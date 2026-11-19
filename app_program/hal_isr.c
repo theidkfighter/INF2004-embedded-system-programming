@@ -28,6 +28,8 @@
 #include "pins.h"
 #include "robot_config.h"
 
+#define GPIO_INT_REGS    (4u)        /* IO_BANK0 PROC0 INTS registers (8 GPIOs each) */
+
 #define SAMPLE_US        (1000u)
 #define VBAT_EVERY       (250u)
 
@@ -68,6 +70,7 @@ static const int8_t QUAD[16] =
    most a few tens of ms, so the modulo-2^32 difference is exact. */
 #define ECHO_US_MASK     (0x7FFFu)
 #define ECHO_US_MAX      (25000u)
+#define US_PER_CM_ECHO   (58.0f)     /* HC-SR04: round-trip echo us per cm */
 #define ECHO_US_LONG     (ECHO_US_MAX + 1u)
 #define ECHO_DONE        (1u << 15)
 #define ECHO_RISE        (1u << 16)
@@ -102,9 +105,11 @@ static volatile uint8_t  g_bc_flags = (uint8_t)BC_F_BLACK_HIGH;
 #define BC_THR_W         (12u)
 #define BC_THR_BLACK_SH  (0u)
 #define BC_THR_WHITE_SH  (12u)
+#define BC_THR_BLACK_INIT (3000u)   /* boot values until TSK_LINE sets the measured ones */
+#define BC_THR_WHITE_INIT (1000u)
 /* NOTE: a macro (Barr 6.3 deviation): used in the static initialiser below. */
 #define BC_THR(blk, wht) (((uint32_t)(blk) << BC_THR_BLACK_SH) | ((uint32_t)(wht) << BC_THR_WHITE_SH))
-static volatile uint32_t g_bc_thr = BC_THR(3000u, 1000u);
+static volatile uint32_t g_bc_thr = BC_THR(BC_THR_BLACK_INIT, BC_THR_WHITE_INIT);
 /* layout in isr_ring.h; the time of the edge was never read, so it is no
    longer stored */
 static uint32_t          g_bc_ring[BC_RING];
@@ -195,10 +200,10 @@ static uint32_t pin_events(const uint32_t *p_ints, uint32_t pin)
 void hal_gpio_isr(uint32_t intno)
 {
     PERF_BEGIN(t_perf);
-    uint32_t ints[4];
+    uint32_t ints[GPIO_INT_REGS];
 
     (void)intno;
-    for (uint32_t i = 0u; i < 4u; i++)
+    for (uint32_t i = 0u; i < GPIO_INT_REGS; i++)
     {
         ints[i] = io_bank0_hw->proc0_irq_ctrl.ints[i];
         io_bank0_hw->intr[i] = ints[i];       /* acknowledge the edge events */
@@ -286,7 +291,7 @@ float hal_us_read_cm(void)
     {
         return -1.0f;
     }
-    return (float)(echo & ECHO_US_MASK) / 58.0f;
+    return (float)(echo & ECHO_US_MASK) / US_PER_CM_ECHO;
 }
 
 /* ---- barcode sampling (1 kHz) ---- */

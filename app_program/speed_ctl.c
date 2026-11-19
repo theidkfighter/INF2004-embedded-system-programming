@@ -4,6 +4,8 @@
  */
 #include "speed_ctl.h"
 
+#define PCT_FULL  (100.0f)
+
 void wheel_reset(wheel_ctl_t *p_w)
 {
     p_w->target = 0.0f;
@@ -43,7 +45,7 @@ float wheel_update(wheel_ctl_t *p_w, const speed_params_t *p_par, int32_t counts
         {
             float mag = (p_w->target > 0.0f) ? p_w->target : -p_w->target;
 
-            ff = (p_par->ff_deadband_pct + (mag / p_par->ff_mm_s_per_pct)) / 100.0f;
+            ff = (p_par->ff_deadband_pct + (mag / p_par->ff_mm_s_per_pct)) / PCT_FULL;
             ff = (p_w->target > 0.0f) ? ff : -ff;
         }
         p_w->duty = ff + (p_par->kp * err) + (p_par->ki * p_w->integ);

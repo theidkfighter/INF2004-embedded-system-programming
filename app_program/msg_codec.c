@@ -134,7 +134,7 @@ void msg_obst_pack(const obstacle_profile_t *p_o, obst_msg_t *p_m)
     uint32_t *w = p_m->w;
     uint32_t  pos = 0u;
 
-    for (uint32_t i = 0u; i < 6u; i++)
+    for (uint32_t i = 0u; i < OBST_MSG_WORDS; i++)
     {
         w[i] = 0u;
     }
@@ -149,7 +149,7 @@ void msg_obst_pack(const obstacle_profile_t *p_o, obst_msg_t *p_m)
     bp_wput(w, pos, 13u, qs(p_o->offset_cm, &Q_CM13S, 13u));            pos += 13u;
     bp_wput(w, pos, 13u, qs(p_o->clear_left_cm, &Q_CM13S, 13u));        pos += 13u;
     bp_wput(w, pos, 13u, qs(p_o->clear_right_cm, &Q_CM13S, 13u));       pos += 13u;
-    for (uint32_t i = 0u; i < 5u; i++)
+    for (uint32_t i = 0u; i < SCAN_CM_N; i++)
     {
         bp_wput(w, pos, 13u, us13(p_o->scan_cm[i]));                     pos += 13u;
     }
@@ -173,7 +173,7 @@ void msg_obst_unpack(const obst_msg_t *p_m, obstacle_profile_t *p_o)
     p_o->offset_cm      = dq(bp_wget(w, pos, 13u), 13u, 10);            pos += 13u;
     p_o->clear_left_cm  = dq(bp_wget(w, pos, 13u), 13u, 10);            pos += 13u;
     p_o->clear_right_cm = dq(bp_wget(w, pos, 13u), 13u, 10);            pos += 13u;
-    for (uint32_t i = 0u; i < 5u; i++)
+    for (uint32_t i = 0u; i < SCAN_CM_N; i++)
     {
         p_o->scan_cm[i] = us13_val(bp_wget(w, pos, 13u));                pos += 13u;
     }

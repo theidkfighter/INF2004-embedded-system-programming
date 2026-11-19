@@ -35,6 +35,9 @@
 #include "jfmt.h"
 #include "robot_config.h"
 
+#define BC_STRAY_GAP_UM  (30000u)   /* a gap longer than this before the first bar: stray mark */
+#define BC_MAX_GAP_UM    (60000u)   /* a longer gap ends the barcode */
+#define UM_PER_MM        (1000u)
 #define DT_S            (0.01f)
 
 LOCAL line_ctx_t   g_line;
@@ -75,9 +78,9 @@ LOCAL void barcode_arm(void)
     uint32_t thr_white = (uint32_t)(b_high ? (mid - hys) : (mid + hys));
 
     g_bc_par.min_elements = BARCODE_MIN_ELEMENTS;
-    g_bc_par.max_len_um   = (uint32_t)BARCODE_MAX_LEN_MM * 1000u;
-    g_bc_par.stray_gap_um = 30000u;
-    g_bc_par.max_gap_um   = 60000u;
+    g_bc_par.max_len_um   = (uint32_t)BARCODE_MAX_LEN_MM * UM_PER_MM;
+    g_bc_par.stray_gap_um = BC_STRAY_GAP_UM;
+    g_bc_par.max_gap_um   = BC_MAX_GAP_UM;
     bc_reset(&g_bc);
     g_det_on = b_ok && prm_flag(PRM_BARCODE_DETECT);
     if (g_det_on)

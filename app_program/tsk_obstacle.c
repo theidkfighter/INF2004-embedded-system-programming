@@ -77,12 +77,9 @@
 #define SCAN_LIMIT_DEG    (60.0f)
 #define FINE_EXT_CLUSTER_CM (15.0f)   /* = CLUSTER_CM in obstacle_logic.c */
 
-/* Barr-C: named constants (values unchanged) */
-#define MM_PER_CM              (10.0f)
+/* Barr-C: named constants (values unchanged); MM_PER_CM, COS30, SIN45 in obstacle_logic.h */
 #define MM_PER_CM_BOTH_EDGES   (5.0f)     /* 2 edges * pad_mm / 10: width grows by both pads */
-#define COS30                  (0.8660254f)
 #define MM_PER_CM_COS30        (8.660254f) /* 10 mm/cm * cos 30 deg */
-#define SIN45                  (0.7071068f)
 #define NO_ECHO_FAR_CM         (1000.0f)  /* no echo counts as "far" in the median */
 #define NO_ECHO_TEST_CM        (999.0f)   /* median at or above this: no echo at all */
 #define SIDE_NOT_ENDED_DEG     (999.0f)   /* g_block_deg marker: the side did not end */
@@ -104,6 +101,8 @@
 #define RETURN_MIN_SIN         (0.3f)     /* floor on sin(heading): bounds the return leg */
 #define FIRST_TURN_DEG         (45.0f)    /* default first-turn angle */
 #define MIN_LEG_MM             (5.0f)     /* shorter moves are not worth making */
+#define N_SIDES                (2u)       /* [0] = left, [1] = right */
+#define AVOID_ROUNDS_MAX       (6u)       /* bypass attempts before giving up */
 #define UNDO_MIN_MM            (2.0f)     /* undo_legs(): shorter straight legs are skipped */
 
 LOCAL us_filter_t        g_filt;
@@ -1351,9 +1350,9 @@ LOCAL void avoid(void)
     float         coarse[COARSE_N];
     bypass_plan_t plan;
     uint32_t      rescans = 0u;
-    uint32_t      tries[2] = { 0u, 0u };      /* [0] = left, [1] = right */
-    uint32_t      progress[2] = { 0u, 0u };   /* legs done before the block */
-    float         extra[2] = { 0.0f, 0.0f };  /* added side margin, mm */
+    uint32_t      tries[N_SIDES] = { 0u, 0u };      /* [0] = left, [1] = right */
+    uint32_t      progress[N_SIDES] = { 0u, 0u };   /* legs done before the block */
+    float         extra[N_SIDES] = { 0.0f, 0.0f };  /* added side margin, mm */
     bool          b_scan = true;
     float         half = g_params.robot_half_width_mm;
     float         margin = g_params.obst_margin_mm;
@@ -1368,7 +1367,7 @@ LOCAL void avoid(void)
     g_rev_total_mm = 0.0f;
     g_n_legs       = 0u;
 
-    for (uint32_t round = 0u; round < 6u; round++)
+    for (uint32_t round = 0u; round < AVOID_ROUNDS_MAX; round++)
     {
         leg_res_t res;
         uint32_t  si;
@@ -1543,7 +1542,7 @@ LOCAL void avoid(void)
             {
                 int32_t best = -1;
 
-                for (uint32_t i = 0u; i < 2u; i++)
+                for (uint32_t i = 0u; i < N_SIDES; i++)
                 {
                     if ((tries[i] == 1u) && obstacle_side_room(&g_prof, (i == 0u) ? 'L' : 'R', half, margin + extra[i] + (float)OBST_RETRY_WIDER_MM) &&
                         ((best < 0) || (progress[i] > progress[(uint32_t)best])))

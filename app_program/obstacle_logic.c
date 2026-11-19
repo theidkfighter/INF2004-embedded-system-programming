@@ -10,9 +10,14 @@
 #define DEG_TO_RAD      (0.01745329f)
 #define CLUSTER_CM      (15.0f)    /* points within r_min + 15 cm belong to the obstacle */
 #define OPEN_CM         (200.0f)   /* no echo on a side = this much room */
-#define SIN45           (0.7071068f)
 #define SIDE_ZONE_CM    (60.0f)    /* side blockers: up to this far beyond the obstacle's front */
 #define TAN15           (0.2679492f)
+#define NO_ECHO_FAR_CM  (1000.0f)  /* no echo in the filter = nothing close */
+#define MIN_D2_MM       (50.0f)    /* shortest leg 2 / trail the planner gives */
+#define SEEN_EXTRA_MM   (150.0f)   /* side seen: up to gap + this, at 30 deg */
+#define BESIDE_SLACK_MM (40.0f)
+#define BESIDE_REACH_MM (100.0f)
+#define HALF            (0.5f)
 
 const float COARSE_DEG[COARSE_N] = { -60.0f, -30.0f, 0.0f, 30.0f, 60.0f };
 
@@ -37,7 +42,7 @@ void usf_reset(us_filter_t *p_f)
 
 float usf_add(us_filter_t *p_f, float cm)
 {
-    float far = 1000.0f;
+    float far = NO_ECHO_FAR_CM;
 
     p_f->r[p_f->n % 3u] = (cm < 0.0f) ? far : cm;     /* no echo = nothing close */
     p_f->n++;
@@ -216,11 +221,11 @@ bool obstacle_side_room(const obstacle_profile_t *p_prof, char side, float robot
 
     if (side == 'L')
     {
-        return (p_prof->clear_left_cm * 10.0f) >= need_mm;
+        return (p_prof->clear_left_cm * MM_PER_CM) >= need_mm;
     }
     if (side == 'R')
     {
-        return (p_prof->clear_right_cm * 10.0f) >= need_mm;
+        return (p_prof->clear_right_cm * MM_PER_CM) >= need_mm;
     }
     return false;
 }
@@ -229,11 +234,11 @@ float obstacle_shift_mm(const obstacle_profile_t *p_prof, char side, float robot
 {
     if (side == 'L')
     {
-        return (robot_half_mm + margin_mm) - (p_prof->x_l_cm * 10.0f);
+        return (robot_half_mm + margin_mm) - (p_prof->x_l_cm * MM_PER_CM);
     }
     if (side == 'R')
     {
-        return (robot_half_mm + margin_mm) + (p_prof->x_r_cm * 10.0f);
+        return (robot_half_mm + margin_mm) + (p_prof->x_r_cm * MM_PER_CM);
     }
     return 0.0f;
 }
@@ -343,7 +348,7 @@ obst_rev_t obstacle_reverse_budget(float want_mm, float used_mm, float cap_mm, b
 
 float obstacle_standoff_mm(const obstacle_profile_t *p_prof, char side, float robot_half_mm, float margin_mm)
 {
-    float e = (side == 'L') ? (-p_prof->x_l_cm * 10.0f) : (p_prof->x_r_cm * 10.0f);
+    float e = (side == 'L') ? (-p_prof->x_l_cm * MM_PER_CM) : (p_prof->x_r_cm * MM_PER_CM);
 
     /* the 45 deg leg from (0, 0) passes the corner (e, y) at (y - e) / sqrt(2) */
     return e + (1.4142136f * (robot_half_mm + margin_mm));
@@ -361,7 +366,7 @@ bool obstacle_in_path(float r_cm, float deg, float robot_half_mm, float side_mm,
     x = r_cm * sinf(deg * DEG_TO_RAD);
     y = r_cm * cosf(deg * DEG_TO_RAD);
     x = (x < 0.0f) ? -x : x;
-    return (y >= 0.0f) && (y <= ahead_cm) && ((x * 10.0f) <= (robot_half_mm + side_mm));
+    return (y >= 0.0f) && (y <= ahead_cm) && ((x * MM_PER_CM) <= (robot_half_mm + side_mm));
 }
 
 bool bypass_plan(const obstacle_profile_t *p_prof, float robot_half_mm, float margin_mm,
@@ -377,11 +382,11 @@ bool bypass_plan(const obstacle_profile_t *p_prof, float robot_half_mm, float ma
     s = (float)p_plan->side;
     if (p_plan->side > 0)
     {
-        p_plan->shift_mm = (p_prof->x_r_cm * 10.0f) + robot_half_mm + margin_mm;
+        p_plan->shift_mm = (p_prof->x_r_cm * MM_PER_CM) + robot_half_mm + margin_mm;
     }
     else
     {
-        p_plan->shift_mm = robot_half_mm + margin_mm - (p_prof->x_l_cm * 10.0f);
+        p_plan->shift_mm = robot_half_mm + margin_mm - (p_prof->x_l_cm * MM_PER_CM);
     }
     if (p_plan->shift_mm < robot_half_mm)
     {
@@ -392,10 +397,10 @@ bool bypass_plan(const obstacle_profile_t *p_prof, float robot_half_mm, float ma
     p_plan->turn2_deg = -s * 45.0f;
     /* leg 1 already advanced shift_mm forward (45 deg); go past the far side
        of the obstacle plus the car's own length margin */
-    p_plan->d2_mm = ((p_prof->r_min_cm * 10.0f) + depth_mm + robot_half_mm + margin_mm) - p_plan->shift_mm;
-    if (p_plan->d2_mm < 50.0f)
+    p_plan->d2_mm = ((p_prof->r_min_cm * MM_PER_CM) + depth_mm + robot_half_mm + margin_mm) - p_plan->shift_mm;
+    if (p_plan->d2_mm < MIN_D2_MM)
     {
-        p_plan->d2_mm = 50.0f;
+        p_plan->d2_mm = MIN_D2_MM;
     }
     p_plan->turn3_deg     = -s * 45.0f;
     /* the diagonal return must be able to come back the whole shift
@@ -407,7 +412,7 @@ bool bypass_plan(const obstacle_profile_t *p_prof, float robot_half_mm, float ma
 
 void obstacle_apply_min_width(obstacle_profile_t *p_prof, float min_width_mm, float *p_ext_l_mm, float *p_ext_r_mm)
 {
-    float w  = min_width_mm / 10.0f;
+    float w  = min_width_mm / MM_PER_CM;
     float xl = p_prof->x_l_cm;
     float xr = p_prof->x_r_cm;
     float el = 0.0f;
@@ -418,8 +423,8 @@ void obstacle_apply_min_width(obstacle_profile_t *p_prof, float min_width_mm, fl
         p_prof->x_l_cm   = xr - w;
         p_prof->x_r_cm   = xl + w;
         p_prof->width_cm = p_prof->x_r_cm - p_prof->x_l_cm;
-        el = (xl - p_prof->x_l_cm) * 10.0f;
-        er = (p_prof->x_r_cm - xr) * 10.0f;
+        el = (xl - p_prof->x_l_cm) * MM_PER_CM;
+        er = (p_prof->x_r_cm - xr) * MM_PER_CM;
     }
     if (p_ext_l_mm != NULL)
     {
@@ -449,7 +454,7 @@ bool obstacle_side_seen(float r_cm, float gap_mm)
     /* the side, gap_mm beside the car, seen at 60 deg is gap / sin 60 away;
        allow 15 cm more (the car drifts, the side is not straight; 31 Oct: was
        10 cm, sides were missed at 28.8 and 29.7 cm against 27.7) */
-    return (r_cm >= 0.0f) && ((r_cm * 10.0f * 0.8660254f) <= (gap_mm + 150.0f));
+    return (r_cm >= 0.0f) && ((r_cm * MM_PER_CM * COS30) <= (gap_mm + SEEN_EXTRA_MM));
 }
 
 float obstacle_side_trail_mm(float gap_mm, float us_ahead_mm, float robot_half_mm, float margin_mm)
@@ -463,12 +468,12 @@ float obstacle_side_trail_mm(float gap_mm, float us_ahead_mm, float robot_half_m
        (b, see obstacle_logic.h). */
     float d = us_ahead_mm + (gap_mm * TAN15) - gap_mm + (1.4142136f * (robot_half_mm + margin_mm));
 
-    return (d < 50.0f) ? 50.0f : d;
+    return (d < MIN_D2_MM) ? MIN_D2_MM : d;
 }
 
 bool obstacle_side_beside(float r90_cm, float gap_mm)
 {
-    return (r90_cm >= 0.0f) && ((r90_cm * 10.0f) <= ((gap_mm - 40.0f) + 100.0f));
+    return (r90_cm >= 0.0f) && ((r90_cm * MM_PER_CM) <= ((gap_mm - BESIDE_SLACK_MM) + BESIDE_REACH_MM));
 }
 
 float obstacle_side_trail90_mm(float gap_mm, float us_ahead_mm, float robot_half_mm, float margin_mm)
@@ -478,10 +483,10 @@ float obstacle_side_trail90_mm(float gap_mm, float us_ahead_mm, float robot_half
        (+15 deg) meets the side (gap - us_ahead x sin30) x tan15 further
        ahead (27 mm for gap 140, us_ahead 80). The 45 deg return then needs
        the corner (gap - dy) / sqrt2 >= half + margin away. */
-    float d = (us_ahead_mm * 0.8660254f) + ((gap_mm - (us_ahead_mm * 0.5f)) * TAN15) - gap_mm +
+    float d = (us_ahead_mm * COS30) + ((gap_mm - (us_ahead_mm * HALF)) * TAN15) - gap_mm +
               (1.4142136f * (robot_half_mm + margin_mm));
 
-    return (d < 50.0f) ? 50.0f : d;
+    return (d < MIN_D2_MM) ? MIN_D2_MM : d;
 }
 
 /* ---- OBST_DYNAMIC_TURN (ultrasonic-reverse-turn-refinement): begin ---- */
@@ -557,8 +562,8 @@ bool obstacle_dyn_standoff(const obstacle_profile_t *p_prof, char side, float ro
     }
 
     /* 1. original quantities */
-    e      = (side == 'L') ? (-p_prof->x_l_cm * 10.0f) : (p_prof->x_r_cm * 10.0f);
-    y0     = p_prof->r_min_cm * 10.0f;
+    e      = (side == 'L') ? (-p_prof->x_l_cm * MM_PER_CM) : (p_prof->x_r_cm * MM_PER_CM);
+    y0     = p_prof->r_min_cm * MM_PER_CM;
     h      = robot_half_mm + margin_mm;
     need45 = obstacle_standoff_mm(p_prof, side, robot_half_mm, margin_mm) - y0;
     cap    = p_cfg->cap_mm;
@@ -648,11 +653,11 @@ bool bypass_plan_dyn(const obstacle_profile_t *p_prof, float robot_half_mm, floa
     p_plan->turn1_deg = s * theta_deg;
     p_plan->d1_mm     = p_plan->shift_mm / sinf(t);
     p_plan->turn2_deg = -s * theta_deg;
-    d2 = ((p_prof->r_min_cm * 10.0f) + depth_mm + robot_half_mm + margin_mm)
+    d2 = ((p_prof->r_min_cm * MM_PER_CM) + depth_mm + robot_half_mm + margin_mm)
          - (p_plan->shift_mm * cosf(t) / sinf(t));
-    if (d2 < 50.0f)
+    if (d2 < MIN_D2_MM)
     {
-        d2 = 50.0f;
+        d2 = MIN_D2_MM;
     }
     if (d2 > side_max_mm)
     {

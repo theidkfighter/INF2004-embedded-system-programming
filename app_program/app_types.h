@@ -11,6 +11,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#define SCAN_CM_N       (5u)   /* coarse sweep points: -60 -30 0 30 60 deg (= COARSE_N) */
+#define OBST_MSG_WORDS  (6u)   /* 181 bits in 32-bit words */
+
 /* ---- System states (DR Section 5) ---- */
 typedef enum
 {
@@ -99,7 +102,7 @@ typedef struct
     float   clear_left_cm;     /* free space to the left of the obstacle */
     float   clear_right_cm;
     char    side;              /* chosen bypass side 'L' / 'R', 0 = none */
-    float   scan_cm[5];        /* coarse sweep -60..+60 deg, < 0 = no echo */
+    float   scan_cm[SCAN_CM_N]; /* coarse sweep -60..+60 deg, < 0 = no echo */
 } obstacle_profile_t;
 
 /* ---- MBX_TELEMETRY: events published on is02/event ----
@@ -119,7 +122,7 @@ typedef struct
 
 typedef struct
 {
-    uint32_t w[6];             /* obstacle_profile_t in 181 bits (was 64 bytes) */
+    uint32_t w[OBST_MSG_WORDS]; /* obstacle_profile_t in 181 bits (was 64 bytes) */
 } obst_msg_t;
 
 /* One mailbox message body (the kernel header is added in os_glue.h).
@@ -150,6 +153,7 @@ const char *motion_event_name(motion_event_t ev);
 
 /* ---- Fault bits (NFR19), reported in telemetry: fault_mask.h (design D1) ---- */
 #include "fault_mask.h"
+
 
 /* ---- Robot snapshot for telemetry: the packed Status_Snapshot ----
  * Field layout, writers and access rules: status.h. Only app_status.c

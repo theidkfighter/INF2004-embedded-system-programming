@@ -15,6 +15,11 @@
 #include <stdint.h>
 #include "app_types.h"
 
+/* shared obstacle geometry constants (Barr-C: no magic numbers) */
+#define MM_PER_CM        (10.0f)
+#define COS30            (0.8660254f)
+#define SIN45            (0.7071068f)
+
 #define OBS_MAX_POINTS   (64u)
 
 /* ---- STAGE0: NFR8 - a single bad echo must not trigger avoidance ----
@@ -34,7 +39,7 @@ bool  usf_trigger(us_filter_t *p_f, float filtered_cm, float stop_cm);
 float median3(float a, float b, float c);
 
 /* ---- STAGE1: coarse sweep ---- */
-#define COARSE_N  (5u)
+#define COARSE_N  (SCAN_CM_N)
 extern const float COARSE_DEG[COARSE_N];             /* -60 -30 0 30 60 */
 bool  coarse_all_clear(const float *p_cm, float clear_cm);
 

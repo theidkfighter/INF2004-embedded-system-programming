@@ -38,6 +38,13 @@
 
 #define OFFSET_SAMPLES   (50u)
 #define MAX_RECOVERIES   (3u)
+#define TENTHS_PER_MM    (10.0f)
+#define HUMP_LEN_MAX_D_MM (15000u)    /* 1500.0 mm in 0.1 mm: the U14 field's ceiling */
+#define HUMP_LEN_MAX_MM  (1500.0f)
+#define UM_PER_MM        (1000.0f)
+#define IMU_RETRY_LOOPS  (100u)       /* every 2 s at the 20 ms loop */
+#define STILL_MM_S       (5.0f)       /* |v| below this counts as standing still */
+#define ROUND_HALF       (0.5f)
 
 LOCAL bool imu_read(float *p_x, float *p_y, float *p_z)
 {
@@ -70,9 +77,9 @@ LOCAL bool imu_recover(void)
    (both 0.1 mm, 0..1500.0 mm). b_valid = false: false slope, no height. */
 LOCAL uint32_t mm_u14(float mm)
 {
-    float c = (mm * 10.0f) + 0.5f;
+    float c = (mm * TENTHS_PER_MM) + ROUND_HALF;
 
-    return bp_is_nan(mm) ? 0u : ((c <= 0.0f) ? 0u : ((c >= 15000.0f) ? 15000u : (uint32_t)c));
+    return bp_is_nan(mm) ? 0u : ((c <= 0.0f) ? 0u : ((c >= (float)HUMP_LEN_MAX_D_MM) ? HUMP_LEN_MAX_D_MM : (uint32_t)c));
 }
 
 LOCAL void hump_event(evt_code_t code, bool b_valid, float value_mm)
@@ -121,7 +128,7 @@ void tsk_imu_task(INT stacd, void *exinf)
     hp.min_height_mm = HUMP_MIN_HEIGHT_MM;
     hp.start_samples = HUMP_START_SAMPLES;
     hp.end_samples   = HUMP_END_SAMPLES;
-    hp.max_len_mm    = 1500.0f;
+    hp.max_len_mm    = HUMP_LEN_MAX_MM;
     hump_reset(&hump);
     mev_reset(&mev);
 #if LIFT_DETECT
@@ -161,13 +168,13 @@ void tsk_imu_task(INT stacd, void *exinf)
         g_hb[HB_IMU]++;
         st = sys_state();
         odometry_get(&odo);
-        ds       = (float)(odo.odo_um - odo_prev) / 1000.0f;
+        ds       = (float)(odo.odo_um - odo_prev) / UM_PER_MM;
         odo_prev = odo.odo_um;
 
         if (fault_has(FAULT_IMU_DEAD))       /* the one record of the IMU state (CR1) */
         {
             retry_n++;
-            if (retry_n >= 100u)                /* every 2 s */
+            if (retry_n >= IMU_RETRY_LOOPS)
             {
                 retry_n = 0u;
                 if (imu_recover())
@@ -269,7 +276,7 @@ void tsk_imu_task(INT stacd, void *exinf)
 #endif
         /* mounting offset: re-learnt while idle and still (and the level
            gravity vector for the tilt detector) */
-        if ((st == SYS_IDLE) && ((odo.v_mm_s < 5.0f) && (odo.v_mm_s > -5.0f)))
+        if ((st == SYS_IDLE) && ((odo.v_mm_s < STILL_MM_S) && (odo.v_mm_s > -STILL_MM_S)))
         {
             off_sum += raw;
             off_n++;

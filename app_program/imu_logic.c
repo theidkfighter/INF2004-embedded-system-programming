@@ -327,7 +327,7 @@ void lift_reset(lift_ctx_t *p_l)
 {
     uint32_t i;
 
-    for (i = 0u; i < 3u; i++)
+    for (i = 0u; i < IMU_AXES; i++)
     {
         p_l->ref[i] = 0.0f;
         p_l->lp[i]  = 0.0f;
@@ -364,7 +364,7 @@ lift_cause_t lift_step(lift_ctx_t *p_l, const lift_params_t *p_par, float ax, fl
     }
     if (p_l->n_blank != 0xFFu)                    /* 0xFF = reference ready */
     {
-        for (i = 0u; i < 3u; i++)
+        for (i = 0u; i < IMU_AXES; i++)
         {
             p_l->ref[i] += a[i];
             p_l->lp[i]   = a[i];
@@ -372,7 +372,7 @@ lift_cause_t lift_step(lift_ctx_t *p_l, const lift_params_t *p_par, float ax, fl
         p_l->n_blank++;
         if (p_l->n_blank >= p_par->blank_samples)
         {
-            for (i = 0u; i < 3u; i++)
+            for (i = 0u; i < IMU_AXES; i++)
             {
                 p_l->ref[i] /= (float)p_l->n_blank;
             }
@@ -381,7 +381,7 @@ lift_cause_t lift_step(lift_ctx_t *p_l, const lift_params_t *p_par, float ax, fl
         return LIFT_NONE;
     }
 
-    for (i = 0u; i < 3u; i++)
+    for (i = 0u; i < IMU_AXES; i++)
     {
         p_l->lp[i] += p_par->alpha * (a[i] - p_l->lp[i]);
     }

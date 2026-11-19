@@ -9,6 +9,8 @@
 #include "bitpack.h"
 #include "code39.h"
 
+#define TENTHS_PER_CM  (10.0f)   /* CM13 field: 0.1 cm units */
+
 
 void evt_begin(evt_b_t *p_b, evt_code_t code)
 {
@@ -42,7 +44,7 @@ static int32_t round_f(float x)
 
 void evt_cm13(evt_b_t *p_b, float cm)
 {
-    int32_t c = round_f(cm * 10.0f);
+    int32_t c = round_f(cm * TENTHS_PER_CM);
 
     if (bp_is_nan(cm) || (cm < 0.0f))
     {
@@ -95,9 +97,9 @@ bool evt_post1(evt_code_t code, uint32_t v, uint32_t width)
     return evt_post(&b);
 }
 
-void evt_map26(evt_b_t *p_b, const uint8_t p_act[26])
+void evt_map26(evt_b_t *p_b, const uint8_t p_act[EVT_MAP_LETTERS])
 {
-    for (uint32_t i = 0u; i < 26u; i++)
+    for (uint32_t i = 0u; i < EVT_MAP_LETTERS; i++)
     {
         evt_u(p_b, p_act[i], 3u);
     }

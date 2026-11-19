@@ -7,6 +7,9 @@
 #include "jfmt.h"
 #include "robot_config.h"
 
+#define PARAMS_PI          (3.14159265f)
+#define CRC_BITS_PER_BYTE  (8u)
+
 app_params_t g_params;
 
 typedef struct
@@ -288,7 +291,7 @@ const char *params_name(uint32_t id)
 static uint32_t crc_byte(uint32_t crc, uint32_t byte)
 {
     crc ^= (byte & 0xFFu) << 8;
-    for (uint32_t b = 0u; b < 8u; b++)
+    for (uint32_t b = 0u; b < CRC_BITS_PER_BYTE; b++)
     {
         crc = ((crc & 0x8000u) != 0u) ? (((crc << 1) ^ 0x1021u) & 0xFFFFu) : ((crc << 1) & 0xFFFFu);
     }
@@ -346,7 +349,7 @@ float params_mm_per_count(void)
         return 0.0f;
     }
     /* 4x decoding: A edges + B edges = 2 x A edges per revolution */
-    return (3.14159265f * g_params.wheel_diameter_mm) / (2.0f * g_params.enc_a_edges_per_rev);
+    return (PARAMS_PI * g_params.wheel_diameter_mm) / (2.0f * g_params.enc_a_edges_per_rev);
 }
 
 float params_servo_phys(float robot_deg)

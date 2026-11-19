@@ -18,15 +18,19 @@
 #include "hal.h"
 #include "usb_console_compat.h"
 
+#define USB_WAIT_TRIES      (20)    /* 20 x 100 ms = 2 s */
+#define USB_WAIT_MS         (100)
+#define USB_STATE_CONFIGURED (2u)     /* tm_usb_state(): enumerated by a host */
+
 EXPORT INT usermain(void)
 {
     INT i;
 
     /* give a USB host up to 2 s to enumerate so the banner is not lost;
        the robot runs the same without a laptop */
-    for (i = 0; (i < 20) && (tm_usb_state() < 2u); i++)
+    for (i = 0; (i < USB_WAIT_TRIES) && (tm_usb_state() < USB_STATE_CONFIGURED); i++)
     {
-        (void)tk_dly_tsk(100);
+        (void)tk_dly_tsk(USB_WAIT_MS);
     }
     (void)tm_printf((UB *)"\n=== IS-02 Robo-Wheeler, micro T-Kernel 3.0 ===\n");
 

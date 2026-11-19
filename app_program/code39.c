@@ -6,6 +6,13 @@
 
 #include <string.h>
 
+#define C39_ELEMENTS    (9u)    /* 5 bars + 4 spaces, bars at even indices */
+#define C39_WIDE        (3u)    /* wide elements per character */
+#define C39_FIRST_SPACE (1u)
+#define C39_LAST_BAR    (8u)
+#define C39_LAST_SPACE  (7u)
+#define C39_SAME_KIND   (2u)    /* index step from one bar (space) to the next */
+
 /* Code 39 table: 9 elements bar/space/bar/..., 'w' = wide, 'n' = narrow. */
 static const struct
 {
@@ -33,7 +40,7 @@ static const struct
    breaks a plain "3 widest of 9" rule once the bleed reaches ~1.5 mm. */
 static char char_bars_spaces(const uint16_t *p_w9)
 {
-    char     pat[10] = "nnnnnnnnn";
+    char     pat[C39_ELEMENTS + 1u] = "nnnnnnnnn";
     uint32_t b1 = 0u;
     uint32_t b2 = 2u;
     uint32_t s1 = 1u;
@@ -43,7 +50,7 @@ static char char_bars_spaces(const uint16_t *p_w9)
         b1 = 2u;
         b2 = 0u;
     }
-    for (uint32_t i = 4u; i <= 8u; i += 2u)
+    for (uint32_t i = 4u; i <= C39_LAST_BAR; i += C39_SAME_KIND)
     {
         if (p_w9[i] > p_w9[b1])
         {
@@ -59,22 +66,31 @@ static char char_bars_spaces(const uint16_t *p_w9)
             /* nothing to do: not among the two widest bars */
         }
     }
-    for (uint32_t i = 3u; i <= 7u; i += 2u)
+    for (uint32_t i = 3u; i <= C39_LAST_SPACE; i += C39_SAME_KIND)
     {
-        if (p_w9[i] > p_w9[s1]) { s1 = i; }
+        if (p_w9[i] > p_w9[s1])
+        {
+            s1 = i;
+        }
     }
     /* contrast checks inside each group: wide >= 1.5 x widest narrow */
     {
         uint32_t nb = 0u;
         uint32_t ns = 0u;
 
-        for (uint32_t i = 0u; i <= 8u; i += 2u)
+        for (uint32_t i = 0u; i <= C39_LAST_BAR; i += C39_SAME_KIND)
         {
-            if ((i != b1) && (i != b2) && (p_w9[i] > nb)) { nb = p_w9[i]; }
+            if ((i != b1) && (i != b2) && (p_w9[i] > nb))
+            {
+                nb = p_w9[i];
+            }
         }
-        for (uint32_t i = 1u; i <= 7u; i += 2u)
+        for (uint32_t i = C39_FIRST_SPACE; i <= C39_LAST_SPACE; i += C39_SAME_KIND)
         {
-            if ((i != s1) && (p_w9[i] > ns)) { ns = p_w9[i]; }
+            if ((i != s1) && (p_w9[i] > ns))
+            {
+                ns = p_w9[i];
+            }
         }
         if (((p_w9[b2] * 2u) < (nb * 3u)) || ((p_w9[s1] * 2u) < (ns * 3u)))
         {
@@ -105,18 +121,18 @@ char code39_char(const uint16_t *p_w9)
         }
     }
     /* fall back to "3 widest of 9" ($ / + % have no wide bar) */
-    char     pat[10];
-    uint32_t idx[9];
+    char     pat[C39_ELEMENTS + 1u];
+    uint32_t idx[C39_ELEMENTS];
 
     /* mark the 3 widest as wide */
-    for (uint32_t i = 0u; i < 9u; i++)
+    for (uint32_t i = 0u; i < C39_ELEMENTS; i++)
     {
         idx[i] = i;
         pat[i] = 'n';
     }
-    for (uint32_t k = 0u; k < 3u; k++)
+    for (uint32_t k = 0u; k < C39_WIDE; k++)
     {
-        for (uint32_t j = k + 1u; j < 9u; j++)
+        for (uint32_t j = k + 1u; j < C39_ELEMENTS; j++)
         {
             if (p_w9[idx[j]] > p_w9[idx[k]])
             {
@@ -128,14 +144,14 @@ char code39_char(const uint16_t *p_w9)
         }
         pat[idx[k]] = 'w';
     }
-    pat[9] = '\0';
+    pat[C39_ELEMENTS] = '\0';
 
     /* the 3rd-widest must clearly be wider than the 4th (rejects noise) */
     {
-        uint32_t third = p_w9[idx[2]];
+        uint32_t third = p_w9[idx[C39_WIDE - 1u]];
         uint32_t fourth = 0u;
 
-        for (uint32_t i = 0u; i < 9u; i++)
+        for (uint32_t i = 0u; i < C39_ELEMENTS; i++)
         {
             if ((pat[i] == 'n') && (p_w9[i] > fourth))
             {

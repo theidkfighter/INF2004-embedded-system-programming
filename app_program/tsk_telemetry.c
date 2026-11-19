@@ -47,6 +47,7 @@
 #define HEARTBEAT_MS    (1000u)
 #define CONSOLE_MS      (2000u)
 #define CMD_SLOTS       (8u)
+#define TLM_SLEEP_MS    (100)       /* loop period when no command wakes the task */
 
 
 /* Command queue: Command_Frames decoded in the radio task, handled here.
@@ -199,7 +200,7 @@ LOCAL void map_ack(wire_cmd_code_t cmd, wire_reason_t reason)
 
 LOCAL void map_event(void)
 {
-    uint8_t act[26];
+    uint8_t act[NAV_MAP_LETTERS];
     evt_b_t b;
 
     (void)nav_map_actions(act);
@@ -744,7 +745,7 @@ void tsk_telemetry_task(INT stacd, void *exinf)
         app_msg_t *p_msg;
         uint32_t   now;
 
-        (void)tk_slp_tsk(100);               /* also woken by commands */
+        (void)tk_slp_tsk(TLM_SLEEP_MS);               /* also woken by commands */
         now = hal_time_ms();
 
         while (g_cmd_tail != g_cmd_head)

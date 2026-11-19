@@ -29,6 +29,8 @@
 #include "perf.h"
 #include "robot_config.h"
 
+#define N_WHEELS  (2u)   /* 0 = right, 1 = left */
+
 #define LINE_STALE_MS     (100u)
 #define DONE_WAIT_MARGIN  (1000u)
 #define G_MM_S2           (9810.0f)
@@ -48,7 +50,7 @@ typedef struct
     uint32_t timeout_ms;
 } primitive_t;
 
-LOCAL wheel_ctl_t       g_w[2];            /* 0 = right, 1 = left */
+LOCAL wheel_ctl_t       g_w[N_WHEELS];            /* 0 = right, 1 = left */
 LOCAL primitive_t       g_prim;
 LOCAL float             g_line_l;
 LOCAL float             g_line_r;
@@ -469,7 +471,7 @@ void tsk_motion_task(INT stacd, void *exinf)
             hal_motor_set(HAL_MOTOR_LEFT, wheel_update(&g_w[1], &sp, d_l, mmpc, dt));
 
             /* encoder loss: driven hard but not one tick (DR Section 5) */
-            for (uint32_t w = 0u; w < 2u; w++)
+            for (uint32_t w = 0u; w < N_WHEELS; w++)
             {
                 float   duty = (g_w[w].duty < 0.0f) ? -g_w[w].duty : g_w[w].duty;
                 int32_t d = (w == 0u) ? d_r : d_l;

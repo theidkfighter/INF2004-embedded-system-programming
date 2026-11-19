@@ -70,6 +70,9 @@ typedef enum
 
 #define WIRE_EVT_ARG_BYTES   (26u)    /* WIRE_EVT_ARG_CAP_BITS / 8 */
 #define WIRE_MAP_LETTERS     (26u)
+#define WIRE_SCAN_N          (5u)    /* coarse sweep points in a frame */
+#define WIRE_IP_BYTES        (4u)    /* IPv4 */
+#define WIRE_MAP_SLOTS       (4u)    /* FORWARD, LEFT, RIGHT, UTURN (D13) */
 #define WIRE_CFG_REJ_MAX     (60u)
 #define WIRE_PARAMS_MAX      (60u)
 
@@ -123,7 +126,7 @@ typedef struct
     uint16_t hump_peak;
     uint16_t hump_max;
     uint16_t us;              /* 0.1 cm, 8191 = no echo */
-    uint16_t scan[5];
+    uint16_t scan[WIRE_SCAN_N];
     uint8_t  imu_ev;
     uint8_t  rssi;            /* -dBm */
     int16_t  turn;            /* 0.1 deg/s */
@@ -146,7 +149,7 @@ typedef struct
     uint16_t param_crc;
     uint8_t  buf;
     uint8_t  n_params;
-    uint8_t  ip[4];
+    uint8_t  ip[WIRE_IP_BYTES];
 } wire_hb_t;
 
 typedef struct
@@ -202,8 +205,8 @@ typedef struct
     uint16_t ping;
     uint8_t  param_id;        /* SET */
     uint32_t value_bits;      /* SET: F32 bits */
-    uint8_t  map_present[4];  /* MAP: FORWARD, LEFT, RIGHT, UTURN (D13) */
-    uint8_t  map_letter[4];
+    uint8_t  map_present[WIRE_MAP_SLOTS];  /* MAP: FORWARD, LEFT, RIGHT, UTURN (D13) */
+    uint8_t  map_letter[WIRE_MAP_SLOTS];
 } wire_cmd_t;
 
 /* ---- codec ---------------------------------------------------------------- */

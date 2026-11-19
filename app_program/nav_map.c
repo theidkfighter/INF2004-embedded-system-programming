@@ -7,7 +7,7 @@
 #include "bitpack.h"
 #include "crit.h"
 
-#define MAP_LETTERS   (26u)
+#define MAP_LETTERS   (NAV_MAP_LETTERS)
 #define MAP_WORDS     (3u)
 #define MAP_PER_WORD  (10u)
 #define MAP_ACT_W     (3u)                /* nav_action_t 0..4 (E3) */
@@ -298,7 +298,7 @@ int32_t nav_map_parse(const char *p_text, char *p_err, uint32_t err_size)
 }
 #endif /* HOST_TEST */
 
-uint32_t nav_map_actions(uint8_t p_act[26])
+uint32_t nav_map_actions(uint8_t p_act[NAV_MAP_LETTERS])
 {
     uint32_t w[MAP_WORDS];
 
@@ -310,12 +310,12 @@ uint32_t nav_map_actions(uint8_t p_act[26])
     return map_count(w);
 }
 
-uint32_t nav_map_set_slots(const uint8_t p_present[4], const uint8_t p_letter[4])
+uint32_t nav_map_set_slots(const uint8_t p_present[NAV_MAP_SLOTS], const uint8_t p_letter[NAV_MAP_SLOTS])
 {
-    static const nav_action_t SLOT[4] = { ACT_FORWARD, ACT_LEFT, ACT_RIGHT, ACT_UTURN };   /* design D13 */
+    static const nav_action_t SLOT[NAV_MAP_SLOTS] = { ACT_FORWARD, ACT_LEFT, ACT_RIGHT, ACT_UTURN };   /* design D13 */
     uint32_t tmp[MAP_WORDS] = { 0u };
 
-    for (uint32_t k = 0u; k < 4u; k++)
+    for (uint32_t k = 0u; k < NAV_MAP_SLOTS; k++)
     {
         if ((p_present[k] != 0u) && (p_letter[k] < MAP_LETTERS))
         {

@@ -4,6 +4,9 @@
  */
 #include "bc_detect.h"
 
+#define ADC_FULL_SCALE   (4095)    /* 12-bit ADC */
+#define REPLAY_MAX_BINS  (64u)     /* a longer jump (16 mm) replays only its end */
+
 void det_init(det_t *p_d, uint32_t white, uint32_t black, float hys_frac)
 {
     det_init_level(p_d, white, black, hys_frac, 0.5f);
@@ -18,8 +21,8 @@ void det_init_level(det_t *p_d, uint32_t white, uint32_t black, float hys_frac, 
     p_d->b_inv = (b < w);
     if (p_d->b_inv)
     {
-        w = 4095 - w;
-        b = 4095 - b;
+        w = ADC_FULL_SCALE - w;
+        b = ADC_FULL_SCALE - b;
     }
     span = b - w;
     if (span < 1)
@@ -113,7 +116,7 @@ static uint32_t level(det_t *p_d, int32_t s, uint32_t k, det_edge_t *p_out)
 uint32_t det_sample(det_t *p_d, uint32_t pos_um, uint32_t adc, det_edge_t *p_out)
 {
     uint32_t bin = pos_um / DET_BIN_UM;
-    uint32_t v   = p_d->b_inv ? (4095u - adc) : adc;
+    uint32_t v   = p_d->b_inv ? ((uint32_t)ADC_FULL_SCALE - adc) : adc;
     uint32_t n   = 0u;
 
     if (!p_d->b_started)
@@ -138,9 +141,9 @@ uint32_t det_sample(det_t *p_d, uint32_t pos_um, uint32_t adc, det_edge_t *p_out
         int32_t  done = (int32_t)(p_d->sum / p_d->cnt);
         uint32_t k    = p_d->bin_idx;
 
-        if ((bin - k) > 64u)
+        if ((bin - k) > REPLAY_MAX_BINS)
         {
-            k = bin - 64u;                    /* a long jump (16 mm): replay only the end */
+            k = bin - REPLAY_MAX_BINS;                    /* a long jump (16 mm): replay only the end */
         }
         /* finished bin(s); bins skipped by a fast move repeat the last value.
            1-2-1 smoothing over neighbouring bins, so this runs one bin late. */
@@ -190,8 +193,8 @@ void det_stats(const det_t *p_d, uint32_t *p_bars, int32_t *p_faintest_bar, int3
 
     if (p_d->b_inv)
     {
-        fb = (fb >= 0) ? (4095 - fb) : -1;
-        ps = (ps >= 0) ? (4095 - ps) : -1;
+        fb = (fb >= 0) ? (ADC_FULL_SCALE - fb) : -1;
+        ps = (ps >= 0) ? (ADC_FULL_SCALE - ps) : -1;
     }
     *p_bars          = p_d->bars;
     *p_faintest_bar  = fb;
@@ -208,8 +211,8 @@ void adt_init(adt_t *p_a, uint32_t white, uint32_t black, float hys_frac, float 
     p_a->b_inv = (b < w);
     if (p_a->b_inv)
     {
-        w = 4095 - w;
-        b = 4095 - b;
+        w = ADC_FULL_SCALE - w;
+        b = ADC_FULL_SCALE - b;
     }
     p_a->span = b - w;
     if (p_a->span < 1)
@@ -297,7 +300,7 @@ static uint32_t adt_bin(adt_t *p_a, int32_t s, uint32_t k, det_edge_t *p_out)
 uint32_t adt_sample(adt_t *p_a, uint32_t pos_um, uint32_t adc, det_edge_t *p_out)
 {
     uint32_t bin = pos_um / DET_BIN_UM;
-    uint32_t v   = p_a->b_inv ? (4095u - adc) : adc;
+    uint32_t v   = p_a->b_inv ? ((uint32_t)ADC_FULL_SCALE - adc) : adc;
     uint32_t n   = 0u;
 
     if (!p_a->b_started)
@@ -323,9 +326,9 @@ uint32_t adt_sample(adt_t *p_a, uint32_t pos_um, uint32_t adc, det_edge_t *p_out
         int32_t  done = (int32_t)(p_a->sum / p_a->cnt);
         uint32_t k    = p_a->bin_idx;
 
-        if ((bin - k) > 64u)
+        if ((bin - k) > REPLAY_MAX_BINS)
         {
-            k = bin - 64u;                    /* a long jump (16 mm): replay only the end */
+            k = bin - REPLAY_MAX_BINS;                    /* a long jump (16 mm): replay only the end */
         }
         for (; k < bin; k++)
         {
