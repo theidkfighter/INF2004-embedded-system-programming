@@ -2,56 +2,56 @@
 
 | Record | Value |
 |---|---|
-| ELF | `is02_robot_smp0.elf` |
-| Map file | `is02_robot_smp0.map` |
-| Git commit | `36a380bc3d8daf0f945e6c6853db1ab53914633e` |
+| ELF | `build_make/is02_robot_smp0.elf` |
+| Map file | `build_make/is02_robot_smp0.map` |
+| Git commit | `456beae1d7d0fef249cd2ab050807a54c5f29fe1` |
 | Working tree | clean |
 | make command line | `make clean && make APP_ROBOT=1 APP_PERF=0 -j8` |
-| Robot options (`.robot_opts`) | `legacy0-perf0-self0` |
+| Robot options (`.robot_opts`) | `perf0-self0` |
 | Compiler (`arm-none-eabi-gcc --version`) | arm-none-eabi-gcc (15:13.2.rel1-2) 13.2.1 20231009 |
-| Report date (UTC) | 2026-11-02T07:08:45Z |
+| Report date (UTC) | 2026-11-19T07:59:34Z |
 
 ## `arm-none-eabi-size` output (unedited)
 
 ```text
    text	   data	    bss	    dec	    hex	filename
- 409668	   2788	  60160	 472616	  73628	is02_robot_smp0.elf
+ 414908	    708	  60284	 475900	  742fc	build_make/is02_robot_smp0.elf
 ```
 
 ## `arm-none-eabi-size -A` output (unedited)
 
 ```text
-is02_robot_smp0.elf  :
+build_make/is02_robot_smp0.elf  :
 section                     size        addr
 boot2                        256   268435456
-.text                     408928   268435712
-.time_critical.tinyusb       476   268844640
-.ARM.exidx                     8   268845116
+.text                     414168   268435712
+.time_critical.tinyusb       476   268849880
+.ARM.exidx                     8   268850356
 vector                       192   536870912
-.data                       2788   536871104
-.bss                       59968   536873892
-.debug_info               723694           0
-.debug_abbrev             123878           0
-.debug_loclists           375969           0
-.debug_aranges             15056           0
-.debug_rnglists            47371           0
-.debug_macro              275562           0
-.debug_line               524214           0
-.debug_str               1245890           0
+.data                        708   536871104
+.bss                       60092   536871812
+.debug_info               736114           0
+.debug_abbrev             125615           0
+.debug_loclists           383373           0
+.debug_aranges             15328           0
+.debug_rnglists            47836           0
+.debug_macro              275849           0
+.debug_line               532860           0
+.debug_str               1246771           0
 .comment                      38           0
 .ARM.attributes               42           0
-.debug_frame               40168           0
-.debug_line_str              383           0
-Total                    3844881
+.debug_frame               40948           0
+.debug_line_str              382           0
+Total                    3881056
 ```
 
 ## Static RAM (Requirement 22.1)
 
 | Section | Bytes |
 |---|---|
-| .data | 2788 |
-| .bss | 60160 |
-| .data + .bss | 62948 |
+| .data | 708 |
+| .bss | 60284 |
+| .data + .bss | 60992 |
 
 ## RAM items (Requirement 22.3)
 
@@ -68,4 +68,4 @@ linker map file.
 | barcode edge ring (`g_bc_ring`) | `g_bc_ring` 256 | 256 | 256 | `g_bc_ring` in hal_isr.o. |
 | raw sample ring (`g_raw`) | `g_raw` 1024 | 1024 | 1024 | replacement symbols (Requirement 22.6). `g_raw` in hal_isr.o. |
 | command slots (`g_cmds`) | `g_cmds` 192 | 192 | 192 | `g_cmds` in tsk_telemetry.o. |
-| Parameter_Store (`g_params`) | `g_params` 160 | 160 | 160 | `g_params` in app_params.o. |
+| Parameter_Store (`g_params`) | `g_params` 176 | 176 | 176 | `g_params` in app_params.o. |

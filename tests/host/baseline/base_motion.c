@@ -30,7 +30,7 @@
 #include "tsk_motion.c"
 
 /* ---- host replacements for the kernel / os_glue / hal symbols ---------- */
-volatile uint8_t  g_hb[HB_COUNT];
+volatile uint32_t g_hb[HB_COUNT];
 ID                g_flg_sys;
 ID                g_mbx_motion;
 
