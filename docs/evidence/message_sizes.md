@@ -30,7 +30,7 @@ Compiler used: arm-none-eabi-gcc (15:13.2.rel1-2) 13.2.1 20231009. Commits: Base
 
 ## 2. MQTT application payload sizes per topic (Requirements 23.2, 23.5, 23.6)
 
-> **Status: to be measured on the car.** No track run has been recorded yet, so every table in this section is empty on purpose. Record one `is02_tool.py log` file per build during one full track run, then fill the tables from the output of `msg_sizes.py`:
+> **Status: Revised_Build measured (19 Nov); Baseline_Build still to be measured.** Record one `is02_tool.py log` file per build during one full track run, then fill the tables from the output of `msg_sizes.py`:
 >
 > ```sh
 > python ../is02_baseline/MQTT/is02_tool.py --broker <LAPTOP_IP> log docs/evidence/raw/baseline_mqtt_<date>.csv   # Baseline_Build run, Baseline_Build tools
@@ -64,19 +64,19 @@ Log file: to be measured
 | `is02/map` | | | | | |
 | `is02/config` | | | | | |
 
-### Revised_Build (commit `456beae1d7d0fef249cd2ab050807a54c5f29fe1`)
+### Revised_Build (final firmware: `barr-c-cleanup`, `c34cebb` / `350e327`)
 
-Log file: to be measured
+Log file: `docs/evidence/raw/revised_mqtt_2026-11-19.csv` (17:12 to 17:31 on 19 Nov, four track runs with barcode, junction, hump and obstacle; 3,061 payloads). The payload formats of `c34cebb` and `350e327` are the same (the later commit changes only the obstacle bypass), and they are those of `456beae`. Table: `python tools/evidence/msg_sizes.py docs/evidence/raw/revised_mqtt_2026-11-19.csv`.
 
 | Topic | Count | Min (bytes) | Mean (bytes, 0.1) | Max (bytes) | Source (track run / separate session) |
 |---|---|---|---|---|---|
-| `is02/telemetry` | | | | | |
-| `is02/status` | | | | | |
-| `is02/event` | | | | | |
-| `is02/ack` | | | | | |
-| `is02/cmd` | | | | | |
-| `is02/map` | | | | | |
-| `is02/config` | | | | | |
+| `is02/telemetry` | 1885 | 54 | 54.0 | 54 | track run |
+| `is02/status` | 783 | 25 | 25.0 | 25 | track run |
+| `is02/event` | 350 | 5 | 8.5 | 30 | track run |
+| `is02/ack` | 32 | 5 | 10.2 | 15 | track run |
+| `is02/cmd` | 8 | 1 | 1.3 | 3 | track run |
+| `is02/map` | 2 | 4 | 4.0 | 4 | track run |
+| `is02/config` | 1 | 16 | 16.0 | 16 | track run |
 
 ### Topics with no payload during the track run (Requirement 23.6)
 
