@@ -19,6 +19,8 @@
 #define BESIDE_SLACK_MM (40.0f)
 #define BESIDE_REACH_MM (100.0f)
 #define HALF            (0.5f)
+#define RETURN_DEG_MIN  (30.0f)    /* return angle accepted by the trail formulas */
+#define RETURN_DEG_MAX  (90.0f)
 
 const float COARSE_DEG[COARSE_N] = { -60.0f, -30.0f, 0.0f, 30.0f, 60.0f };
 
@@ -458,16 +460,33 @@ bool obstacle_side_seen(float r_cm, float gap_mm)
     return (r_cm >= 0.0f) && ((r_cm * MM_PER_CM * COS30) <= (gap_mm + SEEN_EXTRA_MM));
 }
 
-float obstacle_side_trail_mm(float gap_mm, float us_ahead_mm, float robot_half_mm, float margin_mm)
+/* For a corner dy ahead of the car's centre and gap to the side, the return
+   line at theta passes it at gap cos(theta) - dy sin(theta). That is
+   >= clear_mm when dy <= gap cot(theta) - clear_mm / sin(theta), so the
+   car must drive this much further than "corner level with the centre":
+   clear_mm / sin(theta) - gap cot(theta). At 45 deg: sqrt2 clear - gap.
+   theta is held to RETURN_DEG_MIN..RETURN_DEG_MAX. */
+static float return_trail_extra_mm(float gap_mm, float clear_mm, float return_deg)
+{
+    float th = (return_deg < RETURN_DEG_MIN) ? RETURN_DEG_MIN :
+               ((return_deg > RETURN_DEG_MAX) ? RETURN_DEG_MAX : return_deg);
+    float s  = sinf(th * DEG_TO_RAD);
+    float c  = cosf(th * DEG_TO_RAD);
+
+    return (clear_mm / s) - ((gap_mm * c) / s);
+}
+
+float obstacle_side_trail_mm(float gap_mm, float us_ahead_mm, float robot_half_mm, float margin_mm,
+                             float return_deg)
 {
     /* measured from the FIRST 60 deg miss: the beam (45..75 deg) meets the
        side's plane from gap x tan15 ahead of the sensor, so a miss proves
        the back corner is less than us_ahead + gap x tan15 ahead of the
-       car's centre. The 45 deg return from the centre passes a corner gap
-       to the side and dy ahead at (gap - dy) / sqrt2, which must be
-       >= half + margin (a); the pivot then keeps the body >= margin away
-       (b, see obstacle_logic.h). */
-    float d = us_ahead_mm + (gap_mm * TAN15) - gap_mm + (1.4142136f * (robot_half_mm + margin_mm));
+       car's centre. The return at theta from the centre passes a corner gap
+       to the side and dy ahead at gap cos(theta) - dy sin(theta), which
+       must be >= half + margin (a); the pivot then keeps the body >= margin
+       away (b, see obstacle_logic.h). */
+    float d = us_ahead_mm + (gap_mm * TAN15) + return_trail_extra_mm(gap_mm, robot_half_mm + margin_mm, return_deg);
 
     return (d < MIN_D2_MM) ? MIN_D2_MM : d;
 }
@@ -477,15 +496,16 @@ bool obstacle_side_beside(float r90_cm, float gap_mm)
     return (r90_cm >= 0.0f) && ((r90_cm * MM_PER_CM) <= ((gap_mm - BESIDE_SLACK_MM) + BESIDE_REACH_MM));
 }
 
-float obstacle_side_trail90_mm(float gap_mm, float us_ahead_mm, float robot_half_mm, float margin_mm)
+float obstacle_side_trail90_mm(float gap_mm, float us_ahead_mm, float robot_half_mm, float margin_mm,
+                               float return_deg)
 {
     /* after the 30 deg pivot the sensor is us_ahead x sin30 towards the side
        and us_ahead x cos30 ahead of the centre; the beam's forward edge
        (+15 deg) meets the side (gap - us_ahead x sin30) x tan15 further
-       ahead (27 mm for gap 140, us_ahead 80). The 45 deg return then needs
-       the corner (gap - dy) / sqrt2 >= half + margin away. */
-    float d = (us_ahead_mm * COS30) + ((gap_mm - (us_ahead_mm * HALF)) * TAN15) - gap_mm +
-              (1.4142136f * (robot_half_mm + margin_mm));
+       ahead (27 mm for gap 140, us_ahead 80). The return at theta then
+       needs the corner gap cos(theta) - dy sin(theta) >= half + margin away. */
+    float d = (us_ahead_mm * COS30) + ((gap_mm - (us_ahead_mm * HALF)) * TAN15) +
+              return_trail_extra_mm(gap_mm, robot_half_mm + margin_mm, return_deg);
 
     return (d < MIN_D2_MM) ? MIN_D2_MM : d;
 }

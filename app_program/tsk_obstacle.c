@@ -97,7 +97,6 @@
 #define SIDE_DIAG_DEG          (30.0f)    /* second side look angle */
 #define SIDE_LOOK_SLACK_MM     (40.0f)
 #define SIDE_LOOK_REACH_MM     (100.0f)
-#define RETURN_DEG             (45.0f)    /* STAGE5 return angle to the path */
 #define RETURN_MIN_SIN         (0.3f)     /* floor on sin(heading): bounds the return leg */
 #define FIRST_TURN_DEG         (45.0f)    /* default first-turn angle */
 #define MIN_LEG_MM             (5.0f)     /* shorter moves are not worth making */
@@ -820,7 +819,7 @@ LOCAL leg_res_t look_before_turn(float ws, float gap_mm, float margin_mm)
         side_look_event(d90, d60, b_gone);
         if (b_gone)
         {
-            return leg_move(obstacle_side_trail90_mm(gap_mm, (float)OBST_US_AHEAD_MM, g_half_obs, margin_mm),
+            return leg_move(obstacle_side_trail90_mm(gap_mm, (float)OBST_US_AHEAD_MM, g_half_obs, margin_mm, OBST_RETURN_DEG),
                             ws, 0u, &hit);
         }
         if (n >= (uint32_t)OBST_TURN_LOOK_STEPS)
@@ -886,7 +885,7 @@ LOCAL leg_res_t run_bypass(const bypass_plan_t *p_plan, float gap_mm, float marg
     for (uint32_t n_side = 0u; ; n_side++)
     {
         r = leg_side_follow(p_plan->d2_mm, gap_mm,
-                            obstacle_side_trail_mm(gap_mm, (float)OBST_US_AHEAD_MM, g_half_obs, margin_mm),
+                            obstacle_side_trail_mm(gap_mm, (float)OBST_US_AHEAD_MM, g_half_obs, margin_mm, OBST_RETURN_DEG),
                             ws, &b_ended);
         if ((r == LEG_BLOCKED) && !g_legacy && (n_side < OBST_SIDESTEP_MAX) && (g_block_deg < SIDE_NOT_ENDED_TEST_DEG) && (g_n_legs > 0u))
         {
@@ -927,7 +926,7 @@ LOCAL leg_res_t run_bypass(const bypass_plan_t *p_plan, float gap_mm, float marg
         }
     }
 
-    /* STAGE5: 45 deg back towards the original path (x = 0). 31 Oct: blocked
+    /* STAGE5: OBST_RETURN_DEG back towards the original path (x = 0). 31 Oct: blocked
        on the way back (the back corner is further ahead): back to where it
        turned, OBST_SIDE_STEP_MM further on, turn again (OBST_SIDESTEP_MAX) */
     for (uint32_t n_ret = 0u; ; n_ret++)
@@ -935,7 +934,7 @@ LOCAL leg_res_t run_bypass(const bypass_plan_t *p_plan, float gap_mm, float marg
         uint32_t n0 = g_n_legs;
 
         toward = (g_pose.x_mm < 0.0f) ? 1.0f : -1.0f;  /* left of it: turn right */
-        r = leg_turn((toward * RETURN_DEG) - g_pose.h_deg);
+        r = leg_turn((toward * OBST_RETURN_DEG) - g_pose.h_deg);
         if (r != LEG_OK)
         {
             return r;

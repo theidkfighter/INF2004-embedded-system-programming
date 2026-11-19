@@ -206,6 +206,10 @@
                                                    20; a side closer than 40 mm to the body now blocks the leg) */
 #define OBST_BACKOFF_MAX_MM       (250)         /* longest reverse to get the 45 deg standoff (see obstacle_standoff_mm) */
 #define OBST_RESCAN_REVERSE_MM    (100)         /* reverse before a rescan */
+#define OBST_RETURN_DEG           (60.0f)       /* 19 Nov: return angle to the original path after the side (was 45).
+                                                   Steeper = the car rejoins closer behind the obstacle (60: about 90 mm
+                                                   sooner for a book) but must drive further past the back corner first;
+                                                   the trail formulas use this angle. Accepted 30..90 */
 #define OBST_RETURN_PAST_MM       (80)          /* return: drive this far (sideways) past the original path before
                                                    deciding the line was missed */
 #define OBST_US_AHEAD_MM          (80)          /* PLACEHOLDER: ultrasonic sensor ahead of the wheel axle (measure;

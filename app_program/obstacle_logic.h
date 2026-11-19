@@ -149,18 +149,21 @@ bool  bypass_plan(const obstacle_profile_t *p_prof, float robot_half_mm, float m
 bool  obstacle_side_seen(float r_cm, float gap_mm);
 
 /* How far to drive on, measured from the FIRST 60 deg ping that missed the
-   side (miss_at), before the 45 deg turn back clears its back corner
+   side (miss_at), before the turn back (at return_deg, OBST_RETURN_DEG) clears its back corner
    (us_ahead_mm: ultrasonic sensor ahead of the axle = pivot centre).
    A miss with the servo at 60 (beam 45..75 deg) proves the corner is less
    than A + g tan15 ahead of the centre (A = us_ahead, g = gap). After a
-   trail T the 45 deg return passes it at (g - Y_c) / sqrt2, which is
-   >= half + margin when T >= A + g tan15 - g + sqrt2 (half + margin)
-   (condition a). During the pivot the corner's lateral distance in the car
-   frame, g cos phi - Y_c sin phi, is smallest at phi = 0 or 45 deg, both
+   trail T the return at theta passes it at g cos(theta) - Y_c sin(theta),
+   which is >= half + margin when
+   T >= A + g tan15 + (half + margin) / sin(theta) - g cot(theta)
+   (condition a; at 45 deg: A + g tan15 - g + sqrt2 (half + margin)). During
+   the pivot the corner's lateral distance in the car frame,
+   g cos phi - Y_c sin phi, is smallest at phi = 0 or theta, both
    >= half + margin, so the body (|x| <= half) stays >= margin away
    (condition b) whatever its length. Floor 50 mm. Measured from the last
    sighting instead, the corner can be one ping step further ahead. */
-float obstacle_side_trail_mm(float gap_mm, float us_ahead_mm, float robot_half_mm, float margin_mm);
+float obstacle_side_trail_mm(float gap_mm, float us_ahead_mm, float robot_half_mm, float margin_mm,
+                             float return_deg);
 
 /* Look-before-turning with the car pivoted 30 deg towards the obstacle and
    the servo at 60 (= square to its side): the side is still there if the
@@ -168,11 +171,12 @@ float obstacle_side_trail_mm(float gap_mm, float us_ahead_mm, float robot_half_m
    10 cm. If it is not, the sensor is at (A sin30, A cos30) and the beam's
    forward edge meets the side (g - A sin30) tan15 ahead of it, so the back
    corner is at most A cos30 + (g - A sin30) tan15 ahead of the centre:
-   drive on obstacle_side_trail90_mm() = that - g + sqrt2 (half + margin)
-   (floor 50 mm) before the 45 deg turn. Conditions (a) and (b) as for
+   drive on obstacle_side_trail90_mm() = that + (half + margin) / sin(theta)
+   - g cot(theta) (floor 50 mm) before the turn back at theta. Conditions (a) and (b) as for
    obstacle_side_trail_mm(). */
 bool  obstacle_side_beside(float r90_cm, float gap_mm);
-float obstacle_side_trail90_mm(float gap_mm, float us_ahead_mm, float robot_half_mm, float margin_mm);
+float obstacle_side_trail90_mm(float gap_mm, float us_ahead_mm, float robot_half_mm, float margin_mm,
+                               float return_deg);
 
 /* Flat faces (31 Oct): a flat face echoes only where the beam meets it
    square-on, so the fine scan sees a patch of the face, not its ends (the
