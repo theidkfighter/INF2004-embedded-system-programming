@@ -100,6 +100,10 @@ static uint32_t level(det_t *p_d, int32_t s, uint32_t k, det_edge_t *p_out)
     {
         p_d->run_ext = s;                     /* darkest point of a bar, lightest of a space */
     }
+    else
+    {
+        /* nothing to do: no crossing and not a new extreme */
+    }
     p_d->prev_s      = s;
     p_d->prev_k      = k;
     p_d->b_have_prev = true;
@@ -155,6 +159,10 @@ uint32_t det_sample(det_t *p_d, uint32_t pos_um, uint32_t adc, det_edge_t *p_out
                 {
                     p_out[n++] = e[0];
                 }
+            }
+            else
+            {
+                /* nothing to do: no edge in this bin */
             }
             p_d->raw0 = p_d->raw1;
             p_d->raw1 = done;
@@ -334,6 +342,10 @@ uint32_t adt_sample(adt_t *p_a, uint32_t pos_um, uint32_t adc, det_edge_t *p_out
                 {
                     p_out[n++] = e[0];
                 }
+            }
+            else
+            {
+                /* nothing to do: no edge in this bin */
             }
             p_a->raw0 = p_a->raw1;
             p_a->raw1 = done;

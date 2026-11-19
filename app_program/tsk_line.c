@@ -267,7 +267,7 @@ LOCAL void debug_pass(bc_result_t res, char code, bool b_rev)
 
 LOCAL void feed_edge(uint32_t pos_um, bool b_black)
 {
-    char        code = 0;
+    char        code = '\0';
     bool        b_rev = false;
     bool        b_was_open = bc_window_open(&g_bc);
     bc_result_t res = bc_edge(&g_bc, &g_bc_par, pos_um, b_black, &code, &b_rev);
@@ -308,7 +308,7 @@ LOCAL uint32_t sensor_path_um(int32_t enc_r, int32_t enc_l)
 LOCAL void barcode_service(bool b_active)
 {
     hal_bc_edge_t e;
-    char          code = 0;
+    char          code = '\0';
     bool          b_rev = false;
     bc_result_t   res;
     int32_t       enc_r;

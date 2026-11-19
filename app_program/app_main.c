@@ -28,7 +28,7 @@ EXPORT INT usermain(void)
     {
         (void)tk_dly_tsk(100);
     }
-    tm_printf((UB *)"\n=== IS-02 Robo-Wheeler, micro T-Kernel 3.0 ===\n");
+    (void)tm_printf((UB *)"\n=== IS-02 Robo-Wheeler, micro T-Kernel 3.0 ===\n");
 
     st_set_state(SYS_INIT);
     fault_set(FAULT_BOOT_VALUE);              /* no Wi-Fi / MQTT yet (design D1) */
@@ -36,7 +36,7 @@ EXPORT INT usermain(void)
 
     if (!os_create_objects())
     {
-        tm_printf((UB *)"[init] kernel objects failed: stopped\n");
+        (void)tm_printf((UB *)"[init] kernel objects failed: stopped\n");
         (void)tk_slp_tsk(TMO_FEVR);
         return 0;
     }
@@ -48,23 +48,23 @@ EXPORT INT usermain(void)
     {
         /* degraded mode: the robot still drives; humps and lifting are
            not detected until the IMU answers (TSK_TERRAIN_IMU retries) */
-        tm_printf((UB *)"[init] IMU (GY-511 on I2C1 GP2/GP3: LSM303DLHC at 0x19 or LSM303D at 0x1E/0x1D)"
+        (void)tm_printf((UB *)"[init] IMU (GY-511 on I2C1 GP2/GP3: LSM303DLHC at 0x19 or LSM303D at 0x1E/0x1D)"
                         " not answering: running WITHOUT hump/lift detection, retrying every 2 s\n");
         fault_set(FAULT_IMU_DEAD);
     }
     else
     {
-        tm_printf((UB *)"[init] IMU: %s\n", hal_imu_chip_name());
+        (void)tm_printf((UB *)"[init] IMU: %s\n", hal_imu_chip_name());
     }
 
     if (!os_start_interrupts() || !os_start_tasks())
     {
         hal_motor_kill();
-        tm_printf((UB *)"[init] start-up failed: motors off\n");
+        (void)tm_printf((UB *)"[init] start-up failed: motors off\n");
     }
     else
     {
-        tm_printf((UB *)"[init] 7 tasks running. BTN1 = start / end run, BTN2 = stop\n");
+        (void)tm_printf((UB *)"[init] 7 tasks running. BTN1 = start / end run, BTN2 = stop\n");
     }
 
     /* the initial task must not return (the kernel would shut down) */

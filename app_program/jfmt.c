@@ -2,6 +2,7 @@
  * @file    jfmt.c
  * @brief   Small, allocation-free text/JSON builder (see jfmt.h).
  */
+#include "bitpack.h"
 #include "jfmt.h"
 
 void jb_init(jbuf_t *p_jb, char *p_buf, uint32_t size)
@@ -86,7 +87,7 @@ void jb_fixed(jbuf_t *p_jb, float value, uint32_t decimals)
     {
         scale *= 10u;
     }
-    if (value != value)                     /* NaN */
+    if (bp_is_nan(value))
     {
         jb_raw(p_jb, "null");
         return;

@@ -95,7 +95,7 @@ LOCAL void queue_cmd(uint32_t status, const wire_cmd_t *p_c)
 void app_net_command(const uint8_t *p, uint32_t len, uint64_t rx_us)
 {
     wire_cmd_t c;
-    int        st;
+    int32_t        st;
 
     if ((len == 1u) && (p[0] == (uint8_t)((WIRE_FORMAT_VERSION << 4) | (uint32_t)WCMD_ESTOP)))
     {
@@ -116,7 +116,7 @@ void app_net_command(const uint8_t *p, uint32_t len, uint64_t rx_us)
 void app_net_map(const uint8_t *p, uint32_t len)
 {
     wire_cmd_t c;
-    int        st;
+    int32_t        st;
 
     if (len == 0u)
     {
@@ -381,7 +381,7 @@ LOCAL void handle_config(void)
 {
     cfg_result_t r = { 0u, 0u, { 0u } };
     wire_ack_t   a;
-    int          st = wire_dec_config(g_config, g_config_len, cfg_apply_one, &r);
+    int32_t          st = wire_dec_config(g_config, g_config_len, cfg_apply_one, &r);
 
     config_due_clear();
     params_apply();

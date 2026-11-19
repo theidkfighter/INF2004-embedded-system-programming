@@ -206,7 +206,7 @@ void hal_gpio_isr(uint32_t intno)
     }
     if (pin_events(ints, PIN_US_ECHO) != 0u)
     {
-        uint32_t now  = (uint32_t)hal_time_us();
+        uint32_t now  = hal_time_us32();
         uint32_t echo = g_echo;
 
         if (gpio_get(PIN_US_ECHO))
@@ -394,6 +394,10 @@ void hal_timer_isr(uint32_t intno)
                 g_bc_overruns++;
             }
         }
+    }
+    else
+    {
+        /* nothing to do: barcode sampling is off */
     }
 
 #if VBAT_ENABLED

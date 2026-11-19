@@ -3,6 +3,7 @@
  * @brief   Run-time parameter table (see app_params.h).
  */
 #include "app_params.h"
+#include "bitpack.h"
 #include "jfmt.h"
 #include "robot_config.h"
 
@@ -345,7 +346,7 @@ int32_t params_set_id(uint32_t id, float value)
     {
         return -1;
     }
-    if ((value != value) || (value > 3.0e38f) || (value < -3.0e38f))
+    if (bp_is_nan(value) || (value > 3.0e38f) || (value < -3.0e38f))
     {
         return -2;
     }

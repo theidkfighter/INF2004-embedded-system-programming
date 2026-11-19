@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "evt.h"
+#include "bitpack.h"
 #include "code39.h"
 
 bool post_evt(const evt_msg_t *p_m);          /* os_glue.c (host: stubs) */
@@ -45,7 +46,7 @@ void evt_cm13(evt_b_t *p_b, float cm)
 {
     int32_t c = round_f(cm * 10.0f);
 
-    if ((cm != cm) || (cm < 0.0f))
+    if (bp_is_nan(cm) || (cm < 0.0f))
     {
         evt_u(p_b, EVT_CM13_NONE, 13u);
         return;
@@ -57,7 +58,7 @@ void evt_cm9(evt_b_t *p_b, float cm)
 {
     int32_t c = round_f(cm);
 
-    if ((cm != cm) || (cm < 0.0f))
+    if (bp_is_nan(cm) || (cm < 0.0f))
     {
         evt_u(p_b, EVT_CM9_NONE, 9u);
         return;

@@ -59,7 +59,7 @@ static uint32_t qz(float x, const bp_qspec_t *p_q, uint32_t *p_sat)
 
 static uint32_t q_us(float cm, uint32_t *p_sat)
 {
-    if ((cm != cm) || (cm < 0.0f))
+    if (bp_is_nan(cm) || (cm < 0.0f))
     {
         return ST_US_NONE;                       /* no echo: the sentinel, not a saturation */
     }

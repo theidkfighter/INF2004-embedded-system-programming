@@ -110,7 +110,7 @@ static bool reg_read(uint8_t reg, uint8_t *p_buf, uint32_t len)
 
 static void i2c_pins(void)
 {
-    i2c_init(IMU_I2C, IMU_I2C_HZ);
+    (void)i2c_init(IMU_I2C, IMU_I2C_HZ);
     gpio_set_function(PIN_I2C_SDA, GPIO_FUNC_I2C);
     gpio_set_function(PIN_I2C_SCL, GPIO_FUNC_I2C);
     gpio_pull_up(PIN_I2C_SDA);

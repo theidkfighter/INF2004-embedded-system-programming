@@ -45,6 +45,14 @@
 
 /* Sign-extends the w-bit two's complement code (w = 1 .. 32) to int32_t.
    Bits of code above w are ignored. w = 0 returns 0. */
+/* Barr 5.4.b.v: NaN test. NOTE: <math.h> cannot be included by the
+   kernel-side files (its size_t clashes with the micro T-Kernel headers), so
+   this uses the compiler built-in that isnan() itself expands to (GCC). */
+static inline bool bp_is_nan(float x)
+{
+    return __builtin_isnan(x);
+}
+
 static inline int32_t bp_sext(uint32_t code, uint32_t w)
 {
     uint32_t m;
@@ -103,7 +111,8 @@ typedef struct
     int32_t nan_code;
 } bp_qspec_t;
 
-/* Returns round_half_away_from_zero((double)x * scale) clamped to
+/* NOTE: double on purpose (exact int32 range check, see the file header).
+   Returns round_half_away_from_zero((double)x * scale) clamped to
    [lo_code, hi_code], or nan_code when x is NaN. ±infinity and values beyond
    the int32 range clamp to the matching limit. When p_sat is not NULL,
    *p_sat is set to true when the result was clamped or x was NaN, and to
@@ -116,7 +125,7 @@ static inline int32_t bp_quant(float x, const bp_qspec_t *p_q, bool *p_sat)
     bool    b_sat = false;
     int32_t out;
 
-    if (x != x)                             /* NaN */
+    if (bp_is_nan(x))
     {
         b_sat = true;
         out   = p_q->nan_code;

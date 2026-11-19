@@ -55,7 +55,7 @@ LOCAL bool made(const char *p_what, ID id)
 {
     if (id < E_OK)
     {
-        tm_printf((UB *)"[init] %s failed, er=%d\n", p_what, (INT)id);
+        (void)tm_printf((UB *)"[init] %s failed, er=%d\n", p_what, (INT)id);
         return false;
     }
     return true;
@@ -151,14 +151,14 @@ bool os_start_interrupts(void)
     er = tk_def_int(HAL_IRQ_GPIO, &dint);
     if (er < E_OK)
     {
-        tm_printf((UB *)"[init] tk_def_int(GPIO) failed, er=%d\n", (INT)er);
+        (void)tm_printf((UB *)"[init] tk_def_int(GPIO) failed, er=%d\n", (INT)er);
         return false;
     }
     dint.inthdr = (FP)hal_timer_isr;
     er = tk_def_int(HAL_IRQ_TIMER3, &dint);
     if (er < E_OK)
     {
-        tm_printf((UB *)"[init] tk_def_int(TIMER3) failed, er=%d\n", (INT)er);
+        (void)tm_printf((UB *)"[init] tk_def_int(TIMER3) failed, er=%d\n", (INT)er);
         return false;
     }
     hal_irq_enable_sources();
@@ -416,7 +416,7 @@ uint16_t sat_count(void)
 
 void log_line(const char *p_text)
 {
-    tm_printf((UB *)"%s\n", p_text);
+    (void)tm_printf((UB *)"%s\n", p_text);
 }
 
 /* ------------------------------------------------------------------------ */

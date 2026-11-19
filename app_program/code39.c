@@ -34,13 +34,30 @@ static const struct
 static char char_bars_spaces(const uint16_t *p_w9)
 {
     char     pat[10] = "nnnnnnnnn";
-    uint32_t b1 = 0u, b2 = 2u, s1 = 1u;
+    uint32_t b1 = 0u;
+    uint32_t b2 = 2u;
+    uint32_t s1 = 1u;
 
-    if (p_w9[b2] > p_w9[b1]) { b1 = 2u; b2 = 0u; }
+    if (p_w9[b2] > p_w9[b1])
+    {
+        b1 = 2u;
+        b2 = 0u;
+    }
     for (uint32_t i = 4u; i <= 8u; i += 2u)
     {
-        if (p_w9[i] > p_w9[b1])      { b2 = b1; b1 = i; }
-        else if (p_w9[i] > p_w9[b2]) { b2 = i; }
+        if (p_w9[i] > p_w9[b1])
+        {
+            b2 = b1;
+            b1 = i;
+        }
+        else if (p_w9[i] > p_w9[b2])
+        {
+            b2 = i;
+        }
+        else
+        {
+            /* nothing to do: not among the two widest bars */
+        }
     }
     for (uint32_t i = 3u; i <= 7u; i += 2u)
     {
@@ -48,7 +65,8 @@ static char char_bars_spaces(const uint16_t *p_w9)
     }
     /* contrast checks inside each group: wide >= 1.5 x widest narrow */
     {
-        uint32_t nb = 0u, ns = 0u;
+        uint32_t nb = 0u;
+        uint32_t ns = 0u;
 
         for (uint32_t i = 0u; i <= 8u; i += 2u)
         {
@@ -60,7 +78,7 @@ static char char_bars_spaces(const uint16_t *p_w9)
         }
         if (((p_w9[b2] * 2u) < (nb * 3u)) || ((p_w9[s1] * 2u) < (ns * 3u)))
         {
-            return 0;
+            return '\0';
         }
     }
     pat[b1] = 'w';
@@ -73,7 +91,7 @@ static char char_bars_spaces(const uint16_t *p_w9)
             return TABLE[i].ch;
         }
     }
-    return 0;
+    return '\0';
 }
 
 char code39_char(const uint16_t *p_w9)
@@ -126,7 +144,7 @@ char code39_char(const uint16_t *p_w9)
         }
         if ((third * 2u) < (fourth * 3u))     /* wide must be >= 1.5 x widest narrow */
         {
-            return 0;
+            return '\0';
         }
     }
 
@@ -137,7 +155,7 @@ char code39_char(const uint16_t *p_w9)
             return TABLE[i].ch;
         }
     }
-    return 0;
+    return '\0';
 }
 
 /* Index order of the Data_Representation_Table (Requirement 5.3). */

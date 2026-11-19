@@ -1303,7 +1303,7 @@ LOCAL void avoid(void)
     bool          b_scan = true;
     float         half = g_params.robot_half_width_mm;
     float         margin = g_params.obst_margin_mm;
-    char          side = 0;
+    char          side = '\0';
     float         theta = 45.0f;              /* OBST_DYNAMIC_TURN: first-turn angle of this attempt */
 
     /* a SET during an avoidance takes effect at the next obstacle */

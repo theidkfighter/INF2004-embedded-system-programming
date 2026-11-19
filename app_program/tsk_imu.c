@@ -70,7 +70,7 @@ LOCAL uint32_t mm_u14(float mm)
 {
     float c = (mm * 10.0f) + 0.5f;
 
-    return (mm != mm) ? 0u : ((c <= 0.0f) ? 0u : ((c >= 15000.0f) ? 15000u : (uint32_t)c));
+    return bp_is_nan(mm) ? 0u : ((c <= 0.0f) ? 0u : ((c >= 15000.0f) ? 15000u : (uint32_t)c));
 }
 
 LOCAL void hump_event(evt_code_t code, bool b_valid, float value_mm)

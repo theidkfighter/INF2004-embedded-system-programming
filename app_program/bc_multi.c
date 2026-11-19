@@ -166,7 +166,7 @@ bc_result_t bcm_sample(bcm_t *p_m, const bc_params_t *p_par, uint32_t pos_um, ui
         det_edge_t  e[DET_MAX_OUT];
         uint32_t    n;
         uint32_t    poll_um = pos_um;
-        char        code = 0;
+        char        code = '\0';
         bool        b_rev = false;
         bc_result_t r;
 

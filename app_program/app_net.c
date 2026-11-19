@@ -511,7 +511,7 @@ void app_net_poll(void)
 
     if (g_led != g_led_applied)
     {
-        cyw43_gpio_set(&cyw43_state, 0, g_led);   /* WL_GPIO0 = on-board LED */
+        (void)cyw43_gpio_set(&cyw43_state, 0, g_led);   /* WL_GPIO0 = on-board LED */
         g_led_applied = g_led;
     }
 

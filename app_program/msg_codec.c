@@ -29,7 +29,7 @@ static float dq(uint32_t code, uint32_t w, int32_t scale)
 
 static uint32_t us13(float cm)
 {
-    return ((cm != cm) || (cm < 0.0f)) ? 8191u : (uint32_t)bp_quant(cm, &Q_US13, (bool *)0);
+    return (bp_is_nan(cm) || (cm < 0.0f)) ? 8191u : (uint32_t)bp_quant(cm, &Q_US13, (bool *)0);
 }
 
 static float us13_val(uint32_t c)

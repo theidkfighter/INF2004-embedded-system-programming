@@ -131,7 +131,7 @@ static void put_header(bw_t *p_w)
 }
 
 /* WIRE_OK if the payload starts with the current Format_Version. */
-static int check_version(const uint8_t *p, uint32_t len)
+static int32_t check_version(const uint8_t *p, uint32_t len)
 {
     if (len == 0u)
     {
@@ -193,10 +193,10 @@ uint32_t wire_enc_telemetry(const wire_tlm_t *p_t, uint8_t *p_out)
     return (w.b_overflow || (w.pos != WIRE_TLM_BITS)) ? 0u : bw_bytes(&w);
 }
 
-int wire_dec_telemetry(const uint8_t *p, uint32_t len, wire_tlm_t *p_t)
+int32_t wire_dec_telemetry(const uint8_t *p, uint32_t len, wire_tlm_t *p_t)
 {
     br_t r;
-    int  st = check_version(p, len);
+    int32_t  st = check_version(p, len);
 
     if (st != WIRE_OK)
     {
@@ -277,10 +277,10 @@ uint32_t wire_enc_heartbeat(const wire_hb_t *p_h, uint8_t *p_out)
     return (w.b_overflow || (w.pos != WIRE_HB_BITS)) ? 0u : bw_bytes(&w);
 }
 
-int wire_dec_heartbeat(const uint8_t *p, uint32_t len, wire_hb_t *p_h)
+int32_t wire_dec_heartbeat(const uint8_t *p, uint32_t len, wire_hb_t *p_h)
 {
     br_t r;
-    int  st = check_version(p, len);
+    int32_t  st = check_version(p, len);
 
     if (st != WIRE_OK)
     {
@@ -323,7 +323,7 @@ int wire_dec_heartbeat(const uint8_t *p, uint32_t len, wire_hb_t *p_h)
 #define BCV_LEVELS   (3u)     /* n_levels U3 (1..6), 6 x (res E2, code C6, n U7) (D10) */
 #define BCV_WIDTHS   (4u)     /* part U3 (1..6), count U5 (0..16), count x U12 */
 
-int wire_evt_arg_bits(uint32_t code, const uint8_t *p_args, uint32_t avail, uint32_t *p_bits)
+int32_t wire_evt_arg_bits(uint32_t code, const uint8_t *p_args, uint32_t avail, uint32_t *p_bits)
 {
     br_t     r;
     uint32_t n;
@@ -431,14 +431,14 @@ uint32_t wire_enc_event(uint32_t t_ms, const wire_evt_t *p_e, uint8_t *p_out, ui
     return w.b_overflow ? 0u : bw_bytes(&w);
 }
 
-int wire_dec_event(const uint8_t *p, uint32_t len, uint32_t *p_t_ms, wire_evt_t *p_e)
+int32_t wire_dec_event(const uint8_t *p, uint32_t len, uint32_t *p_t_ms, wire_evt_t *p_e)
 {
     br_t     r;
     bw_t     w;
     uint32_t code;
     uint32_t need;
     uint32_t avail;
-    int      st = check_version(p, len);
+    int32_t      st = check_version(p, len);
 
     if (st != WIRE_OK)
     {
@@ -586,10 +586,10 @@ uint32_t wire_enc_ack(const wire_ack_t *p_a, uint8_t *p_out, uint32_t cap)
     return w.b_overflow ? 0u : bw_bytes(&w);
 }
 
-int wire_dec_ack(const uint8_t *p, uint32_t len, wire_pbits_fn p_pbits, wire_ack_t *p_a)
+int32_t wire_dec_ack(const uint8_t *p, uint32_t len, wire_pbits_fn p_pbits, wire_ack_t *p_a)
 {
     br_t r;
-    int  st = check_version(p, len);
+    int32_t  st = check_version(p, len);
 
     if (st != WIRE_OK)
     {
@@ -698,7 +698,7 @@ int wire_dec_ack(const uint8_t *p, uint32_t len, wire_pbits_fn p_pbits, wire_ack
 /* Command_Frame, Map_Frame, Config_Frame (laptop -> robot)                  */
 /* ------------------------------------------------------------------------ */
 
-static int get_map_body(br_t *p_r, wire_cmd_t *p_c)
+static int32_t get_map_body(br_t *p_r, wire_cmd_t *p_c)
 {
     uint32_t seen = 0u;
 
@@ -722,14 +722,18 @@ static int get_map_body(br_t *p_r, wire_cmd_t *p_c)
         {
             return WIRE_BAD_VALUE;
         }
+        else
+        {
+            /* nothing to do: an empty slot carries letter 0 */
+        }
     }
     return WIRE_OK;
 }
 
-int wire_dec_cmd(const uint8_t *p, uint32_t len, wire_cmd_t *p_c)
+int32_t wire_dec_cmd(const uint8_t *p, uint32_t len, wire_cmd_t *p_c)
 {
     br_t r;
-    int  st = check_version(p, len);
+    int32_t  st = check_version(p, len);
 
     if (st != WIRE_OK)
     {
@@ -813,10 +817,10 @@ uint32_t wire_enc_cmd(const wire_cmd_t *p_c, uint8_t *p_out, uint32_t cap)
     return w.b_overflow ? 0u : len;
 }
 
-int wire_dec_map(const uint8_t *p, uint32_t len, wire_cmd_t *p_c)
+int32_t wire_dec_map(const uint8_t *p, uint32_t len, wire_cmd_t *p_c)
 {
     br_t r;
-    int  st = check_version(p, len);
+    int32_t  st = check_version(p, len);
 
     if (st != WIRE_OK)
     {
@@ -834,11 +838,11 @@ int wire_dec_map(const uint8_t *p, uint32_t len, wire_cmd_t *p_c)
     return st;
 }
 
-int wire_dec_config(const uint8_t *p, uint32_t len, wire_cfg_fn p_apply, void *p_ctx)
+int32_t wire_dec_config(const uint8_t *p, uint32_t len, wire_cfg_fn p_apply, void *p_ctx)
 {
     br_t     r;
     uint32_t n;
-    int      st = check_version(p, len);
+    int32_t      st = check_version(p, len);
 
     if (st != WIRE_OK)
     {
