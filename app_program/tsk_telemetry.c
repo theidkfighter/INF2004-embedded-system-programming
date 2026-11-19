@@ -58,10 +58,14 @@ typedef struct
 } cmd_slot_t;
 
 LOCAL cmd_slot_t        g_cmds[CMD_SLOTS];
-LOCAL volatile uint32_t g_cmd_head;          /* radio task */
-LOCAL volatile uint32_t g_cmd_tail;          /* this task */
+/* CR1: 8-bit modular indices; 256 is a multiple of CMD_SLOTS, so % stays right
+   across the wrap and (uint8_t)(head - tail) is the number of queued commands. */
+LOCAL volatile uint8_t  g_cmd_head;          /* radio task */
+LOCAL volatile uint8_t  g_cmd_tail;          /* this task */
 LOCAL uint8_t           g_config[WIRE_CFG_LEN(WIRE_PARAMS_MAX)];
-LOCAL volatile uint32_t g_config_len;
+BP_STATIC_ASSERT(WIRE_CFG_LEN(WIRE_PARAMS_MAX) <= 65535u, "g_config_len fits in 16 bits");
+BP_STATIC_ASSERT((256u % CMD_SLOTS) == 0u, "8-bit command indices wrap cleanly");
+LOCAL volatile uint16_t g_config_len;        /* bytes in g_config, <= sizeof(g_config) */
 LOCAL uint8_t           g_out[NET_MSG_MAX];  /* one outgoing ack / event / heartbeat */
 LOCAL uint16_t          g_seq;               /* Telemetry_Frame sequence, U15 (wraps) */
 LOCAL uint16_t          g_hb_seq;            /* Heartbeat_Frame sequence, U14 (wraps) */
@@ -83,13 +87,13 @@ LOCAL void zero(void *p, uint32_t n)
 
 LOCAL void queue_cmd(uint32_t status, const wire_cmd_t *p_c)
 {
-    if ((g_cmd_head - g_cmd_tail) < CMD_SLOTS)
+    if ((uint8_t)(g_cmd_head - g_cmd_tail) < CMD_SLOTS)
     {
         cmd_slot_t *p_s = &g_cmds[g_cmd_head % CMD_SLOTS];
 
         p_s->status = (uint8_t)status;
         p_s->c      = *p_c;
-        g_cmd_head++;
+        g_cmd_head = (uint8_t)(g_cmd_head + 1u);
         (void)tk_wup_tsk(g_tsk_tlm);
     }
 }
@@ -140,7 +144,7 @@ void app_net_config(const uint8_t *p, uint32_t len)
         {
             g_config[i] = p[i];
         }
-        g_config_len = len;
+        g_config_len = (uint16_t)len;         /* len <= sizeof(g_config), checked above */
         config_due_set();
         (void)tk_wup_tsk(g_tsk_tlm);
     }
@@ -485,7 +489,8 @@ LOCAL void frame_fill(wire_tlm_t *p_t, const robot_status_t *p_s, const frame_ex
 
 LOCAL void frame(void)
 {
-    static uint8_t s_frame[WIRE_TLM_LEN];
+    static uint8_t        s_frame[WIRE_TLM_LEN];
+    static robot_status_t s_snap;         /* NOTE: static to keep 60 B off the task stack */
     wire_tlm_t     t;
     frame_extra_t  x;
     uint32_t       n;
@@ -498,7 +503,10 @@ LOCAL void frame(void)
     hal_ir_adc_range(&x.ir_min, &x.ir_max);   /* barcode sensor range over the last 0.5 s */
     x.rssi  = net_rssi();
     x.buf   = net_frames_waiting();
-    frame_fill(&t, &g_status, &x);
+    crit_dsp_enter();
+    s_snap = g_status;                        /* one consistent copy: no frame mixes two cycles */
+    crit_dsp_exit();
+    frame_fill(&t, &s_snap, &x);
     n = wire_enc_telemetry(&t, s_frame);
     PERF_END(PERF_TLM_ENCODE, t_perf, PERF_NO_LIMIT);
     if (n > 0u)
@@ -742,7 +750,7 @@ void tsk_telemetry_task(INT stacd, void *exinf)
         while (g_cmd_tail != g_cmd_head)
         {
             handle_command(&g_cmds[g_cmd_tail % CMD_SLOTS]);
-            g_cmd_tail++;
+            g_cmd_tail = (uint8_t)(g_cmd_tail + 1u);
         }
         estop_ack();
         if (config_due())

@@ -13,10 +13,10 @@
 #include "lwip/udp.h"
 
 #include "app_net.h"
+#include "crit.h"
 #include "fault_mask.h"
 #include "wire.h"
 #include "hal.h"
-#include "perf.h"
 #include "mqtt_config.h"
 #include "wifi_credentials.h"
 
@@ -73,12 +73,14 @@ static void set_link(uint32_t loss_bit, bool b_up)
 }
 static volatile bool     g_led;
 static bool              g_led_applied;
-static volatile int32_t  g_rssi = -100;
+static volatile int8_t   g_rssi = -100;           /* dBm, -128..0 (CR1: one byte) */
 static volatile uint32_t g_dropped;
 static volatile uint32_t g_reconnects;
 static volatile uint32_t g_published;
 static volatile uint32_t g_pub_errors;
-static volatile int32_t  g_last_status = -1;
+static volatile int16_t  g_last_status = -1;     /* -1 none yet, else mqtt_connection_status_t 0..257 */
+/* NOTE: g_dropped, g_reconnects, g_published, g_pub_errors stay 32-bit:
+   diagnostic counters whose wrap period matters, not bounded fields. */
 
 static mqtt_client_t    *gp_client;
 static struct mqtt_connect_client_info_t g_ci;
@@ -116,8 +118,7 @@ bool net_post_frame(const uint8_t *p_frame, uint32_t len)
     {
         return false;
     }
-    PERF_BEGIN(t_cs);
-    irq = save_and_disable_interrupts();
+    irq = crit_irq_enter();
     if ((g_f_head - g_f_tail) >= NET_FRAME_SLOTS)
     {
         g_f_tail++;                       /* full: overwrite the oldest frame */
@@ -127,8 +128,7 @@ bool net_post_frame(const uint8_t *p_frame, uint32_t len)
     memcpy(g_frames[slot].data, p_frame, len);
     g_frames[slot].len = (uint8_t)len;
     g_f_head++;
-    PERF_END(PERF_CS_IRQ, t_cs, PERF_LIMIT_CS_US);
-    restore_interrupts(irq);
+    crit_irq_exit(irq);
     return true;
 }
 
@@ -141,8 +141,7 @@ bool net_post(net_topic_t topic, const uint8_t *p, uint32_t len)
     {
         return false;
     }
-    PERF_BEGIN(t_cs);
-    irq = save_and_disable_interrupts();
+    irq = crit_irq_enter();
     if ((g_m_head - g_m_tail) >= NET_MSG_SLOTS)
     {
         g_m_tail++;                       /* keep the newest */
@@ -152,8 +151,7 @@ bool net_post(net_topic_t topic, const uint8_t *p, uint32_t len)
     g_msgs[slot].len   = (uint8_t)len;
     g_msgs[slot].topic = (uint8_t)topic;
     g_m_head++;
-    PERF_END(PERF_CS_IRQ, t_cs, PERF_LIMIT_CS_US);
-    restore_interrupts(irq);
+    crit_irq_exit(irq);
     return true;
 }
 
@@ -294,7 +292,7 @@ static void on_connect(mqtt_client_t *p_client, void *p_arg, mqtt_connection_sta
 {
     (void)p_arg;
     g_connecting  = false;
-    g_last_status = (int32_t)status;
+    g_last_status = (int16_t)status;          /* lwIP status codes are 0..257: fit in int16_t */
     if (status == MQTT_CONNECT_ACCEPTED)
     {
         if (g_ever_connected)
@@ -446,8 +444,7 @@ static void flush(void)
     /* events and acks first (small, time-critical), then telemetry frames */
     while ((sent < PUBLISH_PER_POLL) && (g_m_tail != g_m_head))
     {
-        PERF_BEGIN(t_cs);
-        uint32_t     irq  = save_and_disable_interrupts();
+        uint32_t     irq  = crit_irq_enter();
         uint32_t     tail = g_m_tail;
         msg_slot_t * p    = &g_msgs[tail % NET_MSG_SLOTS];
         uint8_t      len  = p->len;
@@ -455,29 +452,25 @@ static void flush(void)
 
         /* copy out under the lock: a producer may overwrite the oldest slot */
         memcpy(g_tx_msg, p->data, len);
-        PERF_END(PERF_CS_IRQ, t_cs, PERF_LIMIT_CS_US);
-        restore_interrupts(irq);
+        crit_irq_exit(irq);
 
         if (mqtt_publish(gp_client, topic_name(topic), g_tx_msg, len, 0u, 0u,
                          on_pub_done, NULL) != ERR_OK)
         {
             return;                           /* output buffer full: next poll */
         }
-        PERF_BEGIN(t_cs2);
-        irq = save_and_disable_interrupts();
+        irq = crit_irq_enter();
         if (g_m_tail == tail)                 /* not already dropped by a producer */
         {
             g_m_tail++;
         }
-        PERF_END(PERF_CS_IRQ, t_cs2, PERF_LIMIT_CS_US);
-        restore_interrupts(irq);
+        crit_irq_exit(irq);
         sent++;
     }
     while ((sent < PUBLISH_PER_POLL) && (g_f_tail != g_f_head))
     {
         frame_slot_t *p;
-        PERF_BEGIN(t_cs);
-        uint32_t      irq = save_and_disable_interrupts();
+        uint32_t      irq = crit_irq_enter();
         uint32_t      tail = g_f_tail;
         uint8_t       len;
 
@@ -485,22 +478,19 @@ static void flush(void)
         p   = &g_frames[tail % NET_FRAME_SLOTS];
         len = p->len;
         memcpy(g_tx_frame, p->data, len);
-        PERF_END(PERF_CS_IRQ, t_cs, PERF_LIMIT_CS_US);
-        restore_interrupts(irq);
+        crit_irq_exit(irq);
 
         if (mqtt_publish(gp_client, NET_TOPIC_TELEMETRY, g_tx_frame, len, 0u, 0u,
                          on_pub_done, NULL) != ERR_OK)
         {
             return;
         }
-        PERF_BEGIN(t_cs2);
-        irq = save_and_disable_interrupts();
+        irq = crit_irq_enter();
         if (g_f_tail == tail)                 /* not already dropped by a producer */
         {
             g_f_tail++;
         }
-        PERF_END(PERF_CS_IRQ, t_cs2, PERF_LIMIT_CS_US);
-        restore_interrupts(irq);
+        crit_irq_exit(irq);
         sent++;
     }
 }
@@ -523,7 +513,8 @@ void app_net_poll(void)
         g_t_rssi = now;
         if (cyw43_wifi_get_rssi(&cyw43_state, &rssi) == 0)
         {
-            g_rssi = rssi;
+            /* clamp to the int8_t field: real values are about -100..-20 dBm */
+            g_rssi = (int8_t)((rssi < -128) ? -128 : ((rssi > 0) ? 0 : rssi));
         }
     }
     manage_mqtt(now);
